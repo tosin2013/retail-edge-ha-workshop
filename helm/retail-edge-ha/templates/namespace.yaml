@@ -1,0 +1,31 @@
+{{- if .Values.infrastructure.enabled }}
+---
+# Infrastructure namespace for ArgoCD applications and shared resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.infrastructure.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.infrastructure.namespace }}
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    argocd.argoproj.io/instance: {{ .Values.global.workshopName }}
+  annotations:
+    openshift.io/description: "Infrastructure namespace for Retail Edge HA Workshop"
+    argocd.argoproj.io/sync-wave: {{ .Values.infrastructure.syncWave | quote }}
+{{- end }}
+
+{{- if .Values.bookbag.enabled }}
+---
+# Bookbag namespace for workshop content delivery
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.bookbag.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.bookbag.namespace }}
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    argocd.argoproj.io/instance: {{ .Values.global.workshopName }}
+  annotations:
+    openshift.io/description: "Bookbag workshop content delivery"
+    argocd.argoproj.io/sync-wave: {{ .Values.bookbag.syncWave | quote }}
+{{- end }}

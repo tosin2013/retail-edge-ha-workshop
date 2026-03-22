@@ -1,0 +1,68 @@
+{{- if .Values.argocd }}
+---
+# =============================================================================
+# Parent ArgoCD Application (App of Apps Pattern)
+# =============================================================================
+# This is the parent application that manages all child applications for the
+# Retail Edge HA Workshop. It follows the "App of Apps" pattern where one
+# parent application creates and manages multiple child applications.
+#
+# Child applications are created via templates in templates/apps/ directory.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.global.workshopName }}
+    app.kubernetes.io/component: parent-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: helm/retail-edge-ha
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: students.count
+          value: {{ .Values.students.count | quote }}
+        - name: global.clusterDomain
+          value: {{ .Values.global.clusterDomain | quote }}
+        - name: global.clusterApiUrl
+          value: {{ .Values.global.clusterApiUrl | quote }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  # Ignore differences in certain fields
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data
+    - group: kubevirt.io
+      kind: VirtualMachine
+      jsonPointers:
+        - /spec/running
+
+  info:
+    - name: Workshop
+      value: {{ .Values.global.workshopName }}
+    - name: Students
+      value: {{ .Values.students.count | quote }}
+    - name: Cluster
+      value: {{ .Values.global.clusterDomain }}
+{{- end }}

@@ -1,0 +1,346 @@
+# =============================================================================
+# Retail Edge HA Workshop - Primary Configuration File
+# =============================================================================
+# This values.yaml file is the single source of truth for all workshop
+# configuration. Adjust these values to customize the deployment for your
+# OpenShift cluster and student count.
+#
+# Usage:
+#   helm install retail-edge-ha ./helm/retail-edge-ha --values values.yaml
+#   helm upgrade retail-edge-ha ./helm/retail-edge-ha --set students.count=25
+# =============================================================================
+
+# Global Configuration
+# -----------------------------------------------------------------------------
+global:
+  # OpenShift cluster domain (update for your cluster)
+  clusterDomain: apps.cluster-ntq88.dynamic.redhatworkshops.io
+
+  # OpenShift API server URL
+  clusterApiUrl: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+
+  # Workshop unique identifier
+  workshopName: retail-edge-ha
+
+  # Deployment GUID (unique identifier for this deployment)
+  guid: "ntq88"
+
+# Student Configuration
+# -----------------------------------------------------------------------------
+students:
+  # Enable student provisioning
+  enabled: true
+
+  # Number of students (1-50 supported)
+  count: 5
+
+  # Username prefix (creates student-01, student-02, etc.)
+  userbase: "student"
+
+  # Namespace prefix (creates retail-edge-student-01, etc.)
+  namespacePrefix: "retail-edge"
+
+  # Starting number for students (usually 1)
+  startNumber: 1
+
+# ArgoCD Configuration
+# -----------------------------------------------------------------------------
+argocd:
+  # ArgoCD namespace
+  namespace: openshift-gitops
+
+  # ArgoCD project name
+  project: default
+
+  # Sync policy configuration
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+
+# Infrastructure Configuration
+# -----------------------------------------------------------------------------
+infrastructure:
+  # Enable infrastructure components
+  enabled: true
+
+  # Infrastructure namespace
+  namespace: retail-edge-infrastructure
+
+  # Sync wave (order of deployment)
+  syncWave: "0"
+
+# Networking Configuration
+# -----------------------------------------------------------------------------
+networking:
+  # Enable networking components
+  enabled: true
+
+  # Sync wave
+  syncWave: "1"
+
+  # User Defined Networks (UDNs) configuration
+  udn:
+    enabled: true
+
+    # Primary network for general connectivity
+    primaryNetwork:
+      cidr: "10.100.0.0/16"
+      gateway: "10.100.0.1"
+
+    # Module 1: RHEL HA Pacemaker network
+    module1Network:
+      name: "pacemaker-net"
+      cidr: "10.101.0.0/24"
+      gateway: "10.101.0.1"
+      description: "Layer 2 network for Corosync heartbeat and cluster traffic"
+
+    # Module 2: MicroShift VRRP network
+    module2Network:
+      name: "microshift-net"
+      cidr: "10.102.0.0/24"
+      gateway: "10.102.0.1"
+      vrrpVIP: "10.102.0.100"
+      description: "Layer 2 network for VRRP virtual IP failover"
+
+    # Module 3: Two-Node OpenShift network
+    module3Network:
+      name: "twonode-net"
+      cidr: "10.103.0.0/24"
+      gateway: "10.103.0.1"
+      description: "Layer 2 network for two-node cluster communication"
+
+# VirtualMachine Configuration
+# -----------------------------------------------------------------------------
+virtualMachines:
+  # Enable VM provisioning
+  enabled: true
+
+  # Sync wave
+  syncWave: "2"
+
+  # Auto-start VMs after creation (false = students start manually)
+  autoStart: false
+
+  # Storage class for VM disks
+  storageClass: "ocs-storagecluster-ceph-rbd"
+
+  # Module 1: RHEL HA with Pacemaker (2 VMs per student)
+  module1:
+    enabled: true
+    name: "rhel-ha"
+    vmCount: 2
+
+    # VM image configuration
+    image:
+      url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      name: "rhel9-stream"
+
+    # Resource specifications
+    resources:
+      cpu:
+        cores: 2
+        sockets: 1
+        threads: 1
+      memory: "4Gi"
+      disk: "30Gi"
+
+    # Cloud-init configuration
+    cloudInit:
+      user: "cloud-user"
+      sshKeySecret: "student-ssh-keys"
+      packages:
+        - pacemaker
+        - pcs
+        - fence-agents-kubevirt
+        - corosync
+
+  # Module 2: MicroShift with VRRP (2 VMs per student)
+  module2:
+    enabled: true
+    name: "microshift"
+    vmCount: 2
+
+    # VM image configuration
+    image:
+      url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      name: "rhel9-microshift"
+
+    # Resource specifications
+    resources:
+      cpu:
+        cores: 2
+        sockets: 1
+        threads: 1
+      memory: "4Gi"
+      disk: "40Gi"
+
+    # Cloud-init configuration
+    cloudInit:
+      user: "cloud-user"
+      sshKeySecret: "student-ssh-keys"
+      packages:
+        - microshift
+        - microshift-selinux
+        - microshift-networking
+        - keepalived
+
+  # Module 3: OpenShift Two-Node with Arbiter (3 VMs per student)
+  module3:
+    enabled: true
+    name: "twonode-ocp"
+    vmCount: 3
+    controlPlaneNodes: 2
+    arbiterNodes: 1
+
+    # VM image configuration
+    image:
+      url: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/rhcos-live.x86_64.iso"
+      name: "rhcos-latest"
+
+    # Resource specifications for control plane nodes
+    resources:
+      controlPlane:
+        cpu:
+          cores: 4
+          sockets: 1
+          threads: 1
+        memory: "16Gi"
+        disk: "120Gi"
+
+      # Resource specifications for arbiter node
+      arbiter:
+        cpu:
+          cores: 1
+          sockets: 1
+          threads: 1
+        memory: "2Gi"
+        disk: "20Gi"
+
+# Bookbag Workshop Configuration
+# -----------------------------------------------------------------------------
+bookbag:
+  # Enable Bookbag deployment
+  enabled: true
+
+  # Sync wave
+  syncWave: "3"
+
+  # Bookbag deployment namespace
+  namespace: retail-edge-bookbag
+
+  # Container image configuration
+  image:
+    repository: "quay.io/tosin2013/retail-edge-bookbag"
+    tag: "latest"
+    pullPolicy: Always
+
+  # Git repository configuration
+  git:
+    repository: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
+    branch: "main"
+    contentPath: "content/workshop"
+
+  # Resource requests and limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+
+  # Number of Bookbag replicas
+  replicas: 1
+
+  # Authentication configuration
+  auth:
+    enabled: false
+    username: "*"
+    password: ""
+
+  # Embedded console configuration
+  console:
+    enabled: true
+    image: "quay.io/openshift/origin-console:latest"
+
+  # Route configuration
+  route:
+    enabled: true
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+
+# RBAC Configuration
+# -----------------------------------------------------------------------------
+rbac:
+  # Enable RBAC provisioning
+  enabled: true
+
+  # Sync wave
+  syncWave: "1"
+
+  # Student permissions (applied to student namespaces)
+  studentPermissions:
+    - apiGroups: ["kubevirt.io"]
+      resources: ["virtualmachines", "virtualmachineinstances"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+    - apiGroups: [""]
+      resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+      verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+    - apiGroups: ["k8s.ovn.org"]
+      resources: ["userdefinednetworks"]
+      verbs: ["get", "list", "watch"]
+
+    - apiGroups: ["k8s.cni.cncf.io"]
+      resources: ["network-attachment-definitions"]
+      verbs: ["get", "list", "watch"]
+
+# Resource Quotas
+# -----------------------------------------------------------------------------
+resourceQuotas:
+  # Enable resource quotas per student namespace
+  enabled: true
+
+  # Per-student limits
+  limits:
+    # Total CPU across all VMs
+    cpu: "16"
+
+    # Total memory across all VMs
+    memory: "32Gi"
+
+    # Maximum number of PVCs
+    persistentvolumeclaims: "10"
+
+    # Total storage requests
+    requests.storage: "200Gi"
+
+# Monitoring and Observability
+# -----------------------------------------------------------------------------
+monitoring:
+  # Enable monitoring (future feature)
+  enabled: false
+
+  # Prometheus scrape interval
+  prometheus:
+    scrapeInterval: "30s"
+
+  # Grafana dashboards
+  grafana:
+    enabled: false
+    dashboards:
+      - vm-performance
+      - student-activity
+      - resource-utilization

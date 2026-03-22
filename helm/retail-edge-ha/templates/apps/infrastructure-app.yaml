@@ -1,0 +1,44 @@
+{{- if .Values.infrastructure.enabled }}
+---
+# =============================================================================
+# Infrastructure Child Application
+# =============================================================================
+# Creates student namespaces, resource quotas, and operator configurations.
+# Sync Wave: 0 (deployed first)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-infrastructure
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: infrastructure
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.infrastructure.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: manifests/infrastructure
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  info:
+    - name: Component
+      value: Infrastructure (Namespaces, Quotas, Operators)
+    - name: Students
+      value: {{ .Values.students.count | quote }}
+{{- end }}

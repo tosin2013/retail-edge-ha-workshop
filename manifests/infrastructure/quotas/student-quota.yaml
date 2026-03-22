@@ -1,0 +1,82 @@
+# =============================================================================
+# Resource Quotas for Student Namespaces
+# =============================================================================
+# Each student namespace gets resource quotas to prevent over-consumption
+# and ensure fair resource allocation across all students.
+#
+# Limits:
+#   - CPU: 16 cores (enough for 9 VMs)
+#   - Memory: 32Gi (enough for 9 VMs)
+#   - PVCs: 10 (1 per VM + some extras)
+#   - Storage: 200Gi (enough for all VM disks)
+# =============================================================================
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-01
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    persistentvolumeclaims: "10"
+    requests.storage: "200Gi"
+    pods: "20"
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-02
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    persistentvolumeclaims: "10"
+    requests.storage: "200Gi"
+    pods: "20"
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-03
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    persistentvolumeclaims: "10"
+    requests.storage: "200Gi"
+    pods: "20"
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-04
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    persistentvolumeclaims: "10"
+    requests.storage: "200Gi"
+    pods: "20"
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-05
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: "32Gi"
+    persistentvolumeclaims: "10"
+    requests.storage: "200Gi"
+    pods: "20"

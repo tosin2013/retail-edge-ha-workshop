@@ -1,0 +1,49 @@
+{{- if .Values.networking.enabled }}
+---
+# =============================================================================
+# Networking Child Application
+# =============================================================================
+# Creates User Defined Networks (UDNs) and NetworkAttachmentDefinitions
+# for Layer 2 VM connectivity across all modules.
+# Sync Wave: 1 (deployed after infrastructure)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-networking
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: networking
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.networking.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: manifests/networking
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  info:
+    - name: Component
+      value: Networking (UDNs, NADs)
+    - name: Module1 Network
+      value: {{ .Values.networking.udn.module1Network.cidr }}
+    - name: Module2 Network
+      value: {{ .Values.networking.udn.module2Network.cidr }}
+    - name: Module3 Network
+      value: {{ .Values.networking.udn.module3Network.cidr }}
+{{- end }}

@@ -1,0 +1,42 @@
+{{- if .Values.rbac.enabled }}
+---
+# =============================================================================
+# RBAC Child Application
+# =============================================================================
+# Creates ClusterRoles, RoleBindings, and ServiceAccounts for student access.
+# Sync Wave: 1 (deployed with networking)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-rbac
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: rbac
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.rbac.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: manifests/rbac
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  info:
+    - name: Component
+      value: RBAC (Roles, Bindings, ServiceAccounts)
+{{- end }}

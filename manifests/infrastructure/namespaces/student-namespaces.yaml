@@ -1,0 +1,144 @@
+# =============================================================================
+# Student Namespaces
+# =============================================================================
+# This file creates two namespaces per student:
+#   1. retail-edge-student-XX - Workload namespace for VMs, services, etc.
+#   2. retail-edge-student-XX-udn - Networking namespace for User Defined Networks
+#
+# NOTE: This is a static file for initial testing with 5 students.
+# For production with 50 students, use the generation script:
+#   scripts/generate-student-manifests.sh
+#
+# Or use the Helm chart with dynamic templating.
+# =============================================================================
+
+---
+# Student 01 - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-01
+  labels:
+    workshop: retail-edge-ha
+    student-id: "01"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student 01"
+    openshift.io/display-name: "Retail Edge HA - Student 01"
+
+---
+# Student 01 - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-01-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "01"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student 01"
+
+---
+# Student 02 - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-02
+  labels:
+    workshop: retail-edge-ha
+    student-id: "02"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student 02"
+
+---
+# Student 02 - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-02-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "02"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student 02"
+
+---
+# Student 03 - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-03
+  labels:
+    workshop: retail-edge-ha
+    student-id: "03"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student 03"
+
+---
+# Student 03 - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-03-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "03"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student 03"
+
+---
+# Student 04 - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-04
+  labels:
+    workshop: retail-edge-ha
+    student-id: "04"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student 04"
+
+---
+# Student 04 - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-04-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "04"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student 04"
+
+---
+# Student 05 - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-05
+  labels:
+    workshop: retail-edge-ha
+    student-id: "05"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student 05"
+
+---
+# Student 05 - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-05-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "05"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student 05"
