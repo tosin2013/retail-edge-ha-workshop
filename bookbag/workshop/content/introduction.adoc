@@ -1,0 +1,103 @@
+= Welcome to the Retail Edge HA Workshop
+
+== Introduction
+
+Welcome! In this hands-on workshop, you'll learn to deploy and manage three different high-availability architectures commonly used in retail edge computing environments.
+
+== Workshop Overview
+
+Retail edge locations face unique challenges:
+
+* Limited physical space and resources
+* Potential for hardware failures
+* Network connectivity issues
+* Need for continuous operation
+
+This workshop demonstrates three production-ready HA patterns that address these challenges.
+
+== What You'll Learn
+
+Over the next few hours, you'll work through four modules:
+
+[cols="1,3"]
+|===
+|Module |Description
+
+|*Module 1*
+|Deploy a two-node Pacemaker/Corosync cluster with STONITH fencing
+
+|*Module 2*
+|Configure MicroShift with VRRP-based virtual IP failover
+
+|*Module 3*
+|Install a two-node OpenShift cluster with remote etcd arbiter
+
+|*Module 4*
+|Perform chaos engineering tests to validate resilience
+|===
+
+== Your Environment
+
+You have a dedicated namespace with pre-provisioned resources:
+
+[source,bash,role=execute]
+----
+oc get namespace %STUDENT_NAMESPACE%
+----
+
+Your User Defined Network (UDN) namespace for Layer 2 networking:
+
+[source,bash,role=execute]
+----
+oc get namespace %STUDENT_UDN_NAMESPACE%
+----
+
+== Access Information
+
+*Namespace:* `%STUDENT_NAMESPACE%`
+
+*UDN Namespace:* `%STUDENT_UDN_NAMESPACE%`
+
+*VM Credentials:*
+
+* Username: `%VM_USER%`
+* Password: `%VM_PASSWORD%`
+
+*Cluster Console:* https://console-%CLUSTER_DOMAIN%[OpenShift Web Console,window=_blank]
+
+== Pre-requisites
+
+This workshop assumes you have:
+
+* Basic Linux system administration knowledge
+* Familiarity with OpenShift/Kubernetes concepts
+* Understanding of networking fundamentals
+* Experience with command-line tools
+
+== Tools You'll Use
+
+Throughout this workshop, you'll use:
+
+* `oc` - OpenShift CLI
+* `virtctl` - KubeVirt VM management
+* `pcs` - Pacemaker cluster management
+* `keepalived` - VRRP daemon
+* `etcdctl` - etcd cluster inspection
+
+== Workshop Architecture
+
+image::images/workshop-architecture.png[Workshop Architecture]
+
+Each module runs in isolated VirtualMachines connected via User Defined Networks (UDNs) that provide Layer 2 connectivity for multicast protocols (Corosync, VRRP).
+
+== Getting Help
+
+If you get stuck:
+
+1. Check the *Troubleshooting* section in each module
+2. Review VM logs: `virtctl console <vm-name> -n %STUDENT_NAMESPACE%`
+3. Ask your instructor for assistance
+
+== Ready?
+
+Click *Start Workshop* below to begin with Module 1: Pacemaker HA Cluster.

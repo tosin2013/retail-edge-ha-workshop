@@ -1,0 +1,477 @@
+= Module 1: Pacemaker HA Cluster
+
+== Overview
+
+In this module, you'll deploy a two-node Pacemaker/Corosync cluster with STONITH (Shoot The Other Node In The Head) fencing. This architecture is ideal for stateful applications that require quick failover.
+
+== Architecture
+
+[source,text]
+----
+┌─────────────────────┐      ┌─────────────────────┐
+│  rhel-ha-node1      │◄────►│  rhel-ha-node2      │
+│  10.101.0.20        │      │  10.101.0.21        │
+│  (Active)           │      │  (Standby)          │
+└─────────────────────┘      └─────────────────────┘
+         │                            │
+         └────────────────────────────┘
+              Corosync Heartbeat
+           (pacemaker-net UDN)
+         VIP: 10.101.0.100
+----
+
+*Key Features:*
+
+* **Corosync**: Multicast heartbeat on 239.255.1.1
+* **STONITH**: fence_kubevirt for VM-level fencing
+* **Virtual IP**: Floats between nodes for application access
+
+== Learning Objectives
+
+By the end of this module, you will:
+
+* Start and access VirtualMachines using virtctl
+* Configure a Pacemaker cluster with pcs
+* Set up fence_kubevirt for STONITH fencing
+* Create a Virtual IP resource
+* Test failover scenarios
+
+== Step 1: Verify VirtualMachines
+
+Check that your VMs exist:
+
+[source,bash,role=execute]
+----
+oc get vm -n %STUDENT_NAMESPACE%
+----
+
+You should see:
+
+[source,text]
+----
+NAME            AGE   STATUS    READY
+rhel-ha-node1   5m    Stopped   False
+rhel-ha-node2   5m    Stopped   False
+----
+
+== Step 2: Start the VMs
+
+Start both nodes:
+
+[source,bash,role=execute]
+----
+virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+[source,bash,role=execute]
+----
+virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait for VMs to reach Running state (about 2 minutes):
+
+[source,bash,role=execute]
+----
+oc get vmi -n %STUDENT_NAMESPACE% -w
+----
+
+Press `Ctrl+C` when both show `Running` and `True` under READY.
+
+== Step 3: Verify Network Configuration
+
+SSH into node1 to check the network setup:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+Password: `%VM_PASSWORD%`
+
+Check the IP addresses:
+
+[source,bash]
+----
+ip addr show eth1
+----
+
+You should see:
+
+[source,text]
+----
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP>
+    inet 10.101.0.20/24 brd 10.101.0.255 scope global eth1
+----
+
+Verify connectivity to node2:
+
+[source,bash]
+----
+ping -c 3 10.101.0.21
+----
+
+Exit the SSH session:
+
+[source,bash]
+----
+exit
+----
+
+== Step 4: Configure Pacemaker Cluster
+
+SSH into node1:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+Authenticate the cluster nodes (password: `redhat`):
+
+[source,bash]
+----
+sudo pcs host auth rhel-ha-node1 rhel-ha-node2 -u hacluster -p redhat
+----
+
+Create the cluster:
+
+[source,bash]
+----
+sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 \
+  --transport udp \
+  --force
+----
+
+Start the cluster:
+
+[source,bash]
+----
+sudo pcs cluster start --all
+----
+
+Enable cluster auto-start:
+
+[source,bash]
+----
+sudo pcs cluster enable --all
+----
+
+== Step 5: Configure Cluster Properties
+
+Disable STONITH temporarily (we'll enable it after configuring fencing):
+
+[source,bash]
+----
+sudo pcs property set stonith-enabled=false
+----
+
+Set quorum policy for two-node cluster:
+
+[source,bash]
+----
+sudo pcs property set no-quorum-policy=ignore
+----
+
+Check cluster status:
+
+[source,bash]
+----
+sudo pcs status
+----
+
+You should see both nodes online.
+
+== Step 6: Configure STONITH Fencing
+
+Create a ServiceAccount for fence_kubevirt:
+
+[source,bash]
+----
+exit
+----
+
+Back in the terminal, create the ServiceAccount:
+
+[source,bash,role=execute]
+----
+oc create sa pacemaker-fencing -n %STUDENT_NAMESPACE%
+----
+
+Grant permissions to manage VMs:
+
+[source,bash,role=execute]
+----
+oc create role vm-manager \
+  --verb=get,list,update,patch,delete \
+  --resource=virtualmachines,virtualmachineinstances \
+  -n %STUDENT_NAMESPACE%
+----
+
+[source,bash,role=execute]
+----
+oc create rolebinding vm-manager-binding \
+  --role=vm-manager \
+  --serviceaccount=%STUDENT_NAMESPACE%:pacemaker-fencing \
+  -n %STUDENT_NAMESPACE%
+----
+
+Get the ServiceAccount token:
+
+[source,bash,role=execute]
+----
+oc create token pacemaker-fencing -n %STUDENT_NAMESPACE% --duration=8760h
+----
+
+*Copy the token output* - you'll need it in the next step.
+
+== Step 7: Configure fence_kubevirt
+
+SSH back into node1:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+Create fence device for node1:
+
+[source,bash]
+----
+sudo pcs stonith create fence-node1 fence_kubevirt \
+  token="<paste-token-here>" \
+  plug=rhel-ha-node1 \
+  namespace=%STUDENT_NAMESPACE% \
+  apiserveraddr=%CLUSTER_API% \
+  pcmk_host_list="rhel-ha-node1" \
+  pcmk_reboot_action="reboot" \
+  ssl_insecure=1
+----
+
+Create fence device for node2:
+
+[source,bash]
+----
+sudo pcs stonith create fence-node2 fence_kubevirt \
+  token="<paste-token-here>" \
+  plug=rhel-ha-node2 \
+  namespace=%STUDENT_NAMESPACE% \
+  apiserveraddr=%CLUSTER_API% \
+  pcmk_host_list="rhel-ha-node2" \
+  pcmk_reboot_action="reboot" \
+  ssl_insecure=1
+----
+
+Add location constraints (fence devices on opposite nodes):
+
+[source,bash]
+----
+sudo pcs constraint location fence-node1 avoids rhel-ha-node1
+sudo pcs constraint location fence-node2 avoids rhel-ha-node2
+----
+
+Enable STONITH:
+
+[source,bash]
+----
+sudo pcs property set stonith-enabled=true
+----
+
+Test fencing (this will reboot node2):
+
+[source,bash]
+----
+sudo pcs stonith fence rhel-ha-node2
+----
+
+Wait 30 seconds for node2 to reboot and rejoin:
+
+[source,bash]
+----
+watch -n 2 sudo pcs status
+----
+
+Press `Ctrl+C` when node2 shows online again.
+
+== Step 8: Create Virtual IP Resource
+
+Create the VIP resource:
+
+[source,bash]
+----
+sudo pcs resource create cluster-vip IPaddr2 \
+  ip=%PACEMAKER_VIP% \
+  cidr_netmask=24 \
+  nic=eth1 \
+  op monitor interval=5s
+----
+
+Check the VIP status:
+
+[source,bash]
+----
+sudo pcs status resources
+----
+
+The VIP should be running on one of the nodes.
+
+Verify the VIP is accessible:
+
+[source,bash]
+----
+ping -c 3 %PACEMAKER_VIP%
+----
+
+== Step 9: Test Failover
+
+From node1, put node1 into standby mode:
+
+[source,bash]
+----
+sudo pcs node standby rhel-ha-node1
+----
+
+Watch the VIP migrate to node2:
+
+[source,bash]
+----
+sudo pcs status
+----
+
+The `cluster-vip` resource should now be on `rhel-ha-node2`.
+
+Verify the VIP still responds:
+
+[source,bash]
+----
+ping -c 3 %PACEMAKER_VIP%
+----
+
+Bring node1 back online:
+
+[source,bash]
+----
+sudo pcs node unstandby rhel-ha-node1
+----
+
+== Step 10: Test STONITH Fencing
+
+Simulate a network failure by stopping Corosync on node2.
+
+SSH into node2 from node1:
+
+[source,bash]
+----
+ssh rhel-ha-node2
+----
+
+Stop Corosync (simulating a hung node):
+
+[source,bash]
+----
+sudo systemctl stop corosync
+----
+
+Exit back to node1:
+
+[source,bash]
+----
+exit
+----
+
+On node1, watch the cluster status:
+
+[source,bash]
+----
+watch -n 2 sudo pcs status
+----
+
+Within 30-60 seconds, you should see:
+
+1. Node2 marked as OFFLINE
+2. STONITH action triggered
+3. VirtualMachine rhel-ha-node2 reboots
+4. Node2 rejoins the cluster
+
+This demonstrates automatic fencing when a node becomes unresponsive.
+
+Exit the SSH session:
+
+[source,bash]
+----
+exit
+----
+
+== Verification
+
+Verify your Pacemaker cluster is fully functional:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+----
+
+You should see:
+
+* Cluster name: `ha-cluster`
+* Both nodes: `Online`
+* STONITH devices: `Started`
+* Virtual IP: `Started`
+
+== Troubleshooting
+
+[%collapsible]
+====
+*Problem:* VMs not starting
+
+*Solution:*
+[source,bash]
+----
+oc describe vm %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+oc get events -n %STUDENT_NAMESPACE% --sort-by='.lastTimestamp'
+----
+
+*Problem:* Cluster authentication fails
+
+*Solution:*
+[source,bash]
+----
+sudo systemctl restart pcsd
+sudo passwd hacluster  # Set password to 'redhat'
+----
+
+*Problem:* STONITH fencing fails
+
+*Solution:* Verify ServiceAccount permissions:
+[source,bash]
+----
+oc auth can-i update vm --as=system:serviceaccount:%STUDENT_NAMESPACE%:pacemaker-fencing -n %STUDENT_NAMESPACE%
+----
+====
+
+== Key Takeaways
+
+* Pacemaker provides automated failover for stateful applications
+* STONITH fencing prevents split-brain scenarios
+* fence_kubevirt integrates with KubeVirt API for VM-level fencing
+* Virtual IP resources provide service continuity during failover
+* Two-node clusters require `no-quorum-policy=ignore`
+
+== Cleanup (Optional)
+
+If you want to reset for another attempt:
+
+[source,bash,role=execute]
+----
+virtctl stop %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait for VMs to stop, then start again.
+
+== Next Steps
+
+Great work! You've successfully deployed a Pacemaker HA cluster with STONITH fencing.
+
+In the next module, you'll learn about MicroShift with VRRP-based virtual IP failover.
+
+Click *Next Module* below to continue.
