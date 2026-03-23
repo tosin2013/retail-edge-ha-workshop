@@ -132,7 +132,7 @@ virtualMachines:
   autoStart: false
 
   # Storage class for VM disks
-  storageClass: "ocs-storagecluster-ceph-rbd"
+  storageClass: "ocs-external-storagecluster-ceph-rbd"
 
   # Module 1: RHEL HA with Pacemaker (2 VMs per student)
   module1:
