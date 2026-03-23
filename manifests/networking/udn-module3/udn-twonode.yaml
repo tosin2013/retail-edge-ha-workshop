@@ -65,12 +65,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32
-      - 10.103.0.2-10.103.0.10
-    ipv4Mode: {}
+    - "10.103.0.0/24"
 
 ---
 # Student 03 - Two-Node OpenShift Network
@@ -90,12 +85,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32
-      - 10.103.0.2-10.103.0.10
-    ipv4Mode: {}
+    - "10.103.0.0/24"
 
 ---
 # Student 04 - Two-Node OpenShift Network
@@ -115,12 +105,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32
-      - 10.103.0.2-10.103.0.10
-    ipv4Mode: {}
+    - "10.103.0.0/24"
 
 ---
 # Student 05 - Two-Node OpenShift Network
@@ -140,9 +125,4 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32
-      - 10.103.0.2-10.103.0.10
-    ipv4Mode: {}
+    - "10.103.0.0/24"
