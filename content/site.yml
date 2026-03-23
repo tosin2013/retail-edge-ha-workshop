@@ -1,0 +1,15 @@
+site:
+  title: Retail Edge HA Workshop
+  url: https://tosin2013.github.io/retail-edge-ha-workshop
+  start_page: retail-edge-ha::index.adoc
+
+content:
+  sources:
+  - url: .
+    branches: HEAD
+    start_path: content
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true

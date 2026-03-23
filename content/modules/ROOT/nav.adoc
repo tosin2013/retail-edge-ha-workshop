@@ -1,0 +1,6 @@
+* xref:index.adoc[Introduction]
+* xref:module1-pacemaker.adoc[Module 1: Pacemaker HA]
+* xref:module2-microshift.adoc[Module 2: MicroShift VRRP]
+* xref:module3-twonode.adoc[Module 3: Two-Node OpenShift]
+* xref:module4-chaos.adoc[Module 4: Chaos Engineering]
+* xref:conclusion.adoc[Conclusion]

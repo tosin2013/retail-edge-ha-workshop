@@ -1,0 +1,64 @@
+{{- if .Values.showroom.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retail-edge-ha-showroom
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: retail-edge-ha-showroom
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.showroom.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+  source:
+    repoURL: {{ .Values.showroom.chart.repository }}
+    chart: {{ .Values.showroom.chart.name }}
+    targetRevision: {{ .Values.showroom.chart.version }}
+    helm:
+      parameters:
+      # Content configuration
+      - name: content.git.repo
+        value: {{ .Values.showroom.git.repository }}
+      - name: content.git.ref
+        value: {{ .Values.showroom.git.branch }}
+      - name: content.path
+        value: {{ .Values.showroom.git.contentPath }}
+
+      # Deployer configuration
+      - name: deployer.domain
+        value: {{ .Values.global.clusterDomain }}
+      - name: deployer.apiUrl
+        value: {{ .Values.global.clusterApiUrl }}
+
+      # Terminal configuration
+      - name: terminal.enabled
+        value: "true"
+      - name: terminal.image
+        value: {{ .Values.showroom.terminal.image }}
+
+      # Multi-user configuration
+      - name: multiUser.enabled
+        value: {{ .Values.showroom.multiUser.enabled | quote }}
+      - name: multiUser.count
+        value: {{ .Values.students.count | quote }}
+      - name: multiUser.namespacePrefix
+        value: {{ .Values.showroom.multiUser.namespacePrefix }}
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.showroom.namespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+{{- end }}

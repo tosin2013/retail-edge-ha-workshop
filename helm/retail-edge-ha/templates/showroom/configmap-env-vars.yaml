@@ -1,0 +1,55 @@
+{{- if .Values.showroom.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-env
+  namespace: {{ $.Values.showroom.multiUser.namespacePrefix }}-{{ $studentId }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: showroom
+    student-id: "{{ $studentId }}"
+data:
+  # Student identity
+  STUDENT_ID: "{{ $studentId }}"
+  STUDENT_NAMESPACE: "{{ $namespace }}"
+  STUDENT_UDN_NAMESPACE: "{{ $namespace }}-udn"
+  STUDENT_USER: "{{ $.Values.students.userbase }}-{{ $studentId }}"
+
+  # Cluster information
+  CLUSTER_DOMAIN: "{{ $.Values.global.clusterDomain }}"
+  CLUSTER_API: "{{ $.Values.global.clusterApiUrl }}"
+
+  # VM credentials
+  VM_USER: "{{ $.Values.virtualMachines.defaultUser }}"
+  VM_PASSWORD: "{{ $.Values.virtualMachines.defaultPassword }}"
+
+  # Module 1 - Pacemaker HA
+  RHEL_NODE1: "{{ $.Values.virtualMachines.module1.vmNames.node1 }}"
+  RHEL_NODE2: "{{ $.Values.virtualMachines.module1.vmNames.node2 }}"
+  PACEMAKER_NET: "{{ $.Values.networking.module1.networkName }}"
+  PACEMAKER_IP1: "{{ $.Values.networking.module1.node1Ip }}"
+  PACEMAKER_IP2: "{{ $.Values.networking.module1.node2Ip }}"
+  PACEMAKER_VIP: "{{ $.Values.networking.module1.virtualIp }}"
+
+  # Module 2 - MicroShift with VRRP (add when VMs created)
+  # MICROSHIFT_GW_A: "{{ $.Values.virtualMachines.module2.vmNames.gwA }}"
+  # MICROSHIFT_GW_B: "{{ $.Values.virtualMachines.module2.vmNames.gwB }}"
+  # MICROSHIFT_NET: "{{ $.Values.networking.module2.networkName }}"
+  # MICROSHIFT_IP_A: "{{ $.Values.networking.module2.gwAIp }}"
+  # MICROSHIFT_IP_B: "{{ $.Values.networking.module2.gwBIp }}"
+  # MICROSHIFT_VIP: "{{ $.Values.networking.module2.virtualIp }}"
+
+  # Module 3 - Two-Node OpenShift (add when VMs created)
+  # TWONODE_MASTER1: "{{ $.Values.virtualMachines.module3.vmNames.master1 }}"
+  # TWONODE_MASTER2: "{{ $.Values.virtualMachines.module3.vmNames.master2 }}"
+  # TWONODE_ARBITER: "{{ $.Values.virtualMachines.module3.vmNames.arbiter }}"
+  # TWONODE_NET: "{{ $.Values.networking.module3.networkName }}"
+  # TWONODE_IP1: "{{ $.Values.networking.module3.master1Ip }}"
+  # TWONODE_IP2: "{{ $.Values.networking.module3.master2Ip }}"
+  # TWONODE_IP_ARBITER: "{{ $.Values.networking.module3.arbiterIp }}"
+{{- end }}
+{{- end }}

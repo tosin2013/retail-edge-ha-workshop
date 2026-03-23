@@ -286,11 +286,46 @@ virtualMachines:
         memory: "2Gi"
         disk: "20Gi"
 
-# Bookbag Workshop Configuration
+# Showroom Workshop Configuration (Modern Platform)
+# -----------------------------------------------------------------------------
+showroom:
+  # Enable Showroom deployment
+  enabled: true
+
+  # Sync wave (deploy after VMs)
+  syncWave: "3"
+
+  # Git repository with Antora content
+  git:
+    repository: https://github.com/tosin2013/retail-edge-ha-workshop.git
+    branch: main
+    contentPath: content  # Antora content directory
+
+  # Terminal configuration
+  terminal:
+    type: showroom  # ttyd pod-based terminal (vs wetty SSH)
+    image: quay.io/rhpds/ttyd-ocp:latest  # Includes oc, virtctl, kubectl
+
+  # Deployment
+  namespace: showroom  # Main Showroom namespace
+  replicas: 1
+
+  # Multi-user configuration
+  multiUser:
+    enabled: true
+    namespacePrefix: showroom-student  # Creates showroom-student-01, -02, etc.
+
+  # Helm chart
+  chart:
+    repository: https://rhpds.github.io/showroom-deployer
+    name: showroom-deployer
+    version: 1.0.0
+
+# Bookbag Workshop Configuration (Legacy - kept for rollback)
 # -----------------------------------------------------------------------------
 bookbag:
   # Enable Bookbag deployment
-  enabled: true
+  enabled: false  # Disabled - migrated to Showroom
 
   # Sync wave
   syncWave: "3"

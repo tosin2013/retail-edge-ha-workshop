@@ -1,0 +1,6 @@
+name: retail-edge-ha
+title: Retail Edge High Availability Workshop
+version: main
+start_page: ROOT:index.adoc
+nav:
+- modules/ROOT/nav.adoc
