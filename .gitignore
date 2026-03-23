@@ -1,0 +1,31 @@
+# Claude Code local settings
+.claude/
+
+# Helm
+*.tgz
+
+# Temporary files
+*.tmp
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Terraform
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Ansible
+*.retry
+
+# Build artifacts
+build/
+dist/
+target/
