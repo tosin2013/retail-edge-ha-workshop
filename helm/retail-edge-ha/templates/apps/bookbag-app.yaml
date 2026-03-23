@@ -34,6 +34,8 @@ spec:
       parameters:
         - name: bookbag.enabled
           value: "true"
+        - name: bookbag.childApp.enabled
+          value: "false"  # Prevent recursive child app creation
         - name: students.count
           value: {{ .Values.students.count | quote }}
 
