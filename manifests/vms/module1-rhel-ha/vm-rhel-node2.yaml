@@ -82,4 +82,306 @@ spec:
         name: cloudinitdisk
 
 ---
-# Repeat for students 02-05 (use generate-vm-manifests.sh for full generation)
+---
+# Student 02 - RHEL HA Node 2
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-ha-node2
+  namespace: retail-edge-student-02
+  labels:
+    app: rhel-ha
+    module: module1
+    node: node2
+    student-id: "02"
+    app.kubernetes.io/name: rhel-ha-node2
+    app.kubernetes.io/part-of: retail-edge-ha
+spec:
+  running: false
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: rhel-ha-node2-disk
+    spec:
+      source:
+        http:
+          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      storage:
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-external-storagecluster-ceph-rbd
+        accessModes:
+          - ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: rhel-ha-node2
+        module: module1
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          interfaces:
+          - name: default
+            masquerade: {}
+          - name: pacemaker-net
+            bridge: {}
+          networkInterfaceMultiqueue: true
+          rng: {}
+        resources:
+          requests:
+            memory: 4Gi
+      networks:
+      - name: default
+        pod: {}
+      - name: pacemaker-net
+        multus:
+          networkName: retail-edge-student-02-udn/pacemaker-net
+      volumes:
+      - dataVolume:
+          name: rhel-ha-node2-disk
+        name: rootdisk
+      - cloudInitNoCloud:
+          secretRef:
+            name: rhel-ha-node2-cloudinit
+        name: cloudinitdisk
+
+---
+# Student 03 - RHEL HA Node 2
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-ha-node2
+  namespace: retail-edge-student-03
+  labels:
+    app: rhel-ha
+    module: module1
+    node: node2
+    student-id: "03"
+    app.kubernetes.io/name: rhel-ha-node2
+    app.kubernetes.io/part-of: retail-edge-ha
+spec:
+  running: false
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: rhel-ha-node2-disk
+    spec:
+      source:
+        http:
+          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      storage:
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-external-storagecluster-ceph-rbd
+        accessModes:
+          - ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: rhel-ha-node2
+        module: module1
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          interfaces:
+          - name: default
+            masquerade: {}
+          - name: pacemaker-net
+            bridge: {}
+          networkInterfaceMultiqueue: true
+          rng: {}
+        resources:
+          requests:
+            memory: 4Gi
+      networks:
+      - name: default
+        pod: {}
+      - name: pacemaker-net
+        multus:
+          networkName: retail-edge-student-03-udn/pacemaker-net
+      volumes:
+      - dataVolume:
+          name: rhel-ha-node2-disk
+        name: rootdisk
+      - cloudInitNoCloud:
+          secretRef:
+            name: rhel-ha-node2-cloudinit
+        name: cloudinitdisk
+
+---
+# Student 04 - RHEL HA Node 2
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-ha-node2
+  namespace: retail-edge-student-04
+  labels:
+    app: rhel-ha
+    module: module1
+    node: node2
+    student-id: "04"
+    app.kubernetes.io/name: rhel-ha-node2
+    app.kubernetes.io/part-of: retail-edge-ha
+spec:
+  running: false
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: rhel-ha-node2-disk
+    spec:
+      source:
+        http:
+          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      storage:
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-external-storagecluster-ceph-rbd
+        accessModes:
+          - ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: rhel-ha-node2
+        module: module1
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          interfaces:
+          - name: default
+            masquerade: {}
+          - name: pacemaker-net
+            bridge: {}
+          networkInterfaceMultiqueue: true
+          rng: {}
+        resources:
+          requests:
+            memory: 4Gi
+      networks:
+      - name: default
+        pod: {}
+      - name: pacemaker-net
+        multus:
+          networkName: retail-edge-student-04-udn/pacemaker-net
+      volumes:
+      - dataVolume:
+          name: rhel-ha-node2-disk
+        name: rootdisk
+      - cloudInitNoCloud:
+          secretRef:
+            name: rhel-ha-node2-cloudinit
+        name: cloudinitdisk
+
+---
+# Student 05 - RHEL HA Node 2
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: rhel-ha-node2
+  namespace: retail-edge-student-05
+  labels:
+    app: rhel-ha
+    module: module1
+    node: node2
+    student-id: "05"
+    app.kubernetes.io/name: rhel-ha-node2
+    app.kubernetes.io/part-of: retail-edge-ha
+spec:
+  running: false
+  dataVolumeTemplates:
+  - apiVersion: cdi.kubevirt.io/v1beta1
+    kind: DataVolume
+    metadata:
+      name: rhel-ha-node2-disk
+    spec:
+      source:
+        http:
+          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      storage:
+        resources:
+          requests:
+            storage: 30Gi
+        storageClassName: ocs-external-storagecluster-ceph-rbd
+        accessModes:
+          - ReadWriteOnce
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: rhel-ha-node2
+        module: module1
+    spec:
+      domain:
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+          - disk:
+              bus: virtio
+            name: rootdisk
+          - disk:
+              bus: virtio
+            name: cloudinitdisk
+          interfaces:
+          - name: default
+            masquerade: {}
+          - name: pacemaker-net
+            bridge: {}
+          networkInterfaceMultiqueue: true
+          rng: {}
+        resources:
+          requests:
+            memory: 4Gi
+      networks:
+      - name: default
+        pod: {}
+      - name: pacemaker-net
+        multus:
+          networkName: retail-edge-student-05-udn/pacemaker-net
+      volumes:
+      - dataVolume:
+          name: rhel-ha-node2-disk
+        name: rootdisk
+      - cloudInitNoCloud:
+          secretRef:
+            name: rhel-ha-node2-cloudinit
+        name: cloudinitdisk
