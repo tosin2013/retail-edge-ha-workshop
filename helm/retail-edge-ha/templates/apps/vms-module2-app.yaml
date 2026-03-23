@@ -26,8 +26,6 @@ spec:
     repoURL: {{ .Values.bookbag.git.repository }}
     targetRevision: {{ .Values.bookbag.git.branch }}
     path: manifests/vms/module2-microshift
-    directory:
-      recurse: true
 
   destination:
     server: https://kubernetes.default.svc

@@ -27,8 +27,6 @@ spec:
     repoURL: {{ .Values.bookbag.git.repository }}
     targetRevision: {{ .Values.bookbag.git.branch }}
     path: manifests/networking
-    directory:
-      recurse: true
 
   destination:
     server: https://kubernetes.default.svc

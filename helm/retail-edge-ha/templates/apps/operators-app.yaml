@@ -1,0 +1,53 @@
+{{- if .Values.operators.enabled }}
+---
+# =============================================================================
+# Operators Child Application
+# =============================================================================
+# Installs OpenShift Virtualization (CNV) operator as a prerequisite for VMs.
+# Sync Wave: -1 (deployed before all other components)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-operators
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: operators
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.operators.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: manifests/infrastructure/operators
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-cnv
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  # Ignore HyperConverged drift - operator manages these fields
+  ignoreDifferences:
+  - group: hco.kubevirt.io
+    kind: HyperConverged
+    jsonPointers:
+    - /spec/certConfig
+    - /spec/featureGates/deployKubeSecondaryDNS
+    - /spec/featureGates/deployTektonTaskResources
+
+  info:
+    - name: Component
+      value: Operators (OpenShift Virtualization)
+    - name: Wait Time
+      value: "5-10 minutes for CNV installation"
+    - name: Prerequisites
+      value: "Creates VirtualMachine CRDs before Wave 2 VMs"
+{{- end }}

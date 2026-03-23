@@ -26,8 +26,6 @@ spec:
     repoURL: {{ .Values.bookbag.git.repository }}
     targetRevision: {{ .Values.bookbag.git.branch }}
     path: manifests/vms/module1-rhel-ha
-    directory:
-      recurse: true
 
   destination:
     server: https://kubernetes.default.svc

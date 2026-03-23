@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kubevirt-hyperconverged-group
+  namespace: openshift-cnv
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: operators
+spec:
+  targetNamespaces:
+    - openshift-cnv

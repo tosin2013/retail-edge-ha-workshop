@@ -67,6 +67,27 @@ argocd:
         factor: 2
         maxDuration: 3m
 
+# Operators Configuration
+# -----------------------------------------------------------------------------
+operators:
+  # Enable operator installation (required for VirtualMachines)
+  enabled: true
+
+  # Sync wave (-1 = before infrastructure, ensures CNV is ready before VMs)
+  syncWave: "-1"
+
+  # OpenShift Virtualization configuration
+  kubevirt:
+    # Operator channel
+    channel: "stable"
+
+    # Automatic install plan approval
+    installPlanApproval: Automatic
+
+    # Boot image import (false for external Ceph storage)
+    # External Ceph doesn't support VolumeSnapshots for boot sources
+    enableBootImageImport: false
+
 # Infrastructure Configuration
 # -----------------------------------------------------------------------------
 infrastructure:

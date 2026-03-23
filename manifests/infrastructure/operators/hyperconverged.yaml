@@ -1,0 +1,14 @@
+apiVersion: hco.kubevirt.io/v1beta1
+kind: HyperConverged
+metadata:
+  name: kubevirt-hyperconverged
+  namespace: openshift-cnv
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: operators
+spec:
+  featureGates:
+    # CRITICAL: Disable boot image import for external Ceph storage
+    # External Ceph does not support VolumeSnapshots for DataVolume boot sources
+    # This forces CDI to use PVC-based boot sources instead
+    enableCommonBootImageImport: false
