@@ -3,7 +3,7 @@
 # =============================================================================
 # Bookbag BuildConfig - Builds workshop container image from Git
 # =============================================================================
-apiVersion: v1
+apiVersion: image.openshift.io/v1
 kind: ImageStream
 metadata:
   name: {{ .Values.global.workshopName }}-bookbag
