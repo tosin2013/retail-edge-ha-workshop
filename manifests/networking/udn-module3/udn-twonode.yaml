@@ -40,12 +40,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32           # Gateway reserved
-      - 10.103.0.2-10.103.0.10  # Reserved for infrastructure
-    ipv4Mode: {}
+    - "10.103.0.0/24"
 
 ---
 # Student 02 - Two-Node OpenShift Network

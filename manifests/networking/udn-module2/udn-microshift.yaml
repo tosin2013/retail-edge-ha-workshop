@@ -36,13 +36,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.102.0.0/24
-      gateway: 10.102.0.1
-      excludeSubnets:
-      - 10.102.0.1/32           # Gateway reserved
-      - 10.102.0.2-10.102.0.10  # Reserved for infrastructure
-      - 10.102.0.100/32         # Virtual IP (VRRP)
-    ipv4Mode: {}
+    - "10.102.0.0/24"
 
 ---
 # Student 02 - MicroShift VRRP Network
