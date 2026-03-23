@@ -1,3 +1,6 @@
+{{- if false }}
+{{/* DISABLED: ConfigMaps will be created after Showroom namespaces exist */}}
+{{/* TODO: Re-enable after Showroom deployment or use Showroom's built-in env var mechanism */}}
 {{- if .Values.showroom.enabled }}
 {{- range $studentNum := until (int .Values.students.count) }}
 {{- $studentId := add $studentNum 1 | printf "%02d" }}
