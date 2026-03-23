@@ -24,5 +24,6 @@
 .vscode/
 
 # Documentation files in templates
-**/README.md
-**/NOTES.txt
+templates/bookbag/README.md
+templates/*/README.md
+NOTES.txt
