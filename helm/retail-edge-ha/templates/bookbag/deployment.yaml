@@ -138,11 +138,13 @@ spec:
         - name: TWONODE_IP_ARBITER
           value: "{{ $.Values.networking.module3.arbiterIp }}"
 
-        # Authentication
+        # Authentication (only if enabled)
+        {{- if $.Values.bookbag.auth.enabled }}
         - name: AUTH_USERNAME
           value: "{{ $studentUser }}"
         - name: AUTH_PASSWORD
           value: "{{ $.Values.bookbag.auth.password }}"
+        {{- end }}
 
         ports:
         - containerPort: 10080
