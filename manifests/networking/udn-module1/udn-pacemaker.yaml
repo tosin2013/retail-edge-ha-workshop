@@ -35,12 +35,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32          # Gateway reserved
-      - 10.101.0.2-10.101.0.10  # Reserved for infrastructure
-    ipv4Mode: {}
+    - "10.101.0.0/24"
 
 ---
 # Student 02 - Pacemaker Network
@@ -60,12 +55,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32
-      - 10.101.0.2-10.101.0.10
-    ipv4Mode: {}
+    - "10.101.0.0/24"
 
 ---
 # Student 03 - Pacemaker Network
@@ -85,12 +75,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32
-      - 10.101.0.2-10.101.0.10
-    ipv4Mode: {}
+    - "10.101.0.0/24"
 
 ---
 # Student 04 - Pacemaker Network
@@ -110,12 +95,7 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32
-      - 10.101.0.2-10.101.0.10
-    ipv4Mode: {}
+    - "10.101.0.0/24"
 
 ---
 # Student 05 - Pacemaker Network
@@ -135,9 +115,4 @@ spec:
   layer2:
     role: Primary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32
-      - 10.101.0.2-10.101.0.10
-    ipv4Mode: {}
+    - "10.101.0.0/24"
