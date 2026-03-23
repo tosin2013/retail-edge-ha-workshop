@@ -318,8 +318,8 @@ showroom:
   # Helm chart
   chart:
     repository: https://rhpds.github.io/showroom-deployer
-    name: showroom-deployer
-    version: 1.0.0
+    name: showroom
+    version: 0.4.9
 
 # Bookbag Workshop Configuration (Legacy - kept for rollback)
 # -----------------------------------------------------------------------------
