@@ -17,33 +17,21 @@ spec:
     targetRevision: {{ .Values.showroom.chart.version }}
     helm:
       parameters:
-      # Content configuration
-      - name: content.git.repo
+      # Content configuration (Showroom chart parameter names)
+      - name: content.repoUrl
         value: {{ .Values.showroom.git.repository }}
-      - name: content.git.ref
+      - name: content.repoRef
         value: {{ .Values.showroom.git.branch }}
-      - name: content.path
-        value: {{ .Values.showroom.git.contentPath }}
+      - name: content.antoraPlaybook
+        value: {{ .Values.showroom.git.contentPath }}/site.yml
 
       # Deployer configuration
       - name: deployer.domain
         value: {{ .Values.global.clusterDomain }}
-      - name: deployer.apiUrl
-        value: {{ .Values.global.clusterApiUrl }}
 
-      # Terminal configuration
-      - name: terminal.enabled
-        value: "true"
+      # Terminal configuration (use public wetty image instead of private ttyd)
       - name: terminal.image
-        value: {{ .Values.showroom.terminal.image }}
-
-      # Multi-user configuration
-      - name: multiUser.enabled
-        value: {{ .Values.showroom.multiUser.enabled | quote }}
-      - name: multiUser.count
-        value: {{ .Values.students.count | quote }}
-      - name: multiUser.namespacePrefix
-        value: {{ .Values.showroom.multiUser.namespacePrefix }}
+        value: docker.io/wettyoss/wetty:latest
 
   destination:
     server: https://kubernetes.default.svc
