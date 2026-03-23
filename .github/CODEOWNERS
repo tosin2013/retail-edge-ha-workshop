@@ -1,0 +1,13 @@
+# Code Owners for Retail Edge HA Workshop
+
+# Infrastructure and manifests
+/helm/ @tosin2013
+/manifests/ @tosin2013
+/scripts/ @tosin2013
+
+# Workshop content (could be different team)
+/bookbag/workshop/content/ @tosin2013
+
+# Documentation
+/docs/ @tosin2013
+README.md @tosin2013
