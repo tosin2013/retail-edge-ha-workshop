@@ -1,0 +1,154 @@
+# =============================================================================
+# Ignition Configuration Placeholders - Module 3: Two-Node OpenShift
+# =============================================================================
+# IMPORTANT: These are PLACEHOLDER secrets with minimal ignition configs.
+# For production use, generate proper ignition files using openshift-install.
+# See IGNITION-GENERATION.md for detailed instructions.
+# =============================================================================
+
+
+---
+# Student 01 - Master 1 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master1
+  namespace: retail-edge-student-01
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIxCg=="
+            }
+          },
+          {
+            "path": "/etc/NetworkManager/system-connections/eth1.nmconnection",
+            "mode": 384,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,W2Nvbm5lY3Rpb25dCmlkPWV0aDEKdHlwZT1ldGhlcm5ldAppbnRlcmZhY2UtbmFtZT1ldGgxCgpbaXB2NF0KYWRkcmVzcz0xMC4xMDMuMC4yMC8yNApnYXRld2F5PTEwLjEwMy4wLjEKbWV0aG9kPW1hbnVhbAo="
+            }
+          }
+        ]
+      },
+      "systemd": {
+        "units": [
+          {
+            "name": "placeholder.service",
+            "enabled": false,
+            "contents": "[Unit]\nDescription=Placeholder - Replace with openshift-install generated ignition\n"
+          }
+        ]
+      }
+    }
+
+---
+# Student 01 - Master 2 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master2
+  namespace: retail-edge-student-01
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIyCg=="
+            }
+          },
+          {
+            "path": "/etc/NetworkManager/system-connections/eth1.nmconnection",
+            "mode": 384,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,W2Nvbm5lY3Rpb25dCmlkPWV0aDEKdHlwZT1ldGhlcm5ldAppbnRlcmZhY2UtbmFtZT1ldGgxCgpbaXB2NF0KYWRkcmVzcz0xMC4xMDMuMC4yMS8yNApnYXRld2F5PTEwLjEwMy4wLjEKbWV0aG9kPW1hbnVhbAo="
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 01 - Arbiter Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-arbiter
+  namespace: retail-edge-student-01
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1hcmJpdGVyCg=="
+            }
+          },
+          {
+            "path": "/etc/NetworkManager/system-connections/eth1.nmconnection",
+            "mode": 384,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,W2Nvbm5lY3Rpb25dCmlkPWV0aDEKdHlwZT1ldGhlcm5ldAppbnRlcmZhY2UtbmFtZT1ldGgxCgpbaXB2NF0KYWRkcmVzcz0xMC4xMDMuMC4yMi8yNApnYXRld2F5PTEwLjEwMy4wLjEKbWV0aG9kPW1hbnVhbAo="
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Note: Students 02-05 would follow the same pattern
+# For production deployment, use the generate-ignition-secrets.sh script
+# from IGNITION-GENERATION.md to create proper ignition configs for all students

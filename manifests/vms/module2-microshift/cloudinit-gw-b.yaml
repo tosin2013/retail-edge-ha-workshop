@@ -1,0 +1,576 @@
+# =============================================================================
+# Cloud-init Configuration - Module 2: MicroShift Gateway B
+# =============================================================================
+# Static IP: 10.102.0.21 (on microshift-net eth1)
+# VRRP: Priority 90 (BACKUP), VIP: 10.102.0.100
+# =============================================================================
+
+
+---
+# Student 01 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-01
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    # Package installation
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+
+    # Write Keepalived configuration
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+
+    runcmd:
+      # Set hostname
+      - hostnamectl set-hostname microshift-gw-b
+
+      # Configure static IP on eth1 (microshift-net)
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+
+      # Add hosts entries
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+
+      # Configure firewall for MicroShift
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+
+      # Enable and start MicroShift
+      - systemctl enable --now microshift
+
+      # Wait for MicroShift to start (up to 5 minutes)
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... ($i/60)"
+          sleep 5
+        done
+
+      # Copy kubeconfig for cloud-user
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+
+      # Enable and start Keepalived (after MicroShift is ready)
+      - systemctl enable --now keepalived
+
+      # Create VRRP status check script
+      - |
+        cat > /home/cloud-user/check-vrrp.sh << 'EOF'
+        #!/bin/bash
+        echo "=== VRRP Status ==="
+        echo "Current node: microshift-gw-b (BACKUP - Priority 90)"
+        echo ""
+        echo "IP Addresses on eth1:"
+        ip addr show eth1 | grep "inet "
+        echo ""
+        echo "Keepalived status:"
+        systemctl status keepalived --no-pager | grep "Active:"
+        echo ""
+        echo "VRRP advertisements (last 10):"
+        journalctl -u keepalived --no-pager -n 10 | grep VRRP
+        EOF
+      - chmod +x /home/cloud-user/check-vrrp.sh
+      - chown cloud-user:cloud-user /home/cloud-user/check-vrrp.sh
+
+---
+# Student 02 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-02
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... ($i/60)"
+          sleep 5
+        done
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - |
+        cat > /home/cloud-user/check-vrrp.sh << 'EOF'
+        #!/bin/bash
+        echo "=== VRRP Status ==="
+        echo "Current node: microshift-gw-b (BACKUP - Priority 90)"
+        echo ""
+        echo "IP Addresses on eth1:"
+        ip addr show eth1 | grep "inet "
+        echo ""
+        echo "Keepalived status:"
+        systemctl status keepalived --no-pager | grep "Active:"
+        echo ""
+        echo "VRRP advertisements (last 10):"
+        journalctl -u keepalived --no-pager -n 10 | grep VRRP
+        EOF
+      - chmod +x /home/cloud-user/check-vrrp.sh
+      - chown cloud-user:cloud-user /home/cloud-user/check-vrrp.sh
+
+---
+# Student 03 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-03
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... ($i/60)"
+          sleep 5
+        done
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - |
+        cat > /home/cloud-user/check-vrrp.sh << 'EOF'
+        #!/bin/bash
+        echo "=== VRRP Status ==="
+        echo "Current node: microshift-gw-b (BACKUP - Priority 90)"
+        echo ""
+        echo "IP Addresses on eth1:"
+        ip addr show eth1 | grep "inet "
+        echo ""
+        echo "Keepalived status:"
+        systemctl status keepalived --no-pager | grep "Active:"
+        echo ""
+        echo "VRRP advertisements (last 10):"
+        journalctl -u keepalived --no-pager -n 10 | grep VRRP
+        EOF
+      - chmod +x /home/cloud-user/check-vrrp.sh
+      - chown cloud-user:cloud-user /home/cloud-user/check-vrrp.sh
+
+---
+# Student 04 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-04
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... ($i/60)"
+          sleep 5
+        done
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - |
+        cat > /home/cloud-user/check-vrrp.sh << 'EOF'
+        #!/bin/bash
+        echo "=== VRRP Status ==="
+        echo "Current node: microshift-gw-b (BACKUP - Priority 90)"
+        echo ""
+        echo "IP Addresses on eth1:"
+        ip addr show eth1 | grep "inet "
+        echo ""
+        echo "Keepalived status:"
+        systemctl status keepalived --no-pager | grep "Active:"
+        echo ""
+        echo "VRRP advertisements (last 10):"
+        journalctl -u keepalived --no-pager -n 10 | grep VRRP
+        EOF
+      - chmod +x /home/cloud-user/check-vrrp.sh
+      - chown cloud-user:cloud-user /home/cloud-user/check-vrrp.sh
+
+---
+# Student 05 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-05
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... ($i/60)"
+          sleep 5
+        done
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - |
+        cat > /home/cloud-user/check-vrrp.sh << 'EOF'
+        #!/bin/bash
+        echo "=== VRRP Status ==="
+        echo "Current node: microshift-gw-b (BACKUP - Priority 90)"
+        echo ""
+        echo "IP Addresses on eth1:"
+        ip addr show eth1 | grep "inet "
+        echo ""
+        echo "Keepalived status:"
+        systemctl status keepalived --no-pager | grep "Active:"
+        echo ""
+        echo "VRRP advertisements (last 10):"
+        journalctl -u keepalived --no-pager -n 10 | grep VRRP
+        EOF
+      - chmod +x /home/cloud-user/check-vrrp.sh
+      - chown cloud-user:cloud-user /home/cloud-user/check-vrrp.sh

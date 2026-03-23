@@ -2,11 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # TODO: Add VM manifests when generated
-  # - vm-microshift-gw-a.yaml
-  # - vm-microshift-gw-b.yaml
-  # - cloudinit-gw-a.yaml
-  # - cloudinit-gw-b.yaml
+  - vm-microshift-gw-a.yaml
+  - vm-microshift-gw-b.yaml
+  - cloudinit-gw-a.yaml
+  - cloudinit-gw-b.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
