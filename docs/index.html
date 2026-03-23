@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retail Edge HA Workshop - Lab Guide</title>
+    <style>
+        :root {
+            --red-hat-red: #EE0000;
+            --red-hat-dark: #A30000;
+            --gray-dark: #151515;
+            --gray-medium: #72767B;
+            --gray-light: #F5F5F5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Red Hat Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            line-height: 1.6;
+            color: var(--gray-dark);
+            background-color: #fff;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--red-hat-dark) 0%, var(--red-hat-red) 100%);
+            color: white;
+            padding: 2rem 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        nav {
+            background-color: var(--gray-dark);
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        nav ul {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        nav a:hover {
+            background-color: var(--red-hat-red);
+        }
+
+        main {
+            padding: 3rem 0;
+        }
+
+        section {
+            margin-bottom: 4rem;
+        }
+
+        h2 {
+            color: var(--red-hat-red);
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid var(--red-hat-red);
+        }
+
+        h3 {
+            color: var(--gray-dark);
+            font-size: 1.5rem;
+            margin: 1.5rem 0 1rem;
+        }
+
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .module-card {
+            background: white;
+            border: 2px solid var(--gray-light);
+            border-radius: 8px;
+            padding: 2rem;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .module-card:hover {
+            border-color: var(--red-hat-red);
+            box-shadow: 0 5px 15px rgba(238, 0, 0, 0.2);
+            transform: translateY(-5px);
+        }
+
+        .module-card h3 {
+            color: var(--red-hat-red);
+            margin-top: 0;
+        }
+
+        .module-card .badge {
+            display: inline-block;
+            background-color: var(--red-hat-red);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .adr-list {
+            background-color: var(--gray-light);
+            padding: 2rem;
+            border-radius: 8px;
+        }
+
+        .adr-list ul {
+            list-style: none;
+        }
+
+        .adr-list li {
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: white;
+            border-left: 4px solid var(--red-hat-red);
+            border-radius: 4px;
+        }
+
+        .adr-list a {
+            color: var(--red-hat-dark);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .adr-list a:hover {
+            color: var(--red-hat-red);
+        }
+
+        .adr-list .status {
+            display: inline-block;
+            background-color: #28A745;
+            color: white;
+            padding: 0.2rem 0.6rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            margin-left: 0.5rem;
+        }
+
+        .quick-start {
+            background: linear-gradient(135deg, #f8f9fa 0%, var(--gray-light) 100%);
+            padding: 2rem;
+            border-radius: 8px;
+            border-left: 5px solid var(--red-hat-red);
+        }
+
+        .quick-start h3 {
+            margin-top: 0;
+        }
+
+        pre {
+            background-color: var(--gray-dark);
+            color: #f8f8f2;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        code {
+            background-color: var(--gray-light);
+            padding: 0.2rem 0.4rem;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .architecture-diagram {
+            background: white;
+            border: 2px solid var(--gray-light);
+            padding: 2rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+
+        .architecture-diagram pre {
+            background: transparent;
+            color: var(--gray-dark);
+            border: 1px solid var(--gray-medium);
+            font-size: 0.85rem;
+        }
+
+        footer {
+            background-color: var(--gray-dark);
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 4rem;
+        }
+
+        footer a {
+            color: var(--red-hat-red);
+            text-decoration: none;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, var(--red-hat-red) 0%, var(--red-hat-dark) 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-card .label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎯 Retail Edge HA Workshop</h1>
+            <p>High Availability Solutions for Two-Node Retail Environments (2026 Edition)</p>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <ul>
+                <li><a href="#overview">Overview</a></li>
+                <li><a href="#modules">Lab Modules</a></li>
+                <li><a href="#architecture">Architecture</a></li>
+                <li><a href="#adrs">ADRs</a></li>
+                <li><a href="#quick-start">Quick Start</a></li>
+                <li><a href="https://github.com/tosin2013/retail-edge-ha-workshop" target="_blank">GitHub →</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section id="overview">
+            <h2>Workshop Overview</h2>
+            <p>This hands-on lab teaches you to design, deploy, and test high-availability systems for heavily constrained retail storefronts using OpenShift Virtualization and User Defined Networks (UDNs).</p>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <span class="number">4</span>
+                    <span class="label">Lab Modules</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">50</span>
+                    <span class="label">Max Students</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">9</span>
+                    <span class="label">VMs per Student</span>
+                </div>
+                <div class="stat-card">
+                    <span class="number">3</span>
+                    <span class="label">HA Architectures</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="modules">
+            <h2>Learning Modules</h2>
+            <div class="module-grid">
+                <div class="module-card">
+                    <span class="badge">Module 1</span>
+                    <h3>RHEL HA Add-On</h3>
+                    <p><strong>The "Autonomy" Path</strong></p>
+                    <p>Deploy a two-node Pacemaker cluster with KubeVirt STONITH fencing. Learn Corosync heartbeat configuration and test failover scenarios.</p>
+                    <ul style="margin-top: 1rem; margin-left: 1.5rem;">
+                        <li>Pacemaker cluster setup</li>
+                        <li>fence_kubevirt configuration</li>
+                        <li>Corosync Layer 2 heartbeat</li>
+                        <li>Node fencing and recovery</li>
+                    </ul>
+                </div>
+
+                <div class="module-card">
+                    <span class="badge">Module 2</span>
+                    <h3>MicroShift & VRRP</h3>
+                    <p><strong>The "Stateless" Path</strong></p>
+                    <p>Build two independent MicroShift nodes with Keepalived. Implement VRRP virtual IP failover for Point-of-Sale scanners.</p>
+                    <ul style="margin-top: 1rem; margin-left: 1.5rem;">
+                        <li>MicroShift deployment</li>
+                        <li>Keepalived VRRP configuration</li>
+                        <li>Virtual IP management</li>
+                        <li>Zero-downtime failover</li>
+                    </ul>
+                </div>
+
+                <div class="module-card">
+                    <span class="badge">Module 3</span>
+                    <h3>OpenShift Two-Node with Arbiter</h3>
+                    <p><strong>The "Enterprise" Path</strong></p>
+                    <p>Deploy a two-node OpenShift cluster at the edge with a remote arbiter for etcd quorum. Understand WAN latency implications.</p>
+                    <ul style="margin-top: 1rem; margin-left: 1.5rem;">
+                        <li>Two-node cluster architecture</li>
+                        <li>Remote arbiter configuration</li>
+                        <li>etcd quorum management</li>
+                        <li>WAN latency simulation</li>
+                    </ul>
+                </div>
+
+                <div class="module-card">
+                    <span class="badge">Module 4</span>
+                    <h3>Chaos Testing</h3>
+                    <p><strong>The Double-Fault</strong></p>
+                    <p>Explore CAP theorem limits through chaos engineering. Simulate network partition + hardware failure to observe quorum loss.</p>
+                    <ul style="margin-top: 1rem; margin-left: 1.5rem;">
+                        <li>NetworkPolicy WAN partition</li>
+                        <li>Simultaneous hardware failure</li>
+                        <li>Quorum loss scenarios</li>
+                        <li>CAP theorem demonstration</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section id="architecture">
+            <h2>Architecture</h2>
+            <p>The workshop uses a <strong>GitOps-based approach</strong> with Helm App of Apps pattern:</p>
+
+            <div class="architecture-diagram">
+                <pre>
+ArgoCD Parent Application (retail-edge-ha-workshop)
+│
+├── Wave 0: Infrastructure
+│   ├── Student Namespaces (retail-edge-student-01..50)
+│   ├── UDN Namespaces (retail-edge-student-01-udn..50-udn)
+│   ├── Resource Quotas (CPU: 16, Memory: 32Gi, Storage: 200Gi)
+│   └── Operator Configurations
+│
+├── Wave 1: Networking & RBAC
+│   ├── User Defined Networks (UDNs)
+│   │   ├── Module 1: pacemaker-net (10.101.0.0/24)
+│   │   ├── Module 2: microshift-net (10.102.0.0/24)
+│   │   └── Module 3: twonode-net (10.103.0.0/24)
+│   ├── NetworkAttachmentDefinitions
+│   ├── ClusterRoles
+│   └── RoleBindings
+│
+├── Wave 2: VirtualMachines
+│   ├── Module 1: RHEL HA VMs (2 per student)
+│   ├── Module 2: MicroShift VMs (2 per student)
+│   └── Module 3: Two-Node OpenShift VMs (3 per student)
+│
+└── Wave 3: Bookbag
+    ├── Workshop Content Deployment
+    ├── Embedded Web Terminal
+    └── Route for Student Access
+                </pre>
+            </div>
+
+            <h3>Key Technologies</h3>
+            <ul style="margin-left: 2rem; margin-top: 1rem;">
+                <li><strong>OpenShift 4.21+</strong> - Container platform with Virtualization</li>
+                <li><strong>User Defined Networks (UDNs)</strong> - Layer 2 networking for VM-to-VM communication</li>
+                <li><strong>KubeVirt</strong> - Virtual machine management on Kubernetes</li>
+                <li><strong>ArgoCD</strong> - GitOps continuous delivery</li>
+                <li><strong>Helm</strong> - Package manager for Kubernetes</li>
+                <li><strong>Bookbag</strong> - Containerized workshop content delivery</li>
+            </ul>
+        </section>
+
+        <section id="adrs">
+            <h2>Architecture Decision Records</h2>
+            <div class="adr-list">
+                <ul>
+                    <li>
+                        <a href="ADR/0001-helm-app-of-apps.html">ADR-0001: Helm-based App of Apps Pattern</a>
+                        <span class="status">Accepted</span>
+                        <p style="margin-top: 0.5rem; color: var(--gray-medium);">
+                            Why we chose Helm with ArgoCD App of Apps for declarative, scalable multi-user deployment.
+                        </p>
+                    </li>
+                    <li>
+                        <a href="ADR/0002-multi-user-isolation.html">ADR-0002: Multi-User Namespace Isolation Strategy</a>
+                        <span class="status">Accepted</span>
+                        <p style="margin-top: 0.5rem; color: var(--gray-medium);">
+                            Dual namespace pattern (workload + UDN) for security isolation and resource fairness.
+                        </p>
+                    </li>
+                    <li>
+                        <a href="ADR/0003-vm-networking-udn.html">ADR-0003: User Defined Networks for Layer 2 VM Connectivity</a>
+                        <span class="status">Accepted</span>
+                        <p style="margin-top: 0.5rem; color: var(--gray-medium);">
+                            Using OVN-Kubernetes UDNs to provide true Layer 2 networking for VRRP and Corosync.
+                        </p>
+                    </li>
+                    <li>
+                        <a href="ADR/0004-bookbag-delivery.html">ADR-0004: Bookbag for Workshop Content Delivery</a>
+                        <span class="status">Accepted</span>
+                        <p style="margin-top: 0.5rem; color: var(--gray-medium);">
+                            Containerized lab guide with embedded web terminal and personalized student variables.
+                        </p>
+                    </li>
+                    <li>
+                        <a href="ADR/0005-gitops-sync-strategy.html">ADR-0005: ArgoCD Sync Wave Strategy</a>
+                        <span class="status">Accepted</span>
+                        <p style="margin-top: 0.5rem; color: var(--gray-medium);">
+                            Ordered deployment using sync waves (0=infra, 1=network, 2=VMs, 3=apps).
+                        </p>
+                    </li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="quick-start">
+            <h2>Quick Start Guide</h2>
+            <div class="quick-start">
+                <h3>Prerequisites</h3>
+                <ul style="margin-left: 2rem; margin-bottom: 1.5rem;">
+                    <li>OpenShift 4.21+ cluster</li>
+                    <li>OpenShift GitOps (ArgoCD) operator installed</li>
+                    <li>OpenShift Virtualization operator installed</li>
+                    <li><code>oc</code> and <code>virtctl</code> CLI tools</li>
+                </ul>
+
+                <h3>1. Login to OpenShift</h3>
+                <pre><code>oc login --token=&lt;your-token&gt; \
+  --server=https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443</code></pre>
+
+                <h3>2. Deploy Workshop via ArgoCD</h3>
+                <pre><code>oc apply -f - &lt;&lt;EOF
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: retail-edge-ha-workshop
+  namespace: openshift-gitops
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/tosin2013/retail-edge-ha-workshop.git
+    targetRevision: main
+    path: helm/retail-edge-ha
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: retail-edge-infrastructure
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+EOF</code></pre>
+
+                <h3>3. Wait for Deployment</h3>
+                <pre><code># Watch ArgoCD sync
+argocd app wait retail-edge-ha-workshop --health --timeout 600
+
+# Verify components
+oc get namespaces -l workshop=retail-edge-ha
+oc get userdefinednetworks --all-namespaces
+oc get vms --all-namespaces -l app.kubernetes.io/part-of=retail-edge-ha</code></pre>
+
+                <h3>4. Access Workshop</h3>
+                <pre><code># Get Bookbag route
+BOOKBAG_URL=$(oc get route bookbag -n retail-edge-bookbag -o jsonpath='{.spec.host}')
+echo "Workshop URL: https://${BOOKBAG_URL}"</code></pre>
+            </div>
+        </section>
+
+        <section>
+            <h2>Configuration</h2>
+            <p>All workshop settings are controlled via <code>helm/retail-edge-ha/values.yaml</code>:</p>
+
+            <pre><code># Student count (1-50)
+students:
+  count: 5
+
+# OpenShift cluster settings
+global:
+  clusterDomain: apps.cluster-ntq88.dynamic.redhatworkshops.io
+  clusterApiUrl: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+
+# Enable/disable modules
+virtualMachines:
+  module1:
+    enabled: true  # RHEL HA
+  module2:
+    enabled: true  # MicroShift
+  module3:
+    enabled: true  # Two-Node OpenShift
+
+# Resource allocations per student
+resourceQuotas:
+  limits:
+    cpu: "16"
+    memory: "32Gi"
+    requests.storage: "200Gi"</code></pre>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Red Hat Field Engineering | <a href="https://github.com/tosin2013/retail-edge-ha-workshop">GitHub Repository</a></p>
+            <p style="margin-top: 0.5rem; opacity: 0.8;">Built with ❤️ for the OpenShift Community</p>
+        </div>
+    </footer>
+</body>
+</html>
