@@ -5,8 +5,7 @@ resources:
   - namespace.yaml
   - operatorgroup.yaml
   - subscription.yaml
-  # HyperConverged CR will be added after operator installs
-  # - hyperconverged.yaml
+  - hyperconverged.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
