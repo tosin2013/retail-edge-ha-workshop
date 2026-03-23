@@ -1,0 +1,270 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/**'
+      - 'bookbag/workshop/**'
+      - 'README.md'
+      - 'DEPLOYMENT.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Generate documentation index
+        run: |
+          mkdir -p docs/generated
+
+          # Copy static files
+          cp docs/index.html docs/generated/
+
+          # Generate ADR index
+          cat > docs/generated/adrs.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Architecture Decision Records - Retail Edge HA Workshop</title>
+              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown.min.css">
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                  }
+                  .header {
+                      background: linear-gradient(135deg, #A30000 0%, #EE0000 100%);
+                      color: white;
+                      padding: 2rem;
+                      margin: -20px -20px 20px -20px;
+                      border-radius: 8px;
+                  }
+                  .adr-list {
+                      display: grid;
+                      gap: 1rem;
+                  }
+                  .adr-card {
+                      border: 1px solid #e1e4e8;
+                      border-radius: 8px;
+                      padding: 1.5rem;
+                      transition: box-shadow 0.2s;
+                  }
+                  .adr-card:hover {
+                      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                  }
+                  .adr-card h3 {
+                      margin-top: 0;
+                      color: #A30000;
+                  }
+                  .back-link {
+                      display: inline-block;
+                      margin-bottom: 1rem;
+                      color: #A30000;
+                      text-decoration: none;
+                  }
+                  .back-link:hover {
+                      text-decoration: underline;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>Architecture Decision Records</h1>
+                  <p>Documenting key architectural decisions for the Retail Edge HA Workshop</p>
+              </div>
+              <a href="index.html" class="back-link">← Back to Workshop Home</a>
+              <div class="adr-list">
+          EOF
+
+          # Add ADR cards
+          for adr in docs/ADR/*.md; do
+            if [ -f "$adr" ]; then
+              FILENAME=$(basename "$adr")
+              TITLE=$(grep -m 1 "^# " "$adr" | sed 's/^# //')
+              STATUS=$(grep -m 1 "Status:" "$adr" | sed 's/Status: //')
+
+              cat >> docs/generated/adrs.html << EOF
+                  <div class="adr-card">
+                      <h3><a href="ADR/${FILENAME}">${TITLE}</a></h3>
+                      <p><strong>Status:</strong> ${STATUS}</p>
+                      <p><a href="ADR/${FILENAME}">Read full ADR →</a></p>
+                  </div>
+          EOF
+            fi
+          done
+
+          cat >> docs/generated/adrs.html << 'EOF'
+              </div>
+          </body>
+          </html>
+          EOF
+
+          # Copy ADRs
+          mkdir -p docs/generated/ADR
+          cp docs/ADR/*.md docs/generated/ADR/
+
+          # Generate documentation links page
+          cat > docs/generated/documentation.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>Documentation - Retail Edge HA Workshop</title>
+              <style>
+                  body {
+                      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+                      max-width: 1200px;
+                      margin: 0 auto;
+                      padding: 20px;
+                  }
+                  .header {
+                      background: linear-gradient(135deg, #A30000 0%, #EE0000 100%);
+                      color: white;
+                      padding: 2rem;
+                      margin: -20px -20px 20px -20px;
+                      border-radius: 8px;
+                  }
+                  .doc-grid {
+                      display: grid;
+                      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                      gap: 1.5rem;
+                      margin-top: 2rem;
+                  }
+                  .doc-card {
+                      border: 1px solid #e1e4e8;
+                      border-radius: 8px;
+                      padding: 1.5rem;
+                      transition: all 0.2s;
+                  }
+                  .doc-card:hover {
+                      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                      transform: translateY(-2px);
+                  }
+                  .doc-card h3 {
+                      margin-top: 0;
+                      color: #A30000;
+                  }
+                  .doc-card a {
+                      color: #0366d6;
+                      text-decoration: none;
+                  }
+                  .doc-card a:hover {
+                      text-decoration: underline;
+                  }
+                  .back-link {
+                      display: inline-block;
+                      margin-bottom: 1rem;
+                      color: #A30000;
+                      text-decoration: none;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h1>📚 Documentation Hub</h1>
+                  <p>Complete documentation for the Retail Edge HA Workshop</p>
+              </div>
+              <a href="index.html" class="back-link">← Back to Workshop Home</a>
+
+              <div class="doc-grid">
+                  <div class="doc-card">
+                      <h3>📖 README</h3>
+                      <p>Project overview, quick start, and architecture</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>🚀 Deployment Guide</h3>
+                      <p>Complete deployment instructions and troubleshooting</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/DEPLOYMENT.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>🤝 Contributing</h3>
+                      <p>How to contribute to the workshop</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/CONTRIBUTING.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>🏛️ Architecture Decisions</h3>
+                      <p>ADRs documenting key architectural choices</p>
+                      <a href="adrs.html">Browse ADRs →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>📚 Bookbag Content</h3>
+                      <p>Workshop lab guide delivery system</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/bookbag/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>⚙️ Helm Chart</h3>
+                      <p>Helm chart configuration and values</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/helm/retail-edge-ha/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>💻 Module 1: Pacemaker</h3>
+                      <p>RHEL HA cluster with STONITH fencing</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/manifests/vms/module1-rhel-ha/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>🔄 Module 2: MicroShift</h3>
+                      <p>MicroShift with VRRP failover</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/manifests/vms/module2-microshift/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+
+                  <div class="doc-card">
+                      <h3>🏗️ Module 3: Two-Node OCP</h3>
+                      <p>Two-node OpenShift with etcd arbiter</p>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/manifests/vms/module3-twonode/README.md" target="_blank">View on GitHub →</a>
+                  </div>
+              </div>
+          </body>
+          </html>
+          EOF
+
+          # Update main index to add documentation link
+          sed -i 's|<a href="https://github.com/tosin2013/retail-edge-ha-workshop" class="cta-button">View on GitHub</a>|<a href="https://github.com/tosin2013/retail-edge-ha-workshop" class="cta-button">View on GitHub</a>\n                <a href="generated/documentation.html" class="cta-button" style="background: white; color: var(--red-hat-red); border: 2px solid white;">Documentation Hub</a>|' docs/generated/index.html
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'docs/generated'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

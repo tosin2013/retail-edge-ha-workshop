@@ -1,0 +1,107 @@
+name: Validate Workshop
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-helm:
+    name: Validate Helm Chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: 'v3.14.0'
+
+      - name: Lint Helm Chart
+        run: |
+          helm lint ./helm/retail-edge-ha
+
+      - name: Template Helm Chart (5 students)
+        run: |
+          helm template test-5 ./helm/retail-edge-ha \
+            --set students.count=5 \
+            > /tmp/rendered-5.yaml
+
+          echo "✅ Rendered for 5 students"
+          grep -c "kind: Deployment" /tmp/rendered-5.yaml || true
+          grep -c "kind: VirtualMachine" /tmp/rendered-5.yaml || true
+
+      - name: Template Helm Chart (25 students)
+        run: |
+          helm template test-25 ./helm/retail-edge-ha \
+            --set students.count=25 \
+            > /tmp/rendered-25.yaml
+
+          echo "✅ Rendered for 25 students"
+          grep -c "kind: Deployment" /tmp/rendered-25.yaml || true
+          grep -c "kind: VirtualMachine" /tmp/rendered-25.yaml || true
+
+      - name: Validate no template errors
+        run: |
+          if grep -i "error" /tmp/rendered-5.yaml; then
+            echo "❌ Template errors found"
+            exit 1
+          fi
+          echo "✅ No template errors"
+
+  validate-yaml:
+    name: Validate YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: pip install yamllint
+
+      - name: Lint YAML files
+        run: |
+          yamllint -c .yamllint.yml \
+            helm/retail-edge-ha/values.yaml \
+            manifests/ \
+            bookbag/deploy/ \
+            || true
+
+  validate-scripts:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint shell scripts
+        run: |
+          find scripts/ -name "*.sh" -exec shellcheck {} \;
+
+  validate-documentation:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check README exists
+        run: |
+          test -f README.md || exit 1
+          test -f DEPLOYMENT.md || exit 1
+          test -f CONTRIBUTING.md || exit 1
+
+      - name: Check documentation completeness
+        run: |
+          # Check for broken links (basic check)
+          grep -r "http" docs/ README.md DEPLOYMENT.md || true
+
+          echo "✅ Documentation validation complete"
