@@ -1,5 +1,9 @@
 # 🎯 Retail Edge HA Workshop
 
+[![Deploy GitHub Pages](https://github.com/tosin2013/retail-edge-ha-workshop/actions/workflows/pages.yml/badge.svg)](https://github.com/tosin2013/retail-edge-ha-workshop/actions/workflows/pages.yml)
+[![Validate Workshop](https://github.com/tosin2013/retail-edge-ha-workshop/actions/workflows/validate.yml/badge.svg)](https://github.com/tosin2013/retail-edge-ha-workshop/actions/workflows/validate.yml)
+[![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://tosin2013.github.io/retail-edge-ha-workshop/)
+
 > **High Availability Solutions for Two-Node Retail Environments (2026 Edition)**
 
 Welcome to the Retail Edge HA Workshop! This hands-on lab teaches you to design, deploy, and test high-availability systems for heavily constrained retail storefronts using OpenShift Virtualization and User Defined Networks (UDNs).
