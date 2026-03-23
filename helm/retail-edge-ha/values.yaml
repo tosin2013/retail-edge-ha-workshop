@@ -322,10 +322,15 @@ bookbag:
   # Number of Bookbag replicas (per student)
   replicas: 1
 
+  # Child application configuration (GitOps deployment)
+  childApp:
+    enabled: true      # Deploy Bookbag via separate ArgoCD child app
+    syncWave: "3"      # After VMs (wave 2)
+
   # Authentication configuration
   auth:
-    enabled: true
-    password: "openshift"
+    enabled: false     # Disable for easier development/testing
+    password: "openshift"  # Kept for reference if re-enabled
 
   # Embedded console configuration
   console:

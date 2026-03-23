@@ -1,4 +1,4 @@
-{{- if .Values.bookbag.enabled }}
+{{- if and .Values.bookbag.enabled (not .Values.bookbag.childApp.enabled) }}
 ---
 # =============================================================================
 # Bookbag Build Namespace

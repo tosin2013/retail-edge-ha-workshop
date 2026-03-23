@@ -1,4 +1,4 @@
-{{- if .Values.bookbag.enabled }}
+{{- if and .Values.bookbag.enabled (not .Values.bookbag.childApp.enabled) }}
 {{- range $studentNum := until (int .Values.students.count) }}
 {{- $studentId := add $studentNum 1 | printf "%02d" }}
 {{- $namespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}

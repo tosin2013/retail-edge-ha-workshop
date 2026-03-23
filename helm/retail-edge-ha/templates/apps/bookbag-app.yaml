@@ -1,13 +1,11 @@
-{{- if false }}
+{{- if .Values.bookbag.childApp.enabled }}
 ---
 # =============================================================================
-# Bookbag Child Application - DISABLED
+# Bookbag Child Application - Enabled for GitOps Deployment
 # =============================================================================
-# NOTE: This child app is disabled because Bookbag is now integrated directly
-# into the main Helm chart via templates/bookbag/ directory.
-#
-# The parent ArgoCD application renders the entire Helm chart, which includes
-# Bookbag deployments for all students automatically.
+# This child app deploys Bookbag separately to avoid parent app sync timeout
+# when rendering large Helm charts. Bookbag is deployed at sync wave 3 after
+# all infrastructure, networking, and VMs are ready.
 # =============================================================================
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -21,7 +19,7 @@ metadata:
   finalizers:
     - resources-finalizer.argocd.argoproj.io
   annotations:
-    argocd.argoproj.io/sync-wave: {{ .Values.bookbag.syncWave | quote }}
+    argocd.argoproj.io/sync-wave: {{ .Values.bookbag.childApp.syncWave | quote }}
 spec:
   project: {{ .Values.argocd.project }}
 
