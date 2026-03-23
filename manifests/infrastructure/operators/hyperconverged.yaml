@@ -6,6 +6,8 @@ metadata:
   labels:
     app.kubernetes.io/part-of: retail-edge-ha-workshop
     app.kubernetes.io/component: operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   featureGates:
     # CRITICAL: Disable boot image import for external Ceph storage
