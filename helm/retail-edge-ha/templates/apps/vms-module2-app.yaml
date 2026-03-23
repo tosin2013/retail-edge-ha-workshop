@@ -1,0 +1,46 @@
+{{- if and .Values.virtualMachines.enabled .Values.virtualMachines.module2.enabled }}
+---
+# =============================================================================
+# VirtualMachines Module 2 Child Application
+# =============================================================================
+# Deploys MicroShift with VRRP VirtualMachines (2 VMs per student).
+# Sync Wave: 2 (deployed after networking)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-vms-module2
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: vms-module2
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.virtualMachines.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.bookbag.git.repository }}
+    targetRevision: {{ .Values.bookbag.git.branch }}
+    path: manifests/vms/module2-microshift
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  info:
+    - name: Component
+      value: VirtualMachines Module 2 (MicroShift with VRRP)
+    - name: VMs per Student
+      value: {{ .Values.virtualMachines.module2.vmCount | quote }}
+    - name: Total VMs
+      value: {{ mul .Values.students.count .Values.virtualMachines.module2.vmCount | quote }}
+{{- end }}

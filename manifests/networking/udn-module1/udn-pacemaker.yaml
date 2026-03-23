@@ -1,0 +1,143 @@
+# =============================================================================
+# User Defined Network - Module 1: RHEL HA with Pacemaker
+# =============================================================================
+# This UDN provides Layer 2 networking for Corosync cluster heartbeat.
+# Corosync requires multicast support for cluster communication, which is
+# only available over true Layer 2 networks.
+#
+# Network Details:
+#   - CIDR: 10.101.0.0/24
+#   - Gateway: 10.101.0.1
+#   - Purpose: Pacemaker cluster heartbeat and fence_kubevirt communication
+#   - VMs per student: 2 (rhel-ha-node1, rhel-ha-node2)
+#
+# IP Allocation per Student:
+#   - Student 01: 10.101.0.20-21
+#   - Student 02: 10.101.0.20-21 (isolated UDN, same IPs OK)
+#   - Student 03-50: 10.101.0.20-21 (each in their own UDN namespace)
+# =============================================================================
+
+---
+# Student 01 - Pacemaker Network
+apiVersion: k8s.ovn.org/v1
+kind: UserDefinedNetwork
+metadata:
+  name: pacemaker-net
+  namespace: retail-edge-student-01-udn
+  labels:
+    workshop: retail-edge-ha
+    module: module1
+    student-id: "01"
+  annotations:
+    description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
+spec:
+  topology: Layer2
+  layer2:
+    role: Primary
+    subnets:
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32          # Gateway reserved
+      - 10.101.0.2-10.101.0.10  # Reserved for infrastructure
+    ipv4Mode: {}
+
+---
+# Student 02 - Pacemaker Network
+apiVersion: k8s.ovn.org/v1
+kind: UserDefinedNetwork
+metadata:
+  name: pacemaker-net
+  namespace: retail-edge-student-02-udn
+  labels:
+    workshop: retail-edge-ha
+    module: module1
+    student-id: "02"
+  annotations:
+    description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
+spec:
+  topology: Layer2
+  layer2:
+    role: Primary
+    subnets:
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
+
+---
+# Student 03 - Pacemaker Network
+apiVersion: k8s.ovn.org/v1
+kind: UserDefinedNetwork
+metadata:
+  name: pacemaker-net
+  namespace: retail-edge-student-03-udn
+  labels:
+    workshop: retail-edge-ha
+    module: module1
+    student-id: "03"
+  annotations:
+    description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
+spec:
+  topology: Layer2
+  layer2:
+    role: Primary
+    subnets:
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
+
+---
+# Student 04 - Pacemaker Network
+apiVersion: k8s.ovn.org/v1
+kind: UserDefinedNetwork
+metadata:
+  name: pacemaker-net
+  namespace: retail-edge-student-04-udn
+  labels:
+    workshop: retail-edge-ha
+    module: module1
+    student-id: "04"
+  annotations:
+    description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
+spec:
+  topology: Layer2
+  layer2:
+    role: Primary
+    subnets:
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
+
+---
+# Student 05 - Pacemaker Network
+apiVersion: k8s.ovn.org/v1
+kind: UserDefinedNetwork
+metadata:
+  name: pacemaker-net
+  namespace: retail-edge-student-05-udn
+  labels:
+    workshop: retail-edge-ha
+    module: module1
+    student-id: "05"
+  annotations:
+    description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
+spec:
+  topology: Layer2
+  layer2:
+    role: Primary
+    subnets:
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
