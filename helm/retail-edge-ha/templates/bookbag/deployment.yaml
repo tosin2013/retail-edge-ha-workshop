@@ -1,0 +1,217 @@
+{{- if .Values.bookbag.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+{{- $udnNamespace := printf "%s-udn" $namespace }}
+{{- $studentUser := printf "%s-%s" $.Values.students.userbase $studentId }}
+---
+# =============================================================================
+# Bookbag ServiceAccount - Student {{ $studentId }}
+# =============================================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bookbag
+  namespace: {{ $namespace }}
+  labels:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+    app.kubernetes.io/name: bookbag
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+
+---
+# =============================================================================
+# Bookbag RoleBinding - Student {{ $studentId }}
+# =============================================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bookbag-edit
+  namespace: {{ $namespace }}
+  labels:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: bookbag
+  namespace: {{ $namespace }}
+
+---
+# =============================================================================
+# Bookbag Deployment - Student {{ $studentId }}
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookbag
+  namespace: {{ $namespace }}
+  labels:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+    app.kubernetes.io/name: bookbag
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+spec:
+  replicas: {{ $.Values.bookbag.replicas }}
+  selector:
+    matchLabels:
+      app: bookbag
+      student-id: "{{ $studentId }}"
+  template:
+    metadata:
+      labels:
+        app: bookbag
+        student-id: "{{ $studentId }}"
+    spec:
+      serviceAccountName: bookbag
+      containers:
+      - name: terminal
+        image: {{ $.Values.bookbag.image.repository }}:{{ $.Values.bookbag.image.tag }}
+        imagePullPolicy: {{ $.Values.bookbag.image.pullPolicy }}
+        env:
+        # Student-specific variables
+        - name: STUDENT_ID
+          value: "{{ $studentId }}"
+        - name: STUDENT_NAMESPACE
+          value: "{{ $namespace }}"
+        - name: STUDENT_UDN_NAMESPACE
+          value: "{{ $udnNamespace }}"
+        - name: STUDENT_USER
+          value: "{{ $studentUser }}"
+
+        # Cluster information
+        - name: CLUSTER_DOMAIN
+          value: "{{ $.Values.global.clusterDomain }}"
+        - name: CLUSTER_API
+          value: "{{ $.Values.global.clusterApiUrl }}"
+
+        # VM credentials
+        - name: VM_USER
+          value: "{{ $.Values.virtualMachines.defaultUser }}"
+        - name: VM_PASSWORD
+          value: "{{ $.Values.virtualMachines.defaultPassword }}"
+
+        # Module 1 - Pacemaker
+        - name: RHEL_NODE1
+          value: "{{ $.Values.virtualMachines.module1.vmNames.node1 }}"
+        - name: RHEL_NODE2
+          value: "{{ $.Values.virtualMachines.module1.vmNames.node2 }}"
+        - name: PACEMAKER_NET
+          value: "{{ $.Values.networking.module1.networkName }}"
+        - name: PACEMAKER_IP1
+          value: "{{ $.Values.networking.module1.node1Ip }}"
+        - name: PACEMAKER_IP2
+          value: "{{ $.Values.networking.module1.node2Ip }}"
+        - name: PACEMAKER_VIP
+          value: "{{ $.Values.networking.module1.virtualIp }}"
+
+        # Module 2 - MicroShift
+        - name: MICROSHIFT_GW_A
+          value: "{{ $.Values.virtualMachines.module2.vmNames.gwA }}"
+        - name: MICROSHIFT_GW_B
+          value: "{{ $.Values.virtualMachines.module2.vmNames.gwB }}"
+        - name: MICROSHIFT_NET
+          value: "{{ $.Values.networking.module2.networkName }}"
+        - name: MICROSHIFT_IP_A
+          value: "{{ $.Values.networking.module2.gwAIp }}"
+        - name: MICROSHIFT_IP_B
+          value: "{{ $.Values.networking.module2.gwBIp }}"
+        - name: MICROSHIFT_VIP
+          value: "{{ $.Values.networking.module2.virtualIp }}"
+
+        # Module 3 - Two-Node OpenShift
+        - name: TWONODE_MASTER1
+          value: "{{ $.Values.virtualMachines.module3.vmNames.master1 }}"
+        - name: TWONODE_MASTER2
+          value: "{{ $.Values.virtualMachines.module3.vmNames.master2 }}"
+        - name: TWONODE_ARBITER
+          value: "{{ $.Values.virtualMachines.module3.vmNames.arbiter }}"
+        - name: TWONODE_NET
+          value: "{{ $.Values.networking.module3.networkName }}"
+        - name: TWONODE_IP1
+          value: "{{ $.Values.networking.module3.master1Ip }}"
+        - name: TWONODE_IP2
+          value: "{{ $.Values.networking.module3.master2Ip }}"
+        - name: TWONODE_IP_ARBITER
+          value: "{{ $.Values.networking.module3.arbiterIp }}"
+
+        # Authentication
+        - name: AUTH_USERNAME
+          value: "{{ $studentUser }}"
+        - name: AUTH_PASSWORD
+          value: "{{ $.Values.bookbag.auth.password }}"
+
+        ports:
+        - containerPort: 10080
+          protocol: TCP
+        resources:
+          {{- toYaml $.Values.bookbag.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /workshop/
+            port: 10080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /workshop/
+            port: 10080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+
+---
+# =============================================================================
+# Bookbag Service - Student {{ $studentId }}
+# =============================================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: bookbag
+  namespace: {{ $namespace }}
+  labels:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+    app.kubernetes.io/name: bookbag
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+spec:
+  type: ClusterIP
+  ports:
+  - port: 10080
+    targetPort: 10080
+    protocol: TCP
+    name: http
+  selector:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+
+---
+# =============================================================================
+# Bookbag Route - Student {{ $studentId }}
+# =============================================================================
+{{- if $.Values.bookbag.route.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: bookbag
+  namespace: {{ $namespace }}
+  labels:
+    app: bookbag
+    student-id: "{{ $studentId }}"
+    app.kubernetes.io/name: bookbag
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+spec:
+  to:
+    kind: Service
+    name: bookbag
+  port:
+    targetPort: http
+  tls:
+    termination: {{ $.Values.bookbag.route.tls.termination }}
+    insecureEdgeTerminationPolicy: {{ $.Values.bookbag.route.tls.insecureEdgeTerminationPolicy }}
+{{- end }}
+
+{{- end }}
+{{- end }}

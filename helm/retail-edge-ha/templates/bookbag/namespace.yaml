@@ -1,0 +1,19 @@
+{{- if .Values.bookbag.enabled }}
+---
+# =============================================================================
+# Bookbag Build Namespace
+# =============================================================================
+# Dedicated namespace for Bookbag BuildConfig and ImageStream
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.bookbag.build.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.bookbag.build.namespace }}
+    app.kubernetes.io/component: bookbag-build
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    openshift.io/description: "Workshop content build namespace"
+    openshift.io/display-name: "Retail Edge Workshop Build"
+{{- end }}

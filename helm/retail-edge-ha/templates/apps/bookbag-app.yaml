@@ -1,10 +1,13 @@
-{{- if .Values.bookbag.enabled }}
+{{- if false }}
 ---
 # =============================================================================
-# Bookbag Child Application
+# Bookbag Child Application - DISABLED
 # =============================================================================
-# Deploys the containerized workshop lab guide with embedded instructions.
-# Sync Wave: 3 (deployed last, after VMs)
+# NOTE: This child app is disabled because Bookbag is now integrated directly
+# into the main Helm chart via templates/bookbag/ directory.
+#
+# The parent ArgoCD application renders the entire Helm chart, which includes
+# Bookbag deployments for all students automatically.
 # =============================================================================
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -25,13 +28,20 @@ spec:
   source:
     repoURL: {{ .Values.bookbag.git.repository }}
     targetRevision: {{ .Values.bookbag.git.branch }}
-    path: manifests/bookbag
-    directory:
-      recurse: true
+    path: helm/retail-edge-ha
+    helm:
+      releaseName: {{ .Values.global.workshopName }}-bookbag
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: bookbag.enabled
+          value: "true"
+        - name: students.count
+          value: {{ .Values.students.count | quote }}
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ .Values.bookbag.namespace }}
+    namespace: {{ .Values.bookbag.build.namespace }}
 
   syncPolicy:
     {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}

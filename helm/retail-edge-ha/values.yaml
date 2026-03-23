@@ -119,6 +119,25 @@ networking:
       gateway: "10.103.0.1"
       description: "Layer 2 network for two-node cluster communication"
 
+  # Network IP assignments for Bookbag variables
+  module1:
+    networkName: "pacemaker-net"
+    node1Ip: "10.101.0.20"
+    node2Ip: "10.101.0.21"
+    virtualIp: "10.101.0.100"
+
+  module2:
+    networkName: "microshift-net"
+    gwAIp: "10.102.0.20"
+    gwBIp: "10.102.0.21"
+    virtualIp: "10.102.0.100"
+
+  module3:
+    networkName: "twonode-net"
+    master1Ip: "10.103.0.20"
+    master2Ip: "10.103.0.21"
+    arbiterIp: "10.103.0.22"
+
 # VirtualMachine Configuration
 # -----------------------------------------------------------------------------
 virtualMachines:
@@ -134,11 +153,20 @@ virtualMachines:
   # Storage class for VM disks
   storageClass: "ocs-external-storagecluster-ceph-rbd"
 
+  # Default VM credentials
+  defaultUser: "cloud-user"
+  defaultPassword: "redhat"
+
   # Module 1: RHEL HA with Pacemaker (2 VMs per student)
   module1:
     enabled: true
     name: "rhel-ha"
     vmCount: 2
+
+    # VM names
+    vmNames:
+      node1: "rhel-ha-node1"
+      node2: "rhel-ha-node2"
 
     # VM image configuration
     image:
@@ -169,6 +197,11 @@ virtualMachines:
     enabled: true
     name: "microshift"
     vmCount: 2
+
+    # VM names
+    vmNames:
+      gwA: "microshift-gw-a"
+      gwB: "microshift-gw-b"
 
     # VM image configuration
     image:
@@ -201,6 +234,12 @@ virtualMachines:
     vmCount: 3
     controlPlaneNodes: 2
     arbiterNodes: 1
+
+    # VM names
+    vmNames:
+      master1: "twonode-master1"
+      master2: "twonode-master2"
+      arbiter: "twonode-arbiter"
 
     # VM image configuration
     image:
@@ -235,12 +274,13 @@ bookbag:
   # Sync wave
   syncWave: "3"
 
-  # Bookbag deployment namespace
-  namespace: retail-edge-bookbag
+  # Build namespace (where BuildConfig lives)
+  build:
+    namespace: "retail-edge-workshop"
 
   # Container image configuration
   image:
-    repository: "quay.io/tosin2013/retail-edge-bookbag"
+    repository: "image-registry.openshift-image-registry.svc:5000/retail-edge-workshop/retail-edge-ha-bookbag"
     tag: "latest"
     pullPolicy: Always
 
@@ -248,25 +288,23 @@ bookbag:
   git:
     repository: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
     branch: "main"
-    contentPath: "content/workshop"
 
-  # Resource requests and limits
+  # Resource requests and limits (per student)
   resources:
     requests:
-      cpu: "500m"
+      cpu: "250m"
       memory: "512Mi"
     limits:
-      cpu: "1000m"
+      cpu: "500m"
       memory: "1Gi"
 
-  # Number of Bookbag replicas
+  # Number of Bookbag replicas (per student)
   replicas: 1
 
   # Authentication configuration
   auth:
-    enabled: false
-    username: "*"
-    password: ""
+    enabled: true
+    password: "openshift"
 
   # Embedded console configuration
   console:
