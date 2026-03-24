@@ -41,9 +41,9 @@ spec:
       - name: deployer.ingress.name
         value: showroom-student-{{ $studentId }}
 
-      # Terminal configuration (use public wetty image instead of private ttyd)
+      # Terminal configuration
       - name: terminal.image
-        value: docker.io/wettyoss/wetty:latest
+        value: {{ $.Values.showroom.terminal.image }}
       - name: terminal.envVars.STUDENT_ID
         value: "{{ $studentId }}"
       - name: terminal.envVars.STUDENT_NAMESPACE
