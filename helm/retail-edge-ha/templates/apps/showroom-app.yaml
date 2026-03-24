@@ -1,41 +1,55 @@
 {{- if .Values.showroom.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s" $.Values.showroom.multiUser.namespacePrefix $studentId }}
+{{- $studentNamespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: retail-edge-ha-showroom
-  namespace: {{ .Values.argocd.namespace }}
+  name: retail-edge-ha-showroom-{{ $studentId }}
+  namespace: {{ $.Values.argocd.namespace }}
   labels:
-    app.kubernetes.io/name: retail-edge-ha-showroom
+    app.kubernetes.io/name: retail-edge-ha-showroom-{{ $studentId }}
     app.kubernetes.io/part-of: retail-edge-ha-workshop
+    student-id: "{{ $studentId }}"
   annotations:
-    argocd.argoproj.io/sync-wave: {{ .Values.showroom.syncWave | quote }}
+    argocd.argoproj.io/sync-wave: {{ $.Values.showroom.syncWave | quote }}
 spec:
-  project: {{ .Values.argocd.project }}
+  project: {{ $.Values.argocd.project }}
   source:
-    repoURL: {{ .Values.showroom.chart.repository }}
-    chart: {{ .Values.showroom.chart.name }}
-    targetRevision: {{ .Values.showroom.chart.version }}
+    repoURL: {{ $.Values.showroom.chart.repository }}
+    chart: {{ $.Values.showroom.chart.name }}
+    targetRevision: {{ $.Values.showroom.chart.version }}
     helm:
       parameters:
       # Content configuration (Showroom chart parameter names)
       - name: content.repoUrl
-        value: {{ .Values.showroom.git.repository }}
+        value: {{ $.Values.showroom.git.repository }}
       - name: content.repoRef
-        value: {{ .Values.showroom.git.branch }}
+        value: {{ $.Values.showroom.git.branch }}
       - name: content.antoraPlaybook
         value: site.yml
 
       # Deployer configuration
       - name: deployer.domain
-        value: {{ .Values.global.clusterDomain }}
+        value: {{ $.Values.global.clusterDomain }}
+      - name: deployer.ingress.name
+        value: showroom-student-{{ $studentId }}
 
       # Terminal configuration (use public wetty image instead of private ttyd)
       - name: terminal.image
         value: docker.io/wettyoss/wetty:latest
+      - name: terminal.envVars.STUDENT_ID
+        value: "{{ $studentId }}"
+      - name: terminal.envVars.STUDENT_NAMESPACE
+        value: "{{ $studentNamespace }}"
+      - name: terminal.envVars.STUDENT_USER
+        value: "{{ $.Values.students.userbase }}-{{ $studentId }}"
 
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ .Values.showroom.namespace }}
+    namespace: {{ $namespace }}
 
   syncPolicy:
     automated:
@@ -49,4 +63,5 @@ spec:
         duration: 5s
         factor: 2
         maxDuration: 3m
+{{- end }}
 {{- end }}
