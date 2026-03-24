@@ -4,7 +4,176 @@
 
 In this module, you'll deploy two MicroShift instances with Keepalived managing a Virtual IP using VRRP (Virtual Router Redundancy Protocol). This architecture provides high availability for edge gateways and load balancers.
 
-== Architecture
+== Architecture Comparison
+
+=== Lab Environment (What You'll Build)
+
+[mermaid]
+....
+graph TB
+    subgraph "OpenShift Cluster"
+        subgraph "Student Namespace: retail-edge-student-01"
+            GWA["VirtualMachine<br/>microshift-gw-a<br/>10.102.0.20<br/>Priority: 100<br/>(MASTER)"]
+            GWB["VirtualMachine<br/>microshift-gw-b<br/>10.102.0.21<br/>Priority: 90<br/>(BACKUP)"]
+            VIP["Virtual IP<br/>10.102.0.100"]
+
+            GWA -.->|"VRRP Advertisements<br/>224.0.0.18 multicast"| GWB
+            GWB -.->|"VRRP Response"| GWA
+
+            GWA -->|"Owns VIP<br/>(MASTER)"| VIP
+            GWB -.->|"Standby<br/>(takes over on failure)"| VIP
+
+            subgraph "MicroShift A"
+                K8SA["Kubernetes API<br/>6443"]
+                INGA["HAProxy Ingress"]
+            end
+
+            subgraph "MicroShift B"
+                K8SB["Kubernetes API<br/>6443"]
+                INGB["HAProxy Ingress"]
+            end
+
+            GWA --> K8SA
+            GWA --> INGA
+            GWB --> K8SB
+            GWB --> INGB
+        end
+    end
+
+    APPS["Edge Applications<br/>(Containers)"]
+    VIP -->|"Routes traffic"| APPS
+
+    style GWA fill:#90EE90
+    style GWB fill:#FFD700
+    style VIP fill:#87CEEB
+....
+
+=== Real-World Deployment (Retail Store Edge Gateway)
+
+[mermaid]
+....
+graph TB
+    subgraph "Retail Store - Network Edge"
+        subgraph "Edge Gateway Cluster"
+            EDGE1["Intel NUC 11<br/>microshift-gw-a<br/>192.168.1.10<br/>Priority: 100<br/>(MASTER)"]
+            EDGE2["Intel NUC 11<br/>microshift-gw-b<br/>192.168.1.11<br/>Priority: 90<br/>(BACKUP)"]
+            EDGEVIP["Gateway VIP<br/>192.168.1.100"]
+
+            EDGE1 -.->|"VRRP Heartbeat<br/>(Dedicated VLAN)"| EDGE2
+
+            EDGE1 -->|"Owns VIP"| EDGEVIP
+            EDGE2 -.->|"Standby"| EDGEVIP
+
+            subgraph "MicroShift Gateway A"
+                K8S1["Kubernetes<br/>Edge Workloads"]
+                ING1["HAProxy Ingress<br/>Traffic Management"]
+                FW1["Firewall/NAT<br/>Rules"]
+            end
+
+            subgraph "MicroShift Gateway B"
+                K8S2["Kubernetes<br/>Edge Workloads"]
+                ING2["HAProxy Ingress<br/>Traffic Management"]
+                FW2["Firewall/NAT<br/>Rules"]
+            end
+
+            EDGE1 --> K8S1
+            EDGE1 --> ING1
+            EDGE1 --> FW1
+            EDGE2 --> K8S2
+            EDGE2 --> ING2
+            EDGE2 --> FW2
+        end
+
+        subgraph "Store Network Devices"
+            POS2["POS Terminals"]
+            IOT["IoT Devices<br/>(Cameras, Sensors)"]
+            WIFI["WiFi APs"]
+            PRINT["Receipt Printers"]
+        end
+
+        subgraph "Edge Applications"
+            VIDEO["Video Analytics<br/>(Customer tracking)"]
+            INV["Inventory Sync<br/>(Local cache)"]
+            AUTH["Authentication<br/>(Store WiFi)"]
+        end
+
+        EDGEVIP -->|"Default Gateway"| POS2
+        EDGEVIP --> IOT
+        EDGEVIP --> WIFI
+        EDGEVIP --> PRINT
+
+        K8S1 --> VIDEO
+        K8S1 --> INV
+        K8S1 --> AUTH
+    end
+
+    subgraph "Corporate WAN"
+        HQ["Data Center<br/>Central Systems"]
+    end
+
+    FW1 -.->|"Secure Tunnel<br/>(WireGuard/IPsec)"| HQ
+
+    style EDGE1 fill:#90EE90
+    style EDGE2 fill:#FFD700
+    style EDGEVIP fill:#87CEEB
+    style VIDEO fill:#FFA500
+    style INV fill:#FFA500
+    style AUTH fill:#FFA500
+....
+
+=== Key Differences
+
+[cols="1,2,2"]
+|===
+|Component |Lab Environment |Real-World Deployment
+
+|**Hardware**
+|VirtualMachines on OpenShift
+|Intel NUC, Lenovo ThinkEdge, Dell Edge Gateway
+
+|**MicroShift Use Case**
+|Learning Kubernetes HA patterns
+|Edge gateway, IoT aggregator, local compute
+
+|**VRRP Purpose**
+|Virtual IP failover demo
+|Network gateway failover (critical - entire store depends on it)
+
+|**Workload Examples**
+|Sample nginx deployment
+|Video analytics, inventory sync, WiFi auth, firewall/NAT
+
+|**Network Impact**
+|Lab traffic only
+|All store devices use VIP as default gateway
+
+|**Failure Impact**
+|Test environment
+|Store network down (POS, WiFi, cameras offline)
+
+|**Recovery Time**
+|3-5 seconds (VRRP failover)
+|3-5 seconds (automatic, no manual intervention)
+
+|**Scale**
+|2 VMs for learning
+|2-4 edge devices per store × 1000s of stores
+
+|**Cost**
+|Zero (shared cluster)
+|$800-1200 per store (2 Intel NUCs + switch)
+|===
+
+*What's the Same:*
+
+* MicroShift software (same Kubernetes distribution)
+* Keepalived configuration (`keepalived.conf`)
+* VRRP protocol (RFC 5798)
+* Health check scripts
+* Failover behavior
+* Container workload management
+
+== Lab Architecture Details
 
 [source,text]
 ----

@@ -13,3 +13,10 @@ ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
+
+asciidoc:
+  attributes:
+    kroki-fetch-diagram: true
+    kroki-server-url: https://kroki.io
+  extensions:
+  - asciidoctor-kroki

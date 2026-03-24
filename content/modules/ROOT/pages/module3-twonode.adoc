@@ -2,9 +2,237 @@
 
 == Overview
 
-In this module, you'll deploy a two-node OpenShift cluster with a remote etcd arbiter for quorum management. This architecture is designed for distributed retail locations where full three-node control planes aren't feasible.
+In this module, you'll explore a two-node OpenShift cluster with a remote etcd arbiter for quorum management. This architecture is designed for distributed retail locations where full three-node control planes aren't feasible due to space, power, or cost constraints.
 
-== Architecture
+== Architecture Comparison
+
+=== Lab Environment (Simulated Cluster)
+
+[mermaid]
+....
+graph TB
+    subgraph "OpenShift Cluster - Student Namespace"
+        subgraph "Edge Location (Simulated)"
+            MASTER1["VirtualMachine<br/>twonode-master1<br/>10.103.0.20<br/>Control Plane + Workers"]
+            MASTER2["VirtualMachine<br/>twonode-master2<br/>10.103.0.21<br/>Control Plane + Workers"]
+
+            MASTER1 -.->|"etcd Raft Consensus<br/>(Layer 2 network)"| MASTER2
+        end
+
+        subgraph "Remote Datacenter (Simulated)"
+            ARBITER["VirtualMachine<br/>twonode-arbiter<br/>10.103.0.22<br/>etcd Only (Quorum)"]
+        end
+
+        MASTER1 -.->|"etcd Replication<br/>(WAN simulation)"| ARBITER
+        MASTER2 -.->|"etcd Replication"| ARBITER
+
+        subgraph "etcd Cluster"
+            ETCD1["etcd Member 1<br/>(Master1)"]
+            ETCD2["etcd Member 2<br/>(Master2)"]
+            ETCD3["etcd Member 3<br/>(Arbiter)"]
+
+            ETCD1 -.->|"Raft Protocol"| ETCD2
+            ETCD1 -.->|"Raft Protocol"| ETCD3
+            ETCD2 -.->|"Raft Protocol"| ETCD3
+        end
+
+        MASTER1 --> ETCD1
+        MASTER2 --> ETCD2
+        ARBITER --> ETCD3
+    end
+
+    QUORUM["Quorum: 2/3 nodes<br/>Can tolerate 1 failure"]
+    ETCD1 -.-> QUORUM
+    ETCD2 -.-> QUORUM
+    ETCD3 -.-> QUORUM
+
+    style MASTER1 fill:#90EE90
+    style MASTER2 fill:#90EE90
+    style ARBITER fill:#FFD700
+    style QUORUM fill:#87CEEB
+....
+
+=== Real-World Deployment (Multi-Store Regional Cluster)
+
+[mermaid]
+....
+graph TB
+    subgraph "Region: Northeast USA"
+        subgraph "Store Chicago - Edge Cluster"
+            CHI1["Dell R660<br/>ocp-master1<br/>192.168.100.10"]
+            CHI2["Dell R660<br/>ocp-master2<br/>192.168.100.11"]
+
+            subgraph "Chicago Control Plane"
+                CHI_API["Kubernetes API<br/>6443"]
+                CHI_ETCD1["etcd Member"]
+                CHI_SCHED["Scheduler"]
+                CHI_CTRL["Controllers"]
+            end
+
+            subgraph "Chicago Worker Capacity"
+                CHI_WORK["300+ Pods<br/>(POS, Inventory,<br/>Analytics)"]
+            end
+
+            CHI1 --> CHI_API
+            CHI1 --> CHI_ETCD1
+            CHI1 --> CHI_SCHED
+            CHI1 --> CHI_CTRL
+            CHI2 --> CHI_API
+            CHI2 --> CHI_ETCD1
+            CHI2 --> CHI_WORK
+        end
+
+        subgraph "Store Atlanta - Edge Cluster"
+            ATL1["Dell R660<br/>ocp-master1<br/>192.168.100.10"]
+            ATL2["Dell R660<br/>ocp-master2<br/>192.168.100.11"]
+
+            subgraph "Atlanta Control Plane"
+                ATL_API["Kubernetes API<br/>6443"]
+                ATL_ETCD2["etcd Member"]
+            end
+
+            subgraph "Atlanta Worker Capacity"
+                ATL_WORK["300+ Pods"]
+            end
+
+            ATL1 --> ATL_API
+            ATL1 --> ATL_ETCD2
+            ATL2 --> ATL_API
+            ATL2 --> ATL_ETCD2
+            ATL2 --> ATL_WORK
+        end
+
+        subgraph "Regional Data Center - Arbiter"
+            ARB["VM or Bare Metal<br/>etcd-arbiter<br/>172.16.50.100"]
+
+            subgraph "Arbiter Components"
+                ARB_ETCD["etcd Member ONLY<br/>(No API, No Workloads)"]
+            end
+
+            ARB --> ARB_ETCD
+        end
+
+        CHI_ETCD1 -.->|"WAN Link<br/>50ms latency"| ARB_ETCD
+        ATL_ETCD2 -.->|"WAN Link<br/>30ms latency"| ARB_ETCD
+        CHI_ETCD1 -.->|"Private Link"| ATL_ETCD2
+
+        subgraph "Store Applications"
+            APPS1["Store 1: POS System<br/>Inventory Management<br/>Video Analytics"]
+            APPS2["Store 2: POS System<br/>Inventory Management<br/>Video Analytics"]
+        end
+
+        CHI_API --> APPS1
+        ATL_API --> APPS2
+    end
+
+    style CHI1 fill:#90EE90
+    style CHI2 fill:#90EE90
+    style ATL1 fill:#90EE90
+    style ATL2 fill:#90EE90
+    style ARB fill:#FFD700
+    style APPS1 fill:#FFA500
+    style APPS2 fill:#FFA500
+....
+
+=== Key Differences
+
+[cols="1,2,2"]
+|===
+|Component |Lab Environment |Real-World Deployment
+
+|**Cluster Size**
+|3 VMs (2 masters + arbiter) for learning
+|2 servers per store + 1 regional arbiter serving 10-50 stores
+
+|**Hardware**
+|VirtualMachines on shared cluster
+|Dell R660/HP DL360 (64 cores, 256GB RAM) per store
+
+|**etcd Arbiter**
+|VM in same cluster (simulated remote)
+|Regional datacenter VM or dedicated server
+
+|**Network**
+|Same Layer 2 network (UDN)
+|Store: Local LAN, Arbiter: WAN (30-100ms latency)
+
+|**Use Case**
+|Learn two-node concepts
+|Distributed stores with regional backup
+
+|**Workload Capacity**
+|Test deployments only
+|300-500 pods per store (POS, analytics, inventory)
+
+|**Cost per Store**
+|Zero (shared resources)
+|$30-40K (2 servers + networking + support)
+
+|**Availability**
+|Demo: 1 node failure tolerated
+|Production: 99.5% (1 node can fail, store continues)
+
+|**Benefits**
+|Understanding architecture
+|50% cost savings vs 3-node, same workload capacity
+
+|**Limitations**
+|Simulated only (can't run real OCP)
+|Requires arbiter connectivity (if WAN down + local node fails = outage)
+|===
+
+*What's the Same:*
+
+* etcd quorum math (2 of 3 members)
+* Raft consensus protocol
+* Split-brain prevention
+* Kubernetes API behavior
+* OpenShift control plane components
+
+== Two-Node vs Standard OpenShift Comparison
+
+[mermaid]
+....
+graph LR
+    subgraph "Standard 3-Node Cluster"
+        S1["Master 1<br/>etcd + API"]
+        S2["Master 2<br/>etcd + API"]
+        S3["Master 3<br/>etcd + API"]
+
+        S1 -.-> S2
+        S2 -.-> S3
+        S3 -.-> S1
+
+        SCOST["Cost: 3 Servers<br/>No workloads on masters"]
+    end
+
+    subgraph "Two-Node Cluster"
+        T1["Master 1<br/>etcd + API<br/>+ Workloads"]
+        T2["Master 2<br/>etcd + API<br/>+ Workloads"]
+        TA["Arbiter<br/>etcd Only<br/>(Shared by 10-50 stores)"]
+
+        T1 -.-> T2
+        T1 -.-> TA
+        T2 -.-> TA
+
+        TCOST["Cost: 2 Servers<br/>+ Shared arbiter<br/>50% cost reduction"]
+    end
+
+    SCOST -.->|"$60K per location"| COMPARISON
+    TCOST -.->|"$30K per location"| COMPARISON
+
+    COMPARISON["Same Kubernetes,<br/>Same workload capacity,<br/>Half the cost"]
+
+    style S1 fill:#90EE90
+    style S2 fill:#90EE90
+    style S3 fill:#90EE90
+    style T1 fill:#90EE90
+    style T2 fill:#90EE90
+    style TA fill:#FFD700
+    style COMPARISON fill:#87CEEB
+....
+
+== Lab Architecture Details
 
 [source,text]
 ----
