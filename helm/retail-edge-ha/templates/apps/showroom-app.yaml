@@ -23,7 +23,7 @@ spec:
       - name: content.repoRef
         value: {{ .Values.showroom.git.branch }}
       - name: content.antoraPlaybook
-        value: {{ .Values.showroom.git.contentPath }}/site.yml
+        value: site.yml
 
       # Deployer configuration
       - name: deployer.domain
