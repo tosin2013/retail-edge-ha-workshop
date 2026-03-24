@@ -13,19 +13,3 @@ metadata:
     openshift.io/description: "Infrastructure namespace for Retail Edge HA Workshop"
     argocd.argoproj.io/sync-wave: {{ .Values.infrastructure.syncWave | quote }}
 {{- end }}
-
-{{- if and .Values.bookbag.enabled (not .Values.bookbag.childApp.enabled) }}
----
-# Bookbag namespace for workshop content delivery
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ .Values.bookbag.build.namespace }}
-  labels:
-    app.kubernetes.io/name: {{ .Values.bookbag.build.namespace }}
-    app.kubernetes.io/part-of: retail-edge-ha-workshop
-    argocd.argoproj.io/instance: {{ .Values.global.workshopName }}
-  annotations:
-    openshift.io/description: "Bookbag workshop content delivery"
-    argocd.argoproj.io/sync-wave: {{ .Values.bookbag.syncWave | quote }}
-{{- end }}

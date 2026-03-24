@@ -11,7 +11,7 @@ The Retail Edge HA Workshop requires deploying complex, multi-component infrastr
 - User Defined Networks (UDNs) for Layer 2 VM connectivity
 - VirtualMachines across 3 modules (9 VMs per student = 450 VMs at maximum scale)
 - RBAC configuration for secure access
-- Bookbag workshop content delivery
+- Showroom workshop content delivery
 
 **Key Requirements**:
 1. **Declarative Configuration**: All settings managed via a single configuration file
@@ -96,7 +96,7 @@ Parent ArgoCD Application (helm/retail-edge-ha)
 ├── Child App: VMs Module 1 (Sync Wave 2)
 ├── Child App: VMs Module 2 (Sync Wave 2)
 ├── Child App: VMs Module 3 (Sync Wave 2)
-└── Child App: Bookbag (Sync Wave 3)
+└── Child App: Showroom (Sync Wave 3)
 ```
 
 **Configuration Example**:

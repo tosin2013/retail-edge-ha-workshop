@@ -66,7 +66,7 @@ echo ""
 
 # Validate namespace count
 NAMESPACE_COUNT=$(grep -r "kind: Namespace" "${TEMP_OUTPUT}" | wc -l)
-EXPECTED_NAMESPACES=$((STUDENT_COUNT * 2 + 2))  # Students + infrastructure + bookbag
+EXPECTED_NAMESPACES=$((STUDENT_COUNT * 2 + 2))  # Students + infrastructure + showroom
 
 if [ "${NAMESPACE_COUNT}" -eq "${EXPECTED_NAMESPACES}" ]; then
     echo "✓ Namespace count correct: ${NAMESPACE_COUNT}"
@@ -78,7 +78,7 @@ fi
 
 # Validate ArgoCD Applications
 ARGOCD_APP_COUNT=$(grep -r "kind: Application" "${TEMP_OUTPUT}" | wc -l)
-EXPECTED_APPS=5  # parent + infrastructure + networking + rbac + bookbag
+EXPECTED_APPS=5  # parent + infrastructure + networking + rbac + showroom
 
 if [ "${ARGOCD_APP_COUNT}" -ge "${EXPECTED_APPS}" ]; then
     echo "✓ ArgoCD Applications found: ${ARGOCD_APP_COUNT}"

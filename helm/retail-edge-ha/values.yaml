@@ -140,7 +140,7 @@ networking:
       gateway: "10.103.0.1"
       description: "Layer 2 network for two-node cluster communication"
 
-  # Network IP assignments for Bookbag variables
+  # Network IP assignments for Showroom variables
   module1:
     networkName: "pacemaker-net"
     node1Ip: "10.101.0.20"
@@ -320,64 +320,6 @@ showroom:
     repository: https://rhpds.github.io/showroom-deployer
     name: showroom
     version: 0.4.9
-
-# Bookbag Workshop Configuration (Legacy - kept for rollback)
-# -----------------------------------------------------------------------------
-bookbag:
-  # Enable Bookbag deployment
-  enabled: false  # Disabled - migrated to Showroom
-
-  # Sync wave
-  syncWave: "3"
-
-  # Build namespace (where BuildConfig lives)
-  build:
-    namespace: "retail-edge-workshop"
-
-  # Container image configuration
-  image:
-    repository: "image-registry.openshift-image-registry.svc:5000/retail-edge-workshop/retail-edge-ha-bookbag"
-    tag: "latest"
-    pullPolicy: Always
-
-  # Git repository configuration
-  git:
-    repository: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
-    branch: "main"
-
-  # Resource requests and limits (per student)
-  resources:
-    requests:
-      cpu: "250m"
-      memory: "512Mi"
-    limits:
-      cpu: "500m"
-      memory: "1Gi"
-
-  # Number of Bookbag replicas (per student)
-  replicas: 1
-
-  # Child application configuration (GitOps deployment)
-  childApp:
-    enabled: true      # Deploy Bookbag via separate ArgoCD child app
-    syncWave: "3"      # After VMs (wave 2)
-
-  # Authentication configuration
-  auth:
-    enabled: false     # Disable for easier development/testing
-    password: "openshift"  # Kept for reference if re-enabled
-
-  # Embedded console configuration
-  console:
-    enabled: true
-    image: "quay.io/openshift/origin-console:latest"
-
-  # Route configuration
-  route:
-    enabled: true
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Redirect
 
 # RBAC Configuration
 # -----------------------------------------------------------------------------

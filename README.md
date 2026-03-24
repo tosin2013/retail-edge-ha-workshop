@@ -46,7 +46,7 @@ This workshop is deployed using a **GitOps-based approach** with:
 - **Multi-User Isolation**: Each student gets isolated namespaces with resource quotas
 - **OpenShift Virtualization**: 9 VMs per student across 3 HA modules
 - **User Defined Networks (UDNs)**: True Layer 2 networking for cluster heartbeat
-- **Bookbag Workshop**: Containerized lab guide with embedded instructions
+- **Showroom Workshop**: Modern workshop platform with Antora content rendering
 
 ### Component Architecture
 
@@ -71,10 +71,10 @@ ArgoCD Parent Application
 │   └── MicroShift VMs (2 per student)
 ├── VirtualMachines Module 3 (Sync Wave 2)
 │   └── OpenShift Two-Node VMs (3 per student: 2 CP + 1 Arbiter)
-└── Bookbag (Sync Wave 3)
-    ├── Workshop Content Deployment
-    ├── Service & Route
-    └── Lab Guide
+└── Showroom (Sync Wave 3)
+    ├── Antora Content Rendering
+    ├── Terminal (Wetty)
+    └── Workshop UI
 
 ```
 
@@ -151,9 +151,9 @@ oc get vms --all-namespaces -l app.kubernetes.io/part-of=retail-edge-ha
 ### 5. Access Workshop
 
 ```bash
-# Get Bookbag route
-BOOKBAG_URL=$(oc get route bookbag -n retail-edge-bookbag -o jsonpath='{.spec.host}')
-echo "Workshop URL: https://${BOOKBAG_URL}"
+# Get Showroom route
+SHOWROOM_URL=$(oc get route showroom-proxy -n showroom -o jsonpath='{.spec.host}')
+echo "Workshop URL: https://${SHOWROOM_URL}"
 ```
 
 ## 📁 Repository Structure
@@ -166,7 +166,6 @@ retail-edge-ha-workshop/
 │   │   ├── 0001-helm-app-of-apps.md
 │   │   ├── 0002-multi-user-isolation.md
 │   │   ├── 0003-vm-networking-udn.md
-│   │   ├── 0004-bookbag-delivery.md
 │   │   └── 0005-gitops-sync-strategy.md
 │   └── deployment-guide.md             # Detailed deployment documentation
 ├── helm/
@@ -180,20 +179,17 @@ retail-edge-ha-workshop/
 │               ├── infrastructure-app.yaml
 │               ├── networking-app.yaml
 │               ├── rbac-app.yaml
-│               ├── vms-module1-app.yaml (TODO)
-│               ├── vms-module2-app.yaml (TODO)
-│               ├── vms-module3-app.yaml (TODO)
-│               └── bookbag-app.yaml
+│               ├── vms-module1-app.yaml
+│               ├── vms-module2-app.yaml 
+│               ├── vms-module3-app.yaml 
+│               └── showroom-app.yaml
 ├── manifests/
 │   ├── infrastructure/                 # Namespaces, quotas, operators
 │   ├── networking/                     # UDNs and NADs
 │   ├── vms/                            # VirtualMachine templates
 │   ├── rbac/                           # Roles, bindings
-│   └── bookbag/                        # Workshop content deployment
 ├── content/
-│   └── workshop/                       # Bookbag workshop content
-│       ├── workshop.yaml
-│       ├── modules.yaml
+│   └── modules/ROOT/           # Showroom workshop content (Antora)
 │       └── content/                    # AsciiDoc modules
 ├── agnosticd-integration/              # Agnosticd workload role
 │   └── ocp4_workload_retail_edge_ha/
@@ -294,12 +290,18 @@ By completing this workshop, you will:
 
 ## 🛠️ Development & Contributing
 
-### Building Bookbag Image
+### Updating Workshop Content
+
+Workshop content is managed via Antora in the `content/` directory. Changes are automatically deployed via GitOps:
 
 ```bash
-cd content/workshop
-podman build -t quay.io/tosin2013/retail-edge-bookbag:latest .
-podman push quay.io/tosin2013/retail-edge-bookbag:latest
+# Edit content in content/modules/ROOT/pages/
+# Commit and push changes
+git add content/
+git commit -m "Update workshop content"
+git push
+
+# Showroom will automatically rebuild and deploy
 ```
 
 ### Creating ADRs
@@ -405,9 +407,9 @@ For questions or issues:
 - [x] Helm chart skeleton (Chart.yaml, values.yaml)
 - [x] ArgoCD App of Apps templates
 - [x] Infrastructure manifests (namespaces, quotas)
-- [ ] Networking manifests (UDNs, NADs) - Week 2
-- [ ] VM templates (Modules 1-3) - Week 3-4
-- [ ] Bookbag content (Lab guides) - Week 5
-- [ ] Full ArgoCD integration - Week 6
-- [ ] Agnosticd workload role - Week 7
+- [x] Networking manifests (UDNs, NADs)
+- [x] VM templates (Module 1)
+- [x] Showroom content (Lab guides in Antora format)
+- [x] Full ArgoCD integration
+- [ ] Agnosticd workload role
 - [ ] Testing & validation (5, 25, 50 students) - Week 8

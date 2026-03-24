@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
-      - 'bookbag/workshop/**'
+      - 'content/**'
       - 'README.md'
       - 'DEPLOYMENT.md'
       - '.github/workflows/pages.yml'
@@ -217,9 +217,9 @@ jobs:
                   </div>
 
                   <div class="doc-card">
-                      <h3>📚 Bookbag Content</h3>
+                      <h3>📚 Showroom Content</h3>
                       <p>Workshop lab guide delivery system</p>
-                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/bookbag/README.md" target="_blank">View on GitHub →</a>
+                      <a href="https://github.com/tosin2013/retail-edge-ha-workshop/blob/main/content/README.md" target="_blank">View on GitHub →</a>
                   </div>
 
                   <div class="doc-card">

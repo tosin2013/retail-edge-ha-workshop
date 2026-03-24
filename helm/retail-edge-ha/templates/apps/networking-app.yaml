@@ -24,8 +24,8 @@ spec:
   project: {{ .Values.argocd.project }}
 
   source:
-    repoURL: {{ .Values.bookbag.git.repository }}
-    targetRevision: {{ .Values.bookbag.git.branch }}
+    repoURL: {{ .Values.showroom.git.repository }}
+    targetRevision: {{ .Values.showroom.git.branch }}
     path: manifests/networking
 
   destination:

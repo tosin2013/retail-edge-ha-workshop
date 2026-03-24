@@ -1,4 +1,0 @@
-WORKSHOP_NAME=retail-edge-ha
-WORKSHOP_TITLE="Retail Edge High-Availability Workshop"
-CONSOLE_URL=https://console-openshift-console.apps.cluster-ntq88.dynamic.redhatworkshops.io
-OPENSHIFT_URL=https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443

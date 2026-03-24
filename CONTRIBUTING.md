@@ -4,7 +4,7 @@
 
 - **`/helm`** - Helm charts for workshop infrastructure
 - **`/manifests`** - Kubernetes manifests (VMs, networking, UDNs)
-- **`/bookbag`** - Workshop content and delivery (Bookbag/Homeroom)
+- **`/content`** - Workshop content (Antora/AsciiDoc format for Showroom)
 - **`/scripts`** - Automation and generation scripts
 - **`/docs`** - Architecture Decision Records (ADRs) and guides
 
@@ -17,22 +17,22 @@
 4. Update related documentation
 
 ### Content Changes
-1. Edit AsciiDoc files in `/bookbag/workshop/content/`
-2. Preview locally (see bookbag/README.md)
-3. Update `/bookbag/workshop/workshop.yaml` if variables change
-4. Rebuild Bookbag image: `oc start-build retail-edge-ha-bookbag`
+1. Edit AsciiDoc files in `/content/modules/ROOT/pages/`
+2. Update navigation in `/content/modules/ROOT/nav.adoc` if adding modules
+3. Commit and push changes - Showroom auto-deploys via GitOps
+4. Verify content renders at Showroom route
 
-### Variable Sync
-**CRITICAL**: Keep these in sync:
-- `/bookbag/workshop/workshop.yaml` (content variables)
-- `/helm/retail-edge-ha/values.yaml` (infrastructure config)
-- `/bookbag/deploy/deployment.yaml` (runtime environment)
+### Configuration Sync
+**CRITICAL**: Keep workshop configuration in sync:
+- `/helm/retail-edge-ha/values.yaml` (primary configuration source)
+- `/content/antora.yml` (Antora component configuration)
+- `/content/site.yml` (Antora site configuration)
 
 ## Testing
 
 1. **Helm validation**: `helm template ./helm/retail-edge-ha | oc apply --dry-run=client -f -`
-2. **Content preview**: Deploy Bookbag locally and review all modules
-3. **End-to-end**: Deploy for 1 student and walk through all labs
+2. **Content preview**: Access Showroom route and navigate through all modules
+3. **End-to-end**: Deploy for 2-3 students and walk through all labs
 
 ## Commit Messages
 

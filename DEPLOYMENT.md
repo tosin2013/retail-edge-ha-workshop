@@ -63,7 +63,7 @@ This single command deploys the entire workshop infrastructure for 5 students!
 
 ### Infrastructure (Sync Wave 0)
 - **10 Namespaces**: 5 workload + 5 UDN namespaces per student
-- **1 Build Namespace**: For Bookbag image builds
+- **1 Build Namespace**: For Showroom image builds
 - **ResourceQuotas**: 16 CPU, 32Gi RAM per student
 - **RBAC**: ServiceAccounts and RoleBindings
 
@@ -80,8 +80,8 @@ This single command deploys the entire workshop infrastructure for 5 students!
   - **Module 3**: 3 OpenShift nodes (2 control-plane + 1 arbiter)
 
 ### Workshop Content (Sync Wave 3)
-- **BuildConfig**: Builds Bookbag image from GitHub
-- **5 Bookbag Deployments**: One per student with personalized lab guide
+- **BuildConfig**: Builds Showroom image from GitHub
+- **5 Showroom Deployments**: One per student with personalized lab guide
 - **5 Routes**: HTTPS access to workshop dashboards
 
 ---
@@ -134,15 +134,15 @@ This single command deploys the entire workshop infrastructure for 5 students!
    - Wave 0: Infrastructure
    - Wave 1: Networking
    - Wave 2: VMs (DataVolume downloads take time)
-   - Wave 3: Bookbag
+   - Wave 3: Showroom
 
 6. **Access workshop:**
    ```bash
    # Get student URLs
-   oc get routes -A | grep bookbag
+   oc get routes -A | grep showroom
 
    # Example output:
-   # retail-edge-student-01  bookbag  bookbag-retail-edge-student-01.apps...
+   # retail-edge-student-01  showroom  showroom-retail-edge-student-01.apps...
    ```
 
 ### Option 2: Helm Direct Install
@@ -192,8 +192,8 @@ This single command deploys the entire workshop infrastructure for 5 students!
    # Generate VMs
    ./scripts/generate-vm-manifests.sh 5
 
-   # Generate Bookbag
-   ./scripts/generate-bookbag-deployments.sh 5
+   # Generate Showroom
+   ./scripts/generate-showroom-deployments.sh 5
    ```
 
 2. **Apply in order:**
@@ -212,10 +212,10 @@ This single command deploys the entire workshop infrastructure for 5 students!
    oc apply -k manifests/vms/module2-microshift/
    oc apply -k manifests/vms/module3-twonode/
 
-   # Bookbag
-   oc apply -f bookbag/deploy/build.yaml
+   # Showroom
+   oc apply -f showroom/deploy/build.yaml
    for i in {01..05}; do
-     oc apply -f manifests/bookbag/bookbag-student-${i}.yaml
+     oc apply -f manifests/showroom/showroom-student-${i}.yaml
    done
    ```
 
@@ -275,13 +275,13 @@ virtualMachines:
 
 ## Post-Deployment
 
-### Build Bookbag Image
+### Build Showroom Image
 
 Trigger the initial build:
 
 ```bash
-oc start-build retail-edge-ha-bookbag -n retail-edge-workshop
-oc logs -f bc/retail-edge-ha-bookbag -n retail-edge-workshop
+oc start-build retail-edge-ha-showroom -n retail-edge-workshop
+oc logs -f bc/retail-edge-ha-showroom -n retail-edge-workshop
 ```
 
 Wait 3-5 minutes for build to complete.
@@ -289,8 +289,8 @@ Wait 3-5 minutes for build to complete.
 ### Verify Deployments
 
 ```bash
-# Check all Bookbag pods
-oc get pods -A | grep bookbag
+# Check all Showroom pods
+oc get pods -A | grep showroom
 
 # Check student namespaces
 oc get namespaces | grep retail-edge-student
@@ -304,7 +304,7 @@ oc get vm -n retail-edge-student-01
 Students navigate to:
 
 ```
-https://bookbag-retail-edge-student-01.<cluster-domain>/workshop/
+https://showroom-retail-edge-student-01.<cluster-domain>/workshop/
 ```
 
 **Login:**
@@ -360,18 +360,18 @@ oc get events -n retail-edge-student-01 --sort-by='.lastTimestamp'
 oc get sc
 ```
 
-### Bookbag Build Failing
+### Showroom Build Failing
 
 **Symptom:** BuildConfig errors
 
 **Solution:**
 ```bash
 # Check build logs
-oc logs -f bc/retail-edge-ha-bookbag -n retail-edge-workshop
+oc logs -f bc/retail-edge-ha-showroom -n retail-edge-workshop
 
 # Common issue: GitHub rate limit
 # Wait 5 minutes and retry:
-oc start-build retail-edge-ha-bookbag -n retail-edge-workshop
+oc start-build retail-edge-ha-showroom -n retail-edge-workshop
 ```
 
 ### Students Can't Access Workshop
@@ -381,13 +381,13 @@ oc start-build retail-edge-ha-bookbag -n retail-edge-workshop
 **Solution:**
 ```bash
 # Check Route exists
-oc get route bookbag -n retail-edge-student-01
+oc get route showroom -n retail-edge-student-01
 
-# Check Bookbag pod running
+# Check Showroom pod running
 oc get pods -n retail-edge-student-01
 
 # Check image pulled successfully
-oc describe pod -n retail-edge-student-01 -l app=bookbag
+oc describe pod -n retail-edge-student-01 -l app=showroom
 ```
 
 ### ArgoCD Out of Sync
@@ -414,26 +414,26 @@ argocd app sync retail-edge-ha --force
 
 1. **Edit AsciiDoc files:**
    ```bash
-   vim bookbag/workshop/content/module1-pacemaker.adoc
+   vim showroom/workshop/content/module1-pacemaker.adoc
    ```
 
 2. **Commit changes:**
    ```bash
-   git add bookbag/
+   git add showroom/
    git commit -m "Update Module 1 lab guide"
    git push origin main
    ```
 
-3. **Rebuild Bookbag:**
+3. **Rebuild Showroom:**
    ```bash
    # ArgoCD auto-triggers build on ConfigChange
    # Or manually:
-   oc start-build retail-edge-ha-bookbag -n retail-edge-workshop
+   oc start-build retail-edge-ha-showroom -n retail-edge-workshop
    ```
 
-4. **Restart Bookbag pods:**
+4. **Restart Showroom pods:**
    ```bash
-   oc rollout restart deployment/bookbag -n retail-edge-student-01
+   oc rollout restart deployment/showroom -n retail-edge-student-01
    # Repeat for all student namespaces
    ```
 
@@ -491,9 +491,9 @@ oc delete namespace retail-edge-workshop
 ### High Availability
 
 - Deploy on multiple worker nodes (anti-affinity)
-- Use persistent storage for Bookbag (PVCs)
+- Use persistent storage for Showroom (PVCs)
 - Enable pod disruption budgets
-- Configure horizontal pod autoscaling for Bookbag
+- Configure horizontal pod autoscaling for Showroom
 
 ### Security
 

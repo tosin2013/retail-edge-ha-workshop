@@ -69,7 +69,7 @@ jobs:
           yamllint -c .yamllint.yml \
             helm/retail-edge-ha/values.yaml \
             manifests/ \
-            bookbag/deploy/ \
+            manifests/ \
             || true
 
   validate-scripts:

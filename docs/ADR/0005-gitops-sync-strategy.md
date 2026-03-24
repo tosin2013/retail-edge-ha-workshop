@@ -10,12 +10,12 @@ The Retail Edge HA Workshop deploys complex, interdependent infrastructure with 
 - VirtualMachines require namespaces to exist first
 - VMs require User Defined Networks (UDNs) before network attachment
 - RBAC must be configured before students access resources
-- Bookbag should deploy last (students shouldn't see guide before infrastructure is ready)
+- Showroom should deploy last (students shouldn't see guide before infrastructure is ready)
 
 **Without ordering**, ArgoCD would sync all resources in parallel, causing failures:
 - VM creation fails: "namespace retail-edge-student-01 not found"
 - Network attachment fails: "UDN pacemaker-net does not exist"
-- Bookbag shows instructions, but VMs aren't provisioned yet
+- Showroom shows instructions, but VMs aren't provisioned yet
 
 **Question**: How should we order resource creation to ensure dependencies are satisfied?
 
@@ -52,7 +52,7 @@ The Retail Edge HA Workshop deploys complex, interdependent infrastructure with 
 argocd app sync retail-edge-ha-infrastructure  # Wait
 argocd app sync retail-edge-ha-networking      # Wait
 argocd app sync retail-edge-ha-vms             # Wait
-argocd app sync retail-edge-ha-bookbag         # Wait
+argocd app sync retail-edge-ha-showroom         # Wait
 ```
 
 **Pros**:
@@ -96,7 +96,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 
-# Bookbag (Wave 3)
+# Showroom (Wave 3)
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
@@ -124,7 +124,7 @@ Wave -1: Parent ArgoCD Application (bootstraps everything)
 Wave 0:  Infrastructure (Namespaces, ResourceQuotas, Operators)
 Wave 1:  Networking (UDNs, NADs) & RBAC (Roles, Bindings)
 Wave 2:  VirtualMachines (All modules)
-Wave 3:  Bookbag (Workshop content delivery)
+Wave 3:  Showroom (Workshop content delivery)
 ```
 
 ### Implementation
@@ -145,8 +145,8 @@ Wave 3:  Bookbag (Workshop content delivery)
 | **VirtualMachines Module 1** | 2 | RHEL HA VMs |
 | **VirtualMachines Module 2** | 2 | MicroShift VMs |
 | **VirtualMachines Module 3** | 2 | Two-Node OpenShift VMs |
-| **Bookbag Deployment** | 3 | Workshop guide (last) |
-| **Bookbag Service/Route** | 3 | Expose workshop guide |
+| **Showroom Deployment** | 3 | Workshop guide (last) |
+| **Showroom Service/Route** | 3 | Expose workshop guide |
 
 **Template Example** (Infrastructure):
 ```yaml
@@ -174,12 +174,12 @@ spec:
   # ...
 ```
 
-**Template Example** (Bookbag):
+**Template Example** (Showroom):
 ```yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: retail-edge-ha-bookbag
+  name: retail-edge-ha-showroom
   namespace: openshift-gitops
   annotations:
     argocd.argoproj.io/sync-wave: "3"  # Deploy last
@@ -204,7 +204,7 @@ spec:
    - Wave 0: ~30 seconds (namespaces/quotas)
    - Wave 1: ~60 seconds (UDNs/RBAC)
    - Wave 2: ~5 minutes (VMs provision, DataVolume import)
-   - Wave 3: ~30 seconds (Bookbag)
+   - Wave 3: ~30 seconds (Showroom)
    - **Total**: ~6.5 minutes (vs. ~5 minutes if fully parallel)
    - *Mitigation*: 1.5-minute overhead acceptable for reliability
 
@@ -241,7 +241,7 @@ spec:
    # 2. retail-edge-ha-infrastructure appears, syncs
    # 3. retail-edge-ha-networking appears, syncs
    # 4. retail-edge-ha-vms-* appears, syncs
-   # 5. retail-edge-ha-bookbag appears, syncs
+   # 5. retail-edge-ha-showroom appears, syncs
    ```
 
 2. **Dependency Failure Test**:
@@ -316,7 +316,7 @@ retail-edge-ha (Parent)
 │   ├── ✓ Module 1 VMs (100)
 │   ├── ⟳ Module 2 VMs (60/100 ready)
 │   └── ⏸ Module 3 VMs (waiting)
-└── ⏸ Wave 3: Waiting - Bookbag
+└── ⏸ Wave 3: Waiting - Showroom
 ```
 
 ## Alternative Ordering Strategies Rejected
