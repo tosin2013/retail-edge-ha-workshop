@@ -50,76 +50,7 @@ graph TB
 
 === Real-World Deployment (Retail Store Edge Gateway)
 
-[mermaid]
-....
-graph TB
-    subgraph "Retail Store - Network Edge"
-        subgraph "Edge Gateway Cluster"
-            EDGE1["Intel NUC 11<br/>microshift-gw-a<br/>192.168.1.10<br/>Priority: 100<br/>(MASTER)"]
-            EDGE2["Intel NUC 11<br/>microshift-gw-b<br/>192.168.1.11<br/>Priority: 90<br/>(BACKUP)"]
-            EDGEVIP["Gateway VIP<br/>192.168.1.100"]
-
-            EDGE1 -.->|"VRRP Heartbeat<br/>(Dedicated VLAN)"| EDGE2
-
-            EDGE1 -->|"Owns VIP"| EDGEVIP
-            EDGE2 -.->|"Standby"| EDGEVIP
-
-            subgraph "MicroShift Gateway A"
-                K8S1["Kubernetes<br/>Edge Workloads"]
-                ING1["HAProxy Ingress<br/>Traffic Management"]
-                FW1["Firewall/NAT<br/>Rules"]
-            end
-
-            subgraph "MicroShift Gateway B"
-                K8S2["Kubernetes<br/>Edge Workloads"]
-                ING2["HAProxy Ingress<br/>Traffic Management"]
-                FW2["Firewall/NAT<br/>Rules"]
-            end
-
-            EDGE1 --> K8S1
-            EDGE1 --> ING1
-            EDGE1 --> FW1
-            EDGE2 --> K8S2
-            EDGE2 --> ING2
-            EDGE2 --> FW2
-        end
-
-        subgraph "Store Network Devices"
-            POS2["POS Terminals"]
-            IOT["IoT Devices<br/>(Cameras, Sensors)"]
-            WIFI["WiFi APs"]
-            PRINT["Receipt Printers"]
-        end
-
-        subgraph "Edge Applications"
-            VIDEO["Video Analytics<br/>(Customer tracking)"]
-            INV["Inventory Sync<br/>(Local cache)"]
-            AUTH["Authentication<br/>(Store WiFi)"]
-        end
-
-        EDGEVIP -->|"Default Gateway"| POS2
-        EDGEVIP --> IOT
-        EDGEVIP --> WIFI
-        EDGEVIP --> PRINT
-
-        K8S1 --> VIDEO
-        K8S1 --> INV
-        K8S1 --> AUTH
-    end
-
-    subgraph "Corporate WAN"
-        HQ["Data Center<br/>Central Systems"]
-    end
-
-    FW1 -.->|"Secure Tunnel<br/>(WireGuard/IPsec)"| HQ
-
-    style EDGE1 fill:#90EE90
-    style EDGE2 fill:#FFD700
-    style EDGEVIP fill:#87CEEB
-    style VIDEO fill:#FFA500
-    style INV fill:#FFA500
-    style AUTH fill:#FFA500
-....
+image::module2-real-architecture.png[Real-World Edge Gateway Deployment, align=center]
 
 === Key Differences
 

@@ -8,74 +8,11 @@ In this module, you'll deploy a two-node Pacemaker/Corosync cluster with STONITH
 
 === Lab Environment (What You'll Build)
 
-[mermaid]
-....
-graph TB
-    subgraph "OpenShift Cluster"
-        subgraph "Student Namespace: retail-edge-student-01"
-            VM1["VirtualMachine<br/>rhel-ha-node1<br/>10.101.0.20<br/>(Active)"]
-            VM2["VirtualMachine<br/>rhel-ha-node2<br/>10.101.0.21<br/>(Standby)"]
-            VIP["Virtual IP<br/>10.101.0.100"]
-
-            VM1 -.->|"Corosync Heartbeat<br/>(UDN pacemaker-net)"| VM2
-            VM1 -->|"Manages"| VIP
-            VM2 -->|"Takes over on failure"| VIP
-        end
-
-        subgraph "KubeVirt API"
-            API["fence_kubevirt<br/>STONITH Agent"]
-        end
-
-        VM1 -->|"Fences via API"| API
-        VM2 -->|"Fences via API"| API
-        API -.->|"Reboot/Stop VM"| VM1
-        API -.->|"Reboot/Stop VM"| VM2
-    end
-
-    style VM1 fill:#90EE90
-    style VM2 fill:#FFD700
-    style VIP fill:#87CEEB
-....
+image::module1-lab-architecture.png[Lab Architecture - VMs with Pacemaker, align=center]
 
 === Real-World Deployment (Retail Store)
 
-[mermaid]
-....
-graph TB
-    subgraph "Retail Store Location"
-        subgraph "Physical Hardware Rack"
-            SERVER1["Dell PowerEdge R660<br/>rhel-ha-node1<br/>192.168.100.10<br/>(Active)"]
-            SERVER2["Dell PowerEdge R660<br/>rhel-ha-node2<br/>192.168.100.11<br/>(Standby)"]
-            PDU["Intelligent PDU<br/>(Power Fencing)"]
-            SWITCH["Network Switch<br/>Heartbeat VLAN"]
-            VIP2["Virtual IP<br/>192.168.100.100"]
-
-            SERVER1 -.->|"Corosync Heartbeat<br/>(Dedicated NIC)"| SWITCH
-            SERVER2 -.->|"Corosync Heartbeat"| SWITCH
-            SWITCH -.-> SERVER1
-            SWITCH -.-> SERVER2
-
-            SERVER1 -->|"Manages"| VIP2
-            SERVER2 -->|"Takes over"| VIP2
-
-            SERVER1 -->|"fence_ipmilan"| PDU
-            SERVER2 -->|"fence_ipmilan"| PDU
-            PDU -.->|"Power Off/On"| SERVER1
-            PDU -.->|"Power Off/On"| SERVER2
-        end
-
-        subgraph "POS Application Layer"
-            POS["POS Terminals<br/>Inventory System<br/>Store Database"]
-        end
-
-        VIP2 -->|"Connects to"| POS
-    end
-
-    style SERVER1 fill:#90EE90
-    style SERVER2 fill:#FFD700
-    style VIP2 fill:#87CEEB
-    style POS fill:#FFA500
-....
+image::module1-real-architecture.png[Real-World Architecture - Physical Servers, align=center]
 
 === Key Differences
 
@@ -590,75 +527,7 @@ This optional exercise demonstrates a real-world scenario: deploying highly-avai
 
 === Scenario: Multi-Store POS Database Deployment
 
-[mermaid]
-....
-graph TB
-    subgraph "Corporate HQ - ACM Hub Cluster"
-        ACM["ACM Fleet Manager<br/>GitOps Controller"]
-        GITOPS["Git Repository<br/>database-ha manifests"]
-
-        ACM -->|"Pulls config"| GITOPS
-    end
-
-    subgraph "Store Chicago (store-chi-001)"
-        subgraph "Pacemaker Cluster CHI"
-            CHI1["PostgreSQL Node 1<br/>Active<br/>10.101.0.20"]
-            CHI2["PostgreSQL Node 2<br/>Standby<br/>10.101.0.21"]
-            CHIVIP["VIP: 10.101.0.100"]
-
-            CHI1 -.->|"Streaming Replication"| CHI2
-            CHI1 --> CHIVIP
-            CHI2 -.-> CHIVIP
-        end
-
-        CHIPOS["POS Terminals<br/>Inventory System"]
-        CHIVIP -->|"psql connection"| CHIPOS
-    end
-
-    subgraph "Store Atlanta (store-atl-002)"
-        subgraph "Pacemaker Cluster ATL"
-            ATL1["PostgreSQL Node 1<br/>Active<br/>10.101.0.20"]
-            ATL2["PostgreSQL Node 2<br/>Standby<br/>10.101.0.21"]
-            ATLVIP["VIP: 10.101.0.100"]
-
-            ATL1 -.->|"Streaming Replication"| ATL2
-            ATL1 --> ATLVIP
-            ATL2 -.-> ATLVIP
-        end
-
-        ATLPOS["POS Terminals<br/>Inventory System"]
-        ATLVIP -->|"psql connection"| ATLPOS
-    end
-
-    subgraph "Store Seattle (store-sea-003)"
-        subgraph "Pacemaker Cluster SEA"
-            SEA1["PostgreSQL Node 1<br/>Active<br/>10.101.0.20"]
-            SEA2["PostgreSQL Node 2<br/>Standby<br/>10.101.0.21"]
-            SEAVIP["VIP: 10.101.0.100"]
-
-            SEA1 -.->|"Streaming Replication"| SEA2
-            SEA1 --> SEAVIP
-            SEA2 -.-> SEAVIP
-        end
-
-        SEAPOS["POS Terminals<br/>Inventory System"]
-        SEAVIP -->|"psql connection"| SEAPOS
-    end
-
-    ACM ==>|"Deploys & Manages"| CHI1
-    ACM ==>|"Deploys & Manages"| CHI2
-    ACM ==>|"Deploys & Manages"| ATL1
-    ACM ==>|"Deploys & Manages"| ATL2
-    ACM ==>|"Deploys & Manages"| SEA1
-    ACM ==>|"Deploys & Manages"| SEA2
-
-    style CHI1 fill:#90EE90
-    style ATL1 fill:#90EE90
-    style SEA1 fill:#90EE90
-    style CHI2 fill:#FFD700
-    style ATL2 fill:#FFD700
-    style SEA2 fill:#FFD700
-....
+image::module1-fleet-manager.png[Fleet Manager Multi-Store Deployment, align=center]
 
 === Business Value
 
@@ -994,25 +863,7 @@ Some transactions may have been lost during the 10-30 second outage, but the sto
 
 === Real-World Considerations
 
-[mermaid]
-....
-graph LR
-    A[Primary Node Fails] --> B{STONITH Successful?}
-    B -->|Yes| C[Promote Standby to Primary]
-    B -->|No| D[Wait for Timeout/Manual Intervention]
-    C --> E[Move VIP to New Primary]
-    E --> F[Applications Reconnect]
-    F --> G[Normal Operations Resume]
-
-    D --> H[Risk: Split-Brain]
-    H --> I[Both nodes think they're primary]
-    I --> J[Data Corruption Possible]
-
-    style B fill:#FFD700
-    style H fill:#FF6B6B
-    style J fill:#FF6B6B
-    style G fill:#90EE90
-....
+image::module1-failover-flow.png[Database Failover Flow with STONITH, align=center]
 
 **Why STONITH is critical for databases:**
 
