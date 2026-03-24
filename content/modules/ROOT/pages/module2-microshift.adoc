@@ -8,45 +8,7 @@ In this module, you'll deploy two MicroShift instances with Keepalived managing 
 
 === Lab Environment (What You'll Build)
 
-[mermaid]
-....
-graph TB
-    subgraph "OpenShift Cluster"
-        subgraph "Student Namespace: retail-edge-student-01"
-            GWA["VirtualMachine<br/>microshift-gw-a<br/>10.102.0.20<br/>Priority: 100<br/>(MASTER)"]
-            GWB["VirtualMachine<br/>microshift-gw-b<br/>10.102.0.21<br/>Priority: 90<br/>(BACKUP)"]
-            VIP["Virtual IP<br/>10.102.0.100"]
-
-            GWA -.->|"VRRP Advertisements<br/>224.0.0.18 multicast"| GWB
-            GWB -.->|"VRRP Response"| GWA
-
-            GWA -->|"Owns VIP<br/>(MASTER)"| VIP
-            GWB -.->|"Standby<br/>(takes over on failure)"| VIP
-
-            subgraph "MicroShift A"
-                K8SA["Kubernetes API<br/>6443"]
-                INGA["HAProxy Ingress"]
-            end
-
-            subgraph "MicroShift B"
-                K8SB["Kubernetes API<br/>6443"]
-                INGB["HAProxy Ingress"]
-            end
-
-            GWA --> K8SA
-            GWA --> INGA
-            GWB --> K8SB
-            GWB --> INGB
-        end
-    end
-
-    APPS["Edge Applications<br/>(Containers)"]
-    VIP -->|"Routes traffic"| APPS
-
-    style GWA fill:#90EE90
-    style GWB fill:#FFD700
-    style VIP fill:#87CEEB
-....
+image::module2-lab-architecture.png[Lab Architecture - MicroShift with VRRP, align=center]
 
 === Real-World Deployment (Retail Store Edge Gateway)
 
