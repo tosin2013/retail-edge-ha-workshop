@@ -71,46 +71,7 @@ image::module3-real-architecture.png[Real-World Multi-Store Regional Deployment,
 
 == Two-Node vs Standard OpenShift Comparison
 
-[mermaid]
-....
-graph LR
-    subgraph "Standard 3-Node Cluster"
-        S1["Master 1<br/>etcd + API"]
-        S2["Master 2<br/>etcd + API"]
-        S3["Master 3<br/>etcd + API"]
-
-        S1 -.-> S2
-        S2 -.-> S3
-        S3 -.-> S1
-
-        SCOST["Cost: 3 Servers<br/>No workloads on masters"]
-    end
-
-    subgraph "Two-Node Cluster"
-        T1["Master 1<br/>etcd + API<br/>+ Workloads"]
-        T2["Master 2<br/>etcd + API<br/>+ Workloads"]
-        TA["Arbiter<br/>etcd Only<br/>(Shared by 10-50 stores)"]
-
-        T1 -.-> T2
-        T1 -.-> TA
-        T2 -.-> TA
-
-        TCOST["Cost: 2 Servers<br/>+ Shared arbiter<br/>50% cost reduction"]
-    end
-
-    SCOST -.->|"$60K per location"| COMPARISON
-    TCOST -.->|"$30K per location"| COMPARISON
-
-    COMPARISON["Same Kubernetes,<br/>Same workload capacity,<br/>Half the cost"]
-
-    style S1 fill:#90EE90
-    style S2 fill:#90EE90
-    style S3 fill:#90EE90
-    style T1 fill:#90EE90
-    style T2 fill:#90EE90
-    style TA fill:#FFD700
-    style COMPARISON fill:#87CEEB
-....
+image::module3-cost-comparison.png[Cost Comparison - Two-Node vs Standard OpenShift, align=center]
 
 == Lab Architecture Details
 
