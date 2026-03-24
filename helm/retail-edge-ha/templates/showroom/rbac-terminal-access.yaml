@@ -5,18 +5,8 @@
 {{- $studentNamespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
 {{- $udnNamespace := printf "%s-udn" $studentNamespace }}
 ---
-# ServiceAccount in Showroom namespace for terminal pod
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: showroom-terminal
-  namespace: {{ $showroomNamespace }}
-  labels:
-    app.kubernetes.io/part-of: retail-edge-ha-workshop
-    app.kubernetes.io/component: showroom-terminal
-    student-id: "{{ $studentId }}"
----
 # RoleBinding to give Showroom terminal access to student namespace
+# Note: ServiceAccount is created by Showroom chart, we just grant it permissions here
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
