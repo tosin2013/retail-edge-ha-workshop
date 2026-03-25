@@ -1,0 +1,17 @@
+---
+# Role-specific variables for ocp4_workload_retail_edge_ha
+# These are constants and should not be overridden
+
+# Workload metadata
+workload_name: "Retail Edge HA Workshop"
+workload_version: "1.0.0"
+workload_description: "Multi-user workshop teaching high availability architectures for retail edge environments"
+
+# Required OpenShift version
+min_openshift_version: "4.21.0"
+
+# Required operators
+required_operators:
+  - name: "OpenShift Virtualization"
+    namespace: "openshift-cnv"
+    csv_prefix: "kubevirt-hyperconverged-operator"

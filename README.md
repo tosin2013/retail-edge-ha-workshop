@@ -191,8 +191,9 @@ retail-edge-ha-workshop/
 ├── content/
 │   └── modules/ROOT/           # Showroom workshop content (Antora)
 │       └── content/                    # AsciiDoc modules
-├── agnosticd-integration/              # Agnosticd workload role
-│   └── ocp4_workload_retail_edge_ha/
+├── agnosticd-integration/              # AgnosticD v2 workload roles
+│   ├── README.md                       # Integration guide
+│   └── ocp4_workload_retail_edge_ha/  # Workshop workload role
 └── scripts/                            # Helper scripts
     ├── generate-student-manifests.sh
     └── validate-deployment.sh
@@ -411,5 +412,5 @@ For questions or issues:
 - [x] VM templates (Module 1)
 - [x] Showroom content (Lab guides in Antora format)
 - [x] Full ArgoCD integration
-- [ ] Agnosticd workload role
+- [x] AgnosticD v2 workload role (`agnosticd-integration/ocp4_workload_retail_edge_ha/`)
 - [ ] Testing & validation (5, 25, 50 students) - Week 8

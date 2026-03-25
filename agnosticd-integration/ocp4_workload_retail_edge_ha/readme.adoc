@@ -1,0 +1,335 @@
+= ocp4_workload_retail_edge_ha - Retail Edge HA Workshop
+
+== Role Overview
+
+This AgnosticD workload role deploys the *Retail Edge HA Workshop* to an existing OpenShift 4.21+ cluster with OpenShift Virtualization. The workshop teaches students three different high-availability architectures commonly used in retail edge computing environments:
+
+* *Module 1*: Two-node Pacemaker/Corosync cluster with STONITH fencing
+* *Module 2*: MicroShift with VRRP-based virtual IP failover
+* *Module 3*: Two-node OpenShift cluster with remote etcd arbiter
+
+The role uses a *wrapper pattern* that orchestrates the existing Helm chart deployment rather than reimplementing resources in Ansible. This approach preserves the proven GitOps architecture while integrating with AgnosticD's lifecycle management.
+
+== Architecture
+
+The workshop deploys using:
+
+* *GitOps*: ArgoCD App of Apps pattern (1 parent + 8 child applications)
+* *Multi-user Isolation*: Dual namespaces per student (workload + UDN)
+* *Networking*: User Defined Networks (UDNs) for Layer 2 connectivity
+* *VMs*: 3-9 VirtualMachines per student (depending on modules enabled)
+* *Lab Guide*: Showroom instances with embedded terminals
+
+=== Resource Requirements
+
+Per student (all modules enabled):
+
+* *CPU*: 18 cores (2+2+2 for Module 1-2, 4+4+1 for Module 3)
+* *Memory*: 36 GiB (4+4+4 for Module 1-2, 16+16+2 for Module 3)
+* *Storage*: 200 GiB
+* *Namespaces*: 2 (workload + UDN)
+
+For 50 students (max): ~900 CPU cores, 1.8 TiB RAM, 10 TiB storage
+
+== Prerequisites
+
+=== Required Cluster Configuration
+
+* OpenShift 4.21 or later
+* OpenShift Virtualization operator installed
+* Storage class with RBD support (or default storage class)
+* OVN-Kubernetes CNI (for User Defined Networks)
+* ArgoCD operator (installed by Helm chart if not present)
+
+=== Required Tools in Execution Environment
+
+* Helm 3.x (included in AgnosticD v2 EE)
+* Git (included in AgnosticD v2 EE)
+* kubernetes.core Ansible collection
+
+== Variables
+
+=== Required Variables
+
+[cols="1,2,1",options="header"]
+|===
+| Variable | Description | Example
+
+| `num_users`
+| Number of students (1-50)
+| `5`
+|===
+
+=== Optional Variables
+
+==== Repository Settings
+
+[cols="1,2,1",options="header"]
+|===
+| Variable | Description | Default
+
+| `ocp4_workload_retail_edge_ha_repo_url`
+| Workshop Git repository URL
+| `https://github.com/tosin2013/retail-edge-ha-workshop.git`
+
+| `ocp4_workload_retail_edge_ha_repo_version`
+| Git branch/tag to deploy
+| `main`
+|===
+
+==== Deployment Settings
+
+[cols="1,2,1",options="header"]
+|===
+| Variable | Description | Default
+
+| `ocp4_workload_retail_edge_ha_namespace`
+| Namespace for ArgoCD applications
+| `retail-edge-ha-gitops`
+
+| `ocp4_workload_retail_edge_ha_release_name`
+| Helm release name
+| `retail-edge-ha`
+
+| `ocp4_workload_retail_edge_ha_auto_start_vms`
+| Auto-start VMs after creation
+| `false`
+
+| `ocp4_workload_retail_edge_ha_enable_showroom`
+| Deploy Showroom lab guides
+| `true`
+|===
+
+==== Module Selection
+
+[cols="1,2,1",options="header"]
+|===
+| Variable | Description | Default
+
+| `ocp4_workload_retail_edge_ha_enable_module1`
+| Enable Module 1 (Pacemaker)
+| `true`
+
+| `ocp4_workload_retail_edge_ha_enable_module2`
+| Enable Module 2 (MicroShift)
+| `true`
+
+| `ocp4_workload_retail_edge_ha_enable_module3`
+| Enable Module 3 (Two-Node OpenShift)
+| `false`
+|===
+
+NOTE: Module 3 is disabled by default due to high resource consumption (9 CPU + 18 GiB RAM per student).
+
+==== Auto-Discovered Variables
+
+These variables are automatically discovered and should not be overridden:
+
+* `ocp4_workload_retail_edge_ha_cluster_domain` - Cluster ingress domain
+* `ocp4_workload_retail_edge_ha_cluster_api_url` - API server URL
+* `workshop_storage_class` - Auto-selected storage class
+
+== Deployment Examples
+
+=== Example 1: Basic Deployment (5 Students, Modules 1-2)
+
+[source,bash]
+----
+./bin/agd provision \
+  --guid workshop-test \
+  --config openshift-workloads \
+  --account sandbox1234 \
+  -e ocp4_workload=ocp4_workload_retail_edge_ha \
+  -e num_users=5
+----
+
+=== Example 2: Production Deployment (20 Students, All Modules)
+
+[source,bash]
+----
+./bin/agd provision \
+  --guid workshop-prod \
+  --config openshift-workloads \
+  --account sandbox1234 \
+  -e ocp4_workload=ocp4_workload_retail_edge_ha \
+  -e num_users=20 \
+  -e ocp4_workload_retail_edge_ha_enable_module3=true
+----
+
+=== Example 3: Custom Repository and Branch
+
+[source,bash]
+----
+./bin/agd provision \
+  --guid workshop-dev \
+  --config openshift-workloads \
+  --account sandbox1234 \
+  -e ocp4_workload=ocp4_workload_retail_edge_ha \
+  -e num_users=2 \
+  -e ocp4_workload_retail_edge_ha_repo_url=https://github.com/myorg/retail-edge-ha-fork.git \
+  -e ocp4_workload_retail_edge_ha_repo_version=develop
+----
+
+=== Example 4: Module 1 Only (Resource-Constrained Cluster)
+
+[source,bash]
+----
+./bin/agd provision \
+  --guid workshop-demo \
+  --config openshift-workloads \
+  --account sandbox1234 \
+  -e ocp4_workload=ocp4_workload_retail_edge_ha \
+  -e num_users=10 \
+  -e ocp4_workload_retail_edge_ha_enable_module2=false \
+  -e ocp4_workload_retail_edge_ha_enable_module3=false
+----
+
+== Cleanup
+
+=== Remove Workshop
+
+[source,bash]
+----
+./bin/agd destroy \
+  --guid workshop-test \
+  --config openshift-workloads \
+  --account sandbox1234
+----
+
+This will:
+
+1. Uninstall the Helm release
+2. Delete ArgoCD applications (cascades to all child resources)
+3. Remove student namespaces (VMs, UDNs, quotas)
+4. Clean up GitOps namespace
+
+== Verification
+
+=== Check Deployment Status
+
+[source,bash]
+----
+# Check ArgoCD applications
+oc get applications -n retail-edge-ha-gitops
+
+# Check student namespaces
+oc get namespaces | grep retail-edge-student
+
+# Check VirtualMachines
+oc get vm -n retail-edge-student-01
+
+# Check Showroom routes
+oc get routes -n showroom-student-01
+----
+
+=== Access Workshop URLs
+
+Workshop URLs are automatically provided via AgnosticD user_info and displayed in the deployment output:
+
+[source]
+----
+Workshop URL for student 01: https://showroom-student-01.apps.cluster.example.com
+Workshop URL for student 02: https://showroom-student-02.apps.cluster.example.com
+...
+----
+
+== Troubleshooting
+
+=== Common Issues
+
+==== Issue: Virtualization Operator Not Found
+
+*Error*: `OpenShift Virtualization operator must be installed and ready`
+
+*Solution*:
+[source,bash]
+----
+# Install OpenShift Virtualization operator
+oc create -f https://raw.githubusercontent.com/kubevirt/hyperconverged-cluster-operator/main/deploy/deploy.sh
+----
+
+==== Issue: Storage Class Not Available
+
+*Error*: `No storage classes found on cluster`
+
+*Solution*: Ensure at least one storage class exists. The role auto-selects RBD storage if available, otherwise uses the default storage class.
+
+==== Issue: ArgoCD Application Not Syncing
+
+*Symptom*: ArgoCD application stuck in "OutOfSync" state
+
+*Solution*:
+[source,bash]
+----
+# Force sync the parent application
+oc patch application retail-edge-ha-parent \
+  -n retail-edge-ha-gitops \
+  --type merge \
+  -p '{"operation":{"initiatedBy":{"automated":true}}}'
+----
+
+==== Issue: VirtualMachines Not Starting
+
+*Symptom*: VMs created but not running
+
+*Solution*: Check if `autoStart` is enabled in values or manually start VMs:
+[source,bash]
+----
+virtctl start rhel-ha-node1 -n retail-edge-student-01
+----
+
+== Integration with RHPDS
+
+This role is designed for integration with Red Hat Product Demo System (RHPDS). Once tested, it can be:
+
+1. Added to AgnosticD v2 core workloads collection
+2. Listed in RHPDS catalog as `ocp4_workload_retail_edge_ha`
+3. Auto-provisioned for workshops with OpenShift Virtualization clusters
+
+== Development and Testing
+
+=== Local Testing
+
+[source,bash]
+----
+# Clone workshop repository
+git clone https://github.com/tosin2013/retail-edge-ha-workshop.git
+cd retail-edge-ha-workshop
+
+# Copy role to AgnosticD
+cp -r agnosticd-integration/ocp4_workload_retail_edge_ha \
+  ~/Development/agnosticd-v2/roles/
+
+# Test deployment
+cd ~/Development/agnosticd-v2
+./bin/agd provision --guid test --config openshift-workloads \
+  --account sandbox1234 \
+  -e ocp4_workload=ocp4_workload_retail_edge_ha \
+  -e num_users=2
+----
+
+=== Running Pre-Checks Only
+
+[source,bash]
+----
+# Run only pre_workload.yml to validate cluster
+ansible-playbook \
+  -e ACTION=create \
+  -e num_users=5 \
+  ocp4_workload_retail_edge_ha/tasks/pre_workload.yml
+----
+
+== Links
+
+* Workshop Repository: https://github.com/tosin2013/retail-edge-ha-workshop
+* Workshop Documentation: https://tosin2013.github.io/retail-edge-ha-workshop/
+* AgnosticD v2: https://github.com/agnosticd/agnosticd-v2
+* OpenShift Virtualization: https://docs.openshift.com/container-platform/latest/virt/about_virt/about-virt.html
+
+== Author
+
+Tosin Akinosho <takinosh@redhat.com>
+
+== License
+
+Apache License 2.0

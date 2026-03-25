@@ -1,0 +1,33 @@
+---
+# Role metadata for ocp4_workload_retail_edge_ha
+
+galaxy_info:
+  role_name: ocp4_workload_retail_edge_ha
+  author: Tosin Akinosho
+  description: AgnosticD workload role for deploying the Retail Edge HA Workshop
+  company: Red Hat
+  license: Apache-2.0
+
+  min_ansible_version: "2.15"
+
+  platforms:
+    - name: Fedora
+      versions:
+        - 41
+    - name: EL
+      versions:
+        - 9
+
+  galaxy_tags:
+    - agnosticd
+    - openshift
+    - workshop
+    - edge
+    - virtualization
+    - high-availability
+
+dependencies: []
+
+collections:
+  - kubernetes.core
+  - agnosticd.core

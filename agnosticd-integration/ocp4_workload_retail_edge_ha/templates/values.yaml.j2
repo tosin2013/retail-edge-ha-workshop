@@ -1,0 +1,27 @@
+# AgnosticD-generated Helm values for Retail Edge HA Workshop
+# This file maps AgnosticD workload variables to Helm chart values
+
+# Student configuration
+students:
+  count: {{ num_users | default(5) }}
+
+# Cluster configuration (auto-discovered)
+globalClusterDomain: {{ ocp4_workload_retail_edge_ha_cluster_domain }}
+globalClusterApiUrl: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
+
+# VirtualMachine configuration
+virtualMachines:
+  storageClass: {{ workshop_storage_class.metadata.name }}
+  autoStart: {{ ocp4_workload_retail_edge_ha_auto_start_vms | default(false) | lower }}
+
+# Showroom configuration
+showroom:
+  enabled: {{ ocp4_workload_retail_edge_ha_enable_showroom | default(true) | lower }}
+  gitUrl: {{ ocp4_workload_retail_edge_ha_repo_url }}
+  gitBranch: {{ ocp4_workload_retail_edge_ha_repo_version }}
+
+# Module selection (allows selective deployment)
+modules:
+  module1_pacemaker: {{ ocp4_workload_retail_edge_ha_enable_module1 | default(true) | lower }}
+  module2_microshift: {{ ocp4_workload_retail_edge_ha_enable_module2 | default(true) | lower }}
+  module3_twonode: {{ ocp4_workload_retail_edge_ha_enable_module3 | default(false) | lower }}

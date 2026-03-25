@@ -1,0 +1,103 @@
+---
+# Pre-workload validation tasks
+# Validates cluster prerequisites before deploying the workshop
+
+- name: Print AgnosticD user info
+  ansible.builtin.debug:
+    msg: "{{ agnosticd_user_info }}"
+    verbosity: 2
+
+- name: Get cluster version
+  kubernetes.core.k8s_info:
+    api_version: config.openshift.io/v1
+    kind: ClusterVersion
+    name: version
+  register: r_cluster_version
+
+- name: Extract cluster version
+  ansible.builtin.set_fact:
+    workshop_cluster_version: "{{ r_cluster_version.resources[0].status.desired.version }}"
+
+- name: Verify OpenShift 4.21+
+  ansible.builtin.assert:
+    that:
+      - workshop_cluster_version is version('4.21', '>=')
+    fail_msg: "Workshop requires OpenShift 4.21 or later (found {{ workshop_cluster_version }})"
+    success_msg: "OpenShift version {{ workshop_cluster_version }} meets requirements"
+
+- name: Get cluster ingress domain
+  kubernetes.core.k8s_info:
+    api_version: config.openshift.io/v1
+    kind: Ingress
+    name: cluster
+  register: r_cluster_ingress
+
+- name: Get cluster API server URL
+  kubernetes.core.k8s_info:
+    api_version: config.openshift.io/v1
+    kind: Infrastructure
+    name: cluster
+  register: r_cluster_infrastructure
+
+- name: Set cluster domain and API URL facts
+  ansible.builtin.set_fact:
+    ocp4_workload_retail_edge_ha_cluster_domain: "{{ r_cluster_ingress.resources[0].spec.domain }}"
+    ocp4_workload_retail_edge_ha_cluster_api_url: "{{ r_cluster_infrastructure.resources[0].status.apiServerURL }}"
+
+- name: Print discovered cluster information
+  ansible.builtin.debug:
+    msg:
+      - "Cluster domain: {{ ocp4_workload_retail_edge_ha_cluster_domain }}"
+      - "API server URL: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}"
+
+- name: Check for CNV operator
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    namespace: openshift-cnv
+  register: r_cnv_operator
+
+- name: Verify Virtualization operator is installed
+  ansible.builtin.assert:
+    that:
+      - r_cnv_operator.resources | length > 0
+      - r_cnv_operator.resources[0].status.phase == "Succeeded"
+    fail_msg: "OpenShift Virtualization operator must be installed and ready"
+    success_msg: "OpenShift Virtualization operator found and ready"
+
+- name: Get available storage classes
+  kubernetes.core.k8s_info:
+    api_version: storage.k8s.io/v1
+    kind: StorageClass
+  register: r_storage_classes
+
+- name: Fail if no storage classes available
+  ansible.builtin.fail:
+    msg: "No storage classes found on cluster"
+  when: r_storage_classes.resources | length == 0
+
+- name: Auto-detect best storage class
+  ansible.builtin.set_fact:
+    workshop_storage_class: >-
+      {{
+        r_storage_classes.resources
+        | selectattr('metadata.name', 'search', 'rbd')
+        | list
+        | first
+        | default(
+            r_storage_classes.resources
+            | selectattr('metadata.annotations.storageclass.kubernetes.io/is-default-class', 'defined')
+            | selectattr('metadata.annotations.storageclass.kubernetes.io/is-default-class', 'equalto', 'true')
+            | list
+            | first
+            | default(r_storage_classes.resources | first)
+          )
+      }}
+
+- name: Print selected storage class
+  ansible.builtin.debug:
+    msg: "Using storage class: {{ workshop_storage_class.metadata.name }}"
+
+- name: Pre-workload tasks complete
+  ansible.builtin.debug:
+    msg: "Pre-workload validation completed successfully"

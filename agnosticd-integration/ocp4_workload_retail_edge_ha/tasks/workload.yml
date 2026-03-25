@@ -1,0 +1,99 @@
+---
+# Core workload deployment tasks
+# Deploys the Retail Edge HA Workshop using Helm
+
+- name: Create temporary directory for workshop files
+  ansible.builtin.tempfile:
+    state: directory
+    prefix: retail-edge-ha-
+  register: r_workshop_temp_dir
+
+- name: Clone workshop repository
+  ansible.builtin.git:
+    repo: "{{ ocp4_workload_retail_edge_ha_repo_url }}"
+    dest: "{{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop"
+    version: "{{ ocp4_workload_retail_edge_ha_repo_version }}"
+  register: r_git_clone
+
+- name: Print repository clone information
+  ansible.builtin.debug:
+    msg:
+      - "Cloned from: {{ ocp4_workload_retail_edge_ha_repo_url }}"
+      - "Branch/Tag: {{ ocp4_workload_retail_edge_ha_repo_version }}"
+      - "Commit: {{ r_git_clone.after }}"
+
+- name: Template Helm values file
+  ansible.builtin.template:
+    src: values.yaml.j2
+    dest: "{{ r_workshop_temp_dir.path }}/custom-values.yaml"
+    mode: '0644'
+  register: r_helm_values
+
+- name: Display custom Helm values
+  ansible.builtin.debug:
+    msg: "{{ lookup('file', r_workshop_temp_dir.path + '/custom-values.yaml') }}"
+    verbosity: 1
+
+- name: Install workshop Helm chart
+  kubernetes.core.helm:
+    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
+    chart_ref: "{{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha"
+    release_namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+    create_namespace: true
+    values_files:
+      - "{{ r_workshop_temp_dir.path }}/custom-values.yaml"
+    wait: true
+    wait_timeout: "600s"
+  register: r_helm_install
+
+- name: Print Helm installation status
+  ansible.builtin.debug:
+    msg: "Helm chart {{ ocp4_workload_retail_edge_ha_release_name }} deployed successfully"
+
+- name: Wait for ArgoCD parent application to be created
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: retail-edge-ha-parent
+    namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+  register: r_argocd_app
+  retries: 30
+  delay: 10
+  until:
+    - r_argocd_app.resources | length > 0
+
+- name: Wait for ArgoCD application to sync
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: retail-edge-ha-parent
+    namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+  register: r_argocd_app_status
+  retries: 60
+  delay: 10
+  until:
+    - r_argocd_app_status.resources | length > 0
+    - r_argocd_app_status.resources[0].status.sync.status is defined
+    - r_argocd_app_status.resources[0].status.sync.status == "Synced"
+
+- name: Get child ArgoCD applications
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+  register: r_argocd_child_apps
+
+- name: Print ArgoCD application status
+  ansible.builtin.debug:
+    msg:
+      - "ArgoCD applications deployed:"
+      - "{{ r_argocd_child_apps.resources | map(attribute='metadata.name') | list }}"
+
+- name: Remove temporary directory
+  ansible.builtin.file:
+    path: "{{ r_workshop_temp_dir.path }}"
+    state: absent
+
+- name: Workload deployment complete
+  ansible.builtin.debug:
+    msg: "Workshop deployment initiated successfully. Resources are being synchronized by ArgoCD."

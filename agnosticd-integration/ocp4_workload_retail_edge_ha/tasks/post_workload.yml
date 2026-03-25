@@ -1,0 +1,101 @@
+---
+# Post-workload validation tasks
+# Validates successful deployment and gathers workshop access information
+
+- name: Wait for student namespaces to be created
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: r_all_namespaces
+  retries: 30
+  delay: 10
+  until:
+    - r_all_namespaces.resources | selectattr('metadata.name', 'match', '^retail-edge-student-') | list | length >= (num_users | int)
+
+- name: Get student namespaces
+  ansible.builtin.set_fact:
+    workshop_student_namespaces: >-
+      {{
+        r_all_namespaces.resources
+        | selectattr('metadata.name', 'match', '^retail-edge-student-[0-9]+$')
+        | map(attribute='metadata.name')
+        | sort
+        | list
+      }}
+
+- name: Print created student namespaces
+  ansible.builtin.debug:
+    msg: "Student namespaces: {{ workshop_student_namespaces }}"
+
+- name: Check if Showroom is enabled
+  when: ocp4_workload_retail_edge_ha_enable_showroom | bool
+  block:
+    - name: Wait for Showroom instances to be ready
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Pod
+        namespace: "showroom-student-{{ '%02d' | format(item) }}"
+        label_selectors:
+          - "app=showroom"
+      register: r_showroom_pods
+      retries: 60
+      delay: 10
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      until:
+        - r_showroom_pods.resources | length > 0
+        - r_showroom_pods.resources[0].status.phase == "Running"
+
+    - name: Get Showroom routes
+      kubernetes.core.k8s_info:
+        api_version: route.openshift.io/v1
+        kind: Route
+        namespace: "showroom-student-{{ '%02d' | format(item) }}"
+      register: r_showroom_routes
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+
+    - name: Build Showroom URL list
+      ansible.builtin.set_fact:
+        workshop_showroom_urls: >-
+          {{
+            r_showroom_routes.results
+            | map(attribute='resources')
+            | flatten
+            | map(attribute='spec.host')
+            | map('regex_replace', '^', 'https://')
+            | list
+          }}
+
+    - name: Print Showroom access URLs
+      ansible.builtin.debug:
+        msg: "{{ workshop_showroom_urls }}"
+
+    - name: Save workshop URLs to user info
+      agnosticd.core.agnosticd_user_info:
+        msg: "Workshop URL for student {{ '%02d' | format(item.0 + 1) }}: {{ item.1 }}"
+      loop: "{{ workshop_showroom_urls | zip(range(num_users | int)) | list }}"
+      loop_control:
+        index_var: idx
+      when: not silent | bool
+
+- name: Check VirtualMachines status (Module 1 only for quick validation)
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    namespace: "{{ workshop_student_namespaces[0] }}"
+  register: r_vms
+  when: workshop_student_namespaces | length > 0
+
+- name: Print VirtualMachine count
+  ansible.builtin.debug:
+    msg: "Found {{ r_vms.resources | length }} VirtualMachines in {{ workshop_student_namespaces[0] }}"
+  when:
+    - workshop_student_namespaces | length > 0
+    - r_vms.resources is defined
+
+- name: Post-workload tasks complete
+  ansible.builtin.debug:
+    msg:
+      - "Workshop deployment validated successfully"
+      - "Students: {{ num_users }}"
+      - "Namespaces: {{ workshop_student_namespaces | length }}"
+      - "Showroom enabled: {{ ocp4_workload_retail_edge_ha_enable_showroom }}"

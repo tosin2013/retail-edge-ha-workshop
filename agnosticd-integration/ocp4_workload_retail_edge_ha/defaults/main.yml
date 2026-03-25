@@ -1,0 +1,30 @@
+---
+# Default variables for ocp4_workload_retail_edge_ha
+# These can be overridden via AgnosticD extra-vars
+
+# Standard AgnosticD variables
+become_override: false
+ocp_username: "{{ ansible_user | default('opentlc-mgr') }}"
+silent: false
+
+# Workshop repository settings
+ocp4_workload_retail_edge_ha_repo_url: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
+ocp4_workload_retail_edge_ha_repo_version: "main"
+
+# Deployment settings
+ocp4_workload_retail_edge_ha_namespace: "retail-edge-ha-gitops"
+ocp4_workload_retail_edge_ha_release_name: "retail-edge-ha"
+ocp4_workload_retail_edge_ha_auto_start_vms: false
+ocp4_workload_retail_edge_ha_enable_showroom: true
+
+# Module selection
+# Module 3 (Two-Node OpenShift) disabled by default due to high resource consumption
+# Each module 3 deployment requires: 3 VMs (2×4CPU/16GB + 1×1CPU/2GB) per student
+ocp4_workload_retail_edge_ha_enable_module1: true
+ocp4_workload_retail_edge_ha_enable_module2: true
+ocp4_workload_retail_edge_ha_enable_module3: false
+
+# Cluster information (auto-discovered in pre_workload.yml)
+# These are set dynamically and don't need to be overridden
+# ocp4_workload_retail_edge_ha_cluster_domain: ""
+# ocp4_workload_retail_edge_ha_cluster_api_url: ""

@@ -1,0 +1,23 @@
+---
+# Entry point for the ocp4_workload_retail_edge_ha role
+# This role deploys the Retail Edge HA Workshop using the existing Helm chart
+
+- name: Running Pre Workload Tasks
+  ansible.builtin.import_tasks: pre_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "create" or ACTION == "provision"
+
+- name: Running Workload Tasks
+  ansible.builtin.import_tasks: workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "create" or ACTION == "provision"
+
+- name: Running Post Workload Tasks
+  ansible.builtin.import_tasks: post_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "create" or ACTION == "provision"
+
+- name: Running Workload Removal Tasks
+  ansible.builtin.import_tasks: remove_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "destroy" or ACTION == "remove"

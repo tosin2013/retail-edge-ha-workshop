@@ -1,0 +1,70 @@
+---
+# Workload removal tasks
+# Cleans up all workshop resources
+
+- name: Remove workshop Helm release
+  kubernetes.core.helm:
+    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
+    release_namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+    state: absent
+    wait: true
+    wait_timeout: "300s"
+  register: r_helm_uninstall
+  ignore_errors: true
+
+- name: Print Helm removal status
+  ansible.builtin.debug:
+    msg: "Helm release {{ ocp4_workload_retail_edge_ha_release_name }} removed"
+  when: r_helm_uninstall is succeeded
+
+- name: Wait for ArgoCD applications to be deleted
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+  register: r_argocd_apps
+  retries: 30
+  delay: 10
+  until: r_argocd_apps.resources | length == 0
+  ignore_errors: true
+
+- name: Delete GitOps namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ ocp4_workload_retail_edge_ha_namespace }}"
+    state: absent
+    wait: true
+    wait_timeout: "120s"
+  ignore_errors: true
+
+- name: Get remaining student namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: r_all_namespaces
+
+- name: Filter student namespaces
+  ansible.builtin.set_fact:
+    remaining_student_namespaces: >-
+      {{
+        r_all_namespaces.resources
+        | selectattr('metadata.name', 'match', '^retail-edge-student-|^showroom-student-')
+        | map(attribute='metadata.name')
+        | list
+      }}
+
+- name: Delete remaining student namespaces
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    state: absent
+    wait: false
+  loop: "{{ remaining_student_namespaces }}"
+  when: remaining_student_namespaces | length > 0
+  ignore_errors: true
+
+- name: Workload removal complete
+  ansible.builtin.debug:
+    msg: "Workshop resources removed successfully"
