@@ -1,7 +1,10 @@
 site:
   title: Retail Edge HA Workshop
-  url: https://tosin2013.github.io/retail-edge-ha-workshop
+  url: https://tosin2013.github.io/retail-edge-ha-workshop/workshop
   start_page: retail-edge-ha::index.adoc
+
+output:
+  dir: ./build/site
 
 content:
   sources:

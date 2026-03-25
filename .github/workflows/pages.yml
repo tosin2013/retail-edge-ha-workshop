@@ -33,9 +33,32 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Antora
+        run: |
+          npm install -g @antora/cli@3.1.5 @antora/site-generator@3.1.5
+
+      - name: Build Antora Documentation
+        run: |
+          # Build Antora site
+          antora site.yml --to-dir build/site
+
+          # Verify build succeeded
+          ls -la build/site/retail-edge-ha/main/
+
+          echo "✅ Antora build complete"
+
       - name: Generate documentation index
         run: |
-          mkdir -p docs/generated
+          mkdir -p docs/generated/workshop
+
+          # Copy Antora output to workshop subdirectory
+          cp -r build/site/retail-edge-ha/main/* docs/generated/workshop/
+          cp -r build/site/_/* docs/generated/workshop/_/
 
           # Copy static files
           cp docs/index.html docs/generated/
