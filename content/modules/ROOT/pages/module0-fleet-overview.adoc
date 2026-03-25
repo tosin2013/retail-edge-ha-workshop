@@ -84,27 +84,7 @@ In production, you would manage this fleet using **RHACM** (formerly Advanced Cl
 
 === Hub-Spoke Architecture
 
-[mermaid]
-....
-graph TB
-    Hub["🎯 RHACM Hub Cluster<br/>(Regional Data Center)<br/><br/>• Manages 500 spoke clusters<br/>• Deploys policies & apps<br/>• Monitors compliance<br/>• Aggregates metrics"]
-
-    Hub -->|Deploy policies<br/>Push updates| Store1["🏪 Store 1<br/>Spoke Cluster"]
-    Hub -->|Deploy policies<br/>Push updates| Store2["🏪 Store 2<br/>Spoke Cluster"]
-    Hub -->|Deploy policies<br/>Push updates| Store3["🏪 Store 3<br/>Spoke Cluster"]
-    Hub -->|Deploy policies<br/>Push updates| StoreN["🏪 Store N<br/>Spoke Cluster<br/>(500 total)"]
-
-    Store1 -.->|Send metrics<br/>Report status| Hub
-    Store2 -.->|Send metrics<br/>Report status| Hub
-    Store3 -.->|Send metrics<br/>Report status| Hub
-    StoreN -.->|Send metrics<br/>Report status| Hub
-
-    style Hub fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
-    style Store1 fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Store2 fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Store3 fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style StoreN fill:#d4edda,stroke:#28a745,stroke-width:2px
-....
+image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
 
 Each store is a **spoke cluster** managed from the central **hub cluster**.
 
@@ -278,13 +258,7 @@ Your workshop VMs would appear here as:
 
 == Compliance and Security
 
-[mermaid]
-....
-pie title Fleet Compliance Status (1,003 Total Clusters)
-    "Compliant" : 980
-    "Needs Updates" : 15
-    "Out of Compliance" : 8
-....
+image::fleet-dashboard-compliance.png[Fleet Compliance Status, align=center]
 
 **Compliance Dashboard** shows:
 
@@ -450,32 +424,7 @@ All without sending a technician on-site!
 
 == Your Workshop Environment
 
-[mermaid]
-....
-graph LR
-    subgraph Workshop["Your Workshop Environment"]
-        W1["📦 Module 1<br/>2 VMs"]
-        W2["📦 Module 2<br/>2 VMs"]
-        W3["📦 Module 3<br/>3 VMs"]
-    end
-
-    Workshop -->|"× 200 stores"| Fleet
-
-    subgraph Fleet["Production Fleet Scale"]
-        F1["🏢 Module 1<br/>400 Pacemaker Servers<br/>(200 stores × 2 nodes)"]
-        F2["🏢 Module 2<br/>1,000 MicroShift Gateways<br/>(500 stores × 2 nodes)"]
-        F3["🏢 Module 3<br/>200+ OpenShift Nodes<br/>(100 stores × 2 nodes + arbiters)"]
-    end
-
-    style Workshop fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    style Fleet fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style W1 fill:#fff3e0,stroke:#f57c00
-    style W2 fill:#fff3e0,stroke:#f57c00
-    style W3 fill:#fff3e0,stroke:#f57c00
-    style F1 fill:#e8f5e9,stroke:#388e3c
-    style F2 fill:#e8f5e9,stroke:#388e3c
-    style F3 fill:#e8f5e9,stroke:#388e3c
-....
+image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center]
 
 While you'll work hands-on with **2-9 VMs per module**, imagine these represent a much larger fleet:
 
@@ -665,37 +614,7 @@ Remember: The 2 VMs you configure represent **hundreds or thousands** of similar
 
 == Workshop Architecture Reminder
 
-[mermaid]
-....
-graph TB
-    NS["🗂️ Namespace: retail-edge-student-XX"]
-
-    NS --> M1["📁 Module 1: Pacemaker HA"]
-    NS --> M2["📁 Module 2: MicroShift VRRP"]
-    NS --> M3["📁 Module 3: Two-Node OpenShift"]
-
-    M1 --> M1N1["💻 rhel-ha-node1<br/>IP: 10.101.0.20<br/>Network: pacemaker-net"]
-    M1 --> M1N2["💻 rhel-ha-node2<br/>IP: 10.101.0.21<br/>Network: pacemaker-net"]
-
-    M2 --> M2N1["💻 microshift-gw-a<br/>IP: 10.102.0.20<br/>Network: microshift-net"]
-    M2 --> M2N2["💻 microshift-gw-b<br/>IP: 10.102.0.21<br/>Network: microshift-net<br/>VIP: 10.102.0.100"]
-
-    M3 --> M3N1["💻 twonode-master1<br/>IP: 10.103.0.20<br/>Network: twonode-net"]
-    M3 --> M3N2["💻 twonode-master2<br/>IP: 10.103.0.21<br/>Network: twonode-net"]
-    M3 --> M3N3["💻 twonode-arbiter<br/>IP: 10.103.0.22<br/>Network: twonode-net"]
-
-    style NS fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
-    style M1 fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style M3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style M1N1 fill:#ffcdd2,stroke:#c62828
-    style M1N2 fill:#ffcdd2,stroke:#c62828
-    style M2N1 fill:#c8e6c9,stroke:#2e7d32
-    style M2N2 fill:#c8e6c9,stroke:#2e7d32
-    style M3N1 fill:#ffe0b2,stroke:#f57c00
-    style M3N2 fill:#ffe0b2,stroke:#f57c00
-    style M3N3 fill:#ffe0b2,stroke:#f57c00
-....
+image::module0-workshop-vms.png[Workshop VM Layout, align=center]
 
 NOTE: Each set of VMs is isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
 
