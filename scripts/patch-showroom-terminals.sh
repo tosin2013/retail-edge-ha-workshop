@@ -9,8 +9,9 @@ STUDENT_COUNT="${1:-5}"
 echo "Patching Showroom terminal deployments for $STUDENT_COUNT students..."
 echo
 
-for i in $(seq -f "%02g" 1 $STUDENT_COUNT); do
-  NAMESPACE="showroom-student-$i"
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
+  NAMESPACE="showroom-student-$student_id"
 
   echo "📝 Patching terminal in $NAMESPACE..."
 
@@ -46,13 +47,13 @@ for i in $(seq -f "%02g" 1 $STUDENT_COUNT); do
       ]
     }
   ]' &>/dev/null; then
-    echo "✅ Student $i patched successfully"
+    echo "✅ Student $student_id patched successfully"
   else
     # Patch might already be applied
     if oc get deployment showroom-terminal -n "$NAMESPACE" -o jsonpath='{.spec.template.spec.containers[0].envFrom[*].configMapRef.name}' | grep -q "student-env"; then
-      echo "✅ Student $i already has environment variables (patch already applied)"
+      echo "✅ Student $student_id already has environment variables (patch already applied)"
     else
-      echo "❌ Failed to patch student $i"
+      echo "❌ Failed to patch student $student_id"
     fi
   fi
 done

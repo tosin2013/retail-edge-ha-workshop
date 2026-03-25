@@ -45,21 +45,22 @@ cat > "${MODULE1_NODE1_VM}" << 'VMEOF'
 
 VMEOF
 
-for i in $(seq -f "%02g" 1 ${STUDENT_COUNT}); do
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
 cat >> "${MODULE1_NODE1_VM}" << EOF
 
 ---
-# Student ${i} - RHEL HA Node 1
+# Student ${student_id} - RHEL HA Node 1
 apiVersion: kubevirt.io/v1
 kind: VirtualMachine
 metadata:
   name: rhel-ha-node1
-  namespace: retail-edge-student-${i}
+  namespace: retail-edge-student-${student_id}
   labels:
     app: rhel-ha
     module: module1
     node: node1
-    student-id: "${i}"
+    student-id: "${student_id}"
     app.kubernetes.io/name: rhel-ha-node1
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
@@ -139,16 +140,17 @@ cat > "${MODULE1_NODE1_INIT}" << 'INITEOF'
 
 INITEOF
 
-for i in $(seq -f "%02g" 1 ${STUDENT_COUNT}); do
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
 cat >> "${MODULE1_NODE1_INIT}" << EOF
 
 ---
-# Student ${i} - Node 1 Cloud-init
+# Student ${student_id} - Node 1 Cloud-init
 apiVersion: v1
 kind: Secret
 metadata:
   name: rhel-ha-node1-cloudinit
-  namespace: retail-edge-student-${i}
+  namespace: retail-edge-student-${student_id}
 type: Opaque
 stringData:
   userdata: |

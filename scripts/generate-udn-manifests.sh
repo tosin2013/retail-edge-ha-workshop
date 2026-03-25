@@ -48,20 +48,21 @@ echo "# ========================================================================
 # =============================================================================
 " > "${MODULE1_FILE}"
 
-for i in $(seq -f "%02g" 1 ${STUDENT_COUNT}); do
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
 cat >> "${MODULE1_FILE}" << EOF
 
 ---
-# Student ${i} - Pacemaker Network
+# Student ${student_id} - Pacemaker Network
 apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-${i}-udn
+  namespace: retail-edge-student-${student_id}-udn
   labels:
     workshop: retail-edge-ha
     module: module1
-    student-id: "${i}"
+    student-id: "${student_id}"
   annotations:
     description: "Layer 2 network for RHEL HA Pacemaker cluster heartbeat"
 spec:
@@ -105,20 +106,21 @@ echo "# ========================================================================
 # =============================================================================
 " > "${MODULE2_FILE}"
 
-for i in $(seq -f "%02g" 1 ${STUDENT_COUNT}); do
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
 cat >> "${MODULE2_FILE}" << EOF
 
 ---
-# Student ${i} - MicroShift VRRP Network
+# Student ${student_id} - MicroShift VRRP Network
 apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-${i}-udn
+  namespace: retail-edge-student-${student_id}-udn
   labels:
     workshop: retail-edge-ha
     module: module2
-    student-id: "${i}"
+    student-id: "${student_id}"
   annotations:
     description: "Layer 2 network for MicroShift VRRP virtual IP failover"
 spec:
@@ -163,20 +165,21 @@ echo "# ========================================================================
 # =============================================================================
 " > "${MODULE3_FILE}"
 
-for i in $(seq -f "%02g" 1 ${STUDENT_COUNT}); do
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v student_id "%02d" "$i"
 cat >> "${MODULE3_FILE}" << EOF
 
 ---
-# Student ${i} - Two-Node OpenShift Network
+# Student ${student_id} - Two-Node OpenShift Network
 apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-${i}-udn
+  namespace: retail-edge-student-${student_id}-udn
   labels:
     workshop: retail-edge-ha
     module: module3
-    student-id: "${i}"
+    student-id: "${student_id}"
   annotations:
     description: "Layer 2 network for OpenShift two-node cluster with arbiter"
 spec:
