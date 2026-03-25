@@ -83,29 +83,32 @@ ArgoCD Parent Application
 ### Prerequisites
 
 - OpenShift 4.21+ cluster with:
-  - OpenShift GitOps (ArgoCD) operator installed
-  - OpenShift Virtualization operator installed
+  - OpenShift Virtualization operator installed (required)
+  - OpenShift GitOps (ArgoCD) operator (for GitOps deployment)
   - OVN-Kubernetes networking (for UDNs)
 - `oc` CLI tool installed
 - `virtctl` CLI tool installed
 - Access to OpenShift cluster with admin privileges
 
-### 1. Configure Git
+**See [GETTING-STARTED.md](./GETTING-STARTED.md) for detailed deployment guide (5-10 min read).**
+
+---
+
+## 📦 Deployment Options
+
+Choose your deployment method based on your use case:
+
+### Option 1: GitOps (ArgoCD) - Recommended for Production
+
+**Best for:** Production deployments, automatic sync from Git, declarative infrastructure
+
+**Prerequisites:** OpenShift GitOps operator installed
 
 ```bash
-git config --global user.name "Tosin Akinosho"
-git config --global user.email "takinosh@redhat.com"
-```
-
-### 2. Login to OpenShift Cluster
-
-```bash
+# 1. Login to cluster
 oc login --token=<your-token> --server=<your-api-server-url>
-```
 
-### 3. Deploy Workshop via ArgoCD
-
-```bash
+# 2. Deploy via ArgoCD Application
 oc apply -f - <<EOF
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -134,26 +137,107 @@ spec:
       - CreateNamespace=true
       - ServerSideApply=true
 EOF
-```
 
-### 4. Wait for Deployment
-
-```bash
-# Watch ArgoCD sync
+# 3. Watch ArgoCD sync
 argocd app wait retail-edge-ha-workshop --health --timeout 600
 
-# Verify components
+# 4. Verify deployment
 oc get namespaces -l workshop=retail-edge-ha
-oc get userdefinednetworks --all-namespaces
 oc get vms --all-namespaces -l app.kubernetes.io/part-of=retail-edge-ha
 ```
 
-### 5. Access Workshop
+**Deployment time:** 5-10 minutes
+
+---
+
+### Option 2: Direct Helm - Fast Development/Testing
+
+**Best for:** Development, testing, single-cluster deployments without GitOps
+
+**Prerequisites:** Helm 3.x installed
 
 ```bash
-# Get Showroom route
-SHOWROOM_URL=$(oc get route showroom-proxy -n showroom -o jsonpath='{.spec.host}')
-echo "Workshop URL: https://${SHOWROOM_URL}"
+# 1. Login to cluster
+oc login --token=<your-token> --server=<your-api-server-url>
+
+# 2. Clone repository
+git clone https://github.com/tosin2013/retail-edge-ha-workshop.git
+cd retail-edge-ha-workshop
+
+# 3. Deploy with Helm
+helm install retail-edge-ha ./helm/retail-edge-ha \
+  --create-namespace \
+  --namespace retail-edge-ha-gitops \
+  --set students.count=5 \
+  --set globalClusterDomain="apps.<your-cluster>.com" \
+  --set globalClusterApiUrl="https://api.<your-cluster>.com:6443" \
+  --timeout 10m
+
+# 4. Watch deployment
+oc get applications -n retail-edge-ha-gitops -w
+```
+
+**Deployment time:** 5-10 minutes
+
+**To customize:** Edit `helm/retail-edge-ha/values.yaml` before installing.
+
+---
+
+### Option 3: AgnosticD - RHPDS Catalog Integration
+
+**Best for:** RHPDS catalog deployments, multi-user provisioning, automated workshops
+
+**Prerequisites:** AgnosticD v2 framework, Python 3.12+
+
+```bash
+# 1. Install AgnosticD workload role
+cp -r agnosticd-integration/ocp4_workload_retail_edge_ha \
+  /path/to/agnosticd-v2/roles/
+
+# 2. Create configuration file
+cat > retail-edge-workshop.yml <<EOF
+---
+cluster_name: <your-cluster>.com
+workloads:
+  - name: ocp4-workload-retail-edge-ha
+    vars:
+      num_users: 10
+      ocp4_workload_retail_edge_ha_enable_module1: true
+      ocp4_workload_retail_edge_ha_enable_module2: true
+      ocp4_workload_retail_edge_ha_enable_module3: false
+      ocp4_workload_retail_edge_ha_auto_start_vms: false
+      ocp4_workload_retail_edge_ha_enable_showroom: true
+EOF
+
+# 3. Deploy workshop
+agd deploy --cluster-type=openshift --config-file=retail-edge-workshop.yml
+
+# 4. Verify deployment
+oc get namespaces | grep retail-edge-student
+```
+
+**Deployment time:** 10-15 minutes (includes validation checks)
+
+**Full documentation:** See [agnosticd-integration/README.md](./agnosticd-integration/README.md)
+
+---
+
+### Accessing the Workshop
+
+All deployment methods provide Showroom URLs for students:
+
+```bash
+# Get Showroom URLs for all students
+for i in $(seq -f "%02g" 1 5); do
+  echo "Student $i: https://$(oc get route -n showroom-student-$i -o jsonpath='{.items[0].spec.host}')"
+done
+```
+
+**Example output:**
+```
+Student 01: https://showroom-showroom-student-01.apps.cluster-ntq88.dynamic.redhatworkshops.io
+Student 02: https://showroom-showroom-student-02.apps.cluster-ntq88.dynamic.redhatworkshops.io
+...
 ```
 
 ## 📁 Repository Structure
