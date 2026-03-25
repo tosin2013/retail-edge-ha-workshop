@@ -77,20 +77,70 @@
         index_var: idx
       when: not silent | bool
 
-- name: Check VirtualMachines status (Module 1 only for quick validation)
+- name: Wait for VirtualMachines to be created (not necessarily running)
   kubernetes.core.k8s_info:
     api_version: kubevirt.io/v1
     kind: VirtualMachine
     namespace: "{{ workshop_student_namespaces[0] }}"
   register: r_vms
+  retries: 30
+  delay: 10
+  until:
+    - r_vms.resources | length > 0
   when: workshop_student_namespaces | length > 0
 
-- name: Print VirtualMachine count
+- name: Print VirtualMachine status
   ansible.builtin.debug:
-    msg: "Found {{ r_vms.resources | length }} VirtualMachines in {{ workshop_student_namespaces[0] }}"
+    msg:
+      - "Found {{ r_vms.resources | length }} VirtualMachines in {{ workshop_student_namespaces[0] }}"
+      - "VMs created in stopped state (running: false)"
+      - "Students can start VMs with: virtctl start <vm-name> -n <namespace>"
+      - "VMs will reach Running state in ~30 seconds after start"
   when:
     - workshop_student_namespaces | length > 0
     - r_vms.resources is defined
+
+- name: Auto-start VirtualMachines if enabled
+  when:
+    - workshop_student_namespaces | length > 0
+    - ocp4_workload_retail_edge_ha_auto_start_vms | bool
+  block:
+    - name: Get list of VMs to start
+      ansible.builtin.set_fact:
+        vms_to_start: >-
+          {{
+            r_vms.resources
+            | map(attribute='metadata.name')
+            | list
+          }}
+
+    - name: Start all VirtualMachines
+      kubernetes.core.k8s:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachine
+        name: "{{ item }}"
+        namespace: "{{ workshop_student_namespaces[0] }}"
+        state: present
+        definition:
+          spec:
+            running: true
+      loop: "{{ vms_to_start }}"
+
+    - name: Wait for VMs to reach Running state
+      kubernetes.core.k8s_info:
+        api_version: kubevirt.io/v1
+        kind: VirtualMachineInstance
+        namespace: "{{ workshop_student_namespaces[0] }}"
+      register: r_vmis
+      retries: 30
+      delay: 10
+      until:
+        - r_vmis.resources | length > 0
+        - r_vmis.resources | selectattr('status.phase', 'equalto', 'Running') | list | length == vms_to_start | length
+
+    - name: Print auto-start status
+      ansible.builtin.debug:
+        msg: "All VMs started successfully and reached Running state"
 
 - name: Post-workload tasks complete
   ansible.builtin.debug:

@@ -99,7 +99,11 @@ By the end of this module, you will:
 * Monitor VRRP state transitions
 * Deploy workloads to validate HA
 
-== Step 1: Verify and Start VMs
+== Step 1: Start Your MicroShift Gateways
+
+Your VMs have been pre-created and are ready to start.
+
+=== Verify VMs Exist
 
 Check your MicroShift VMs:
 
@@ -108,7 +112,11 @@ Check your MicroShift VMs:
 oc get vm -n %STUDENT_NAMESPACE% | grep microshift
 ----
 
-Start both gateways:
+You should see both gateways in `Stopped` status.
+
+NOTE: VMs are pre-created in stopped state for instant startup (~30 seconds instead of ~5 minutes).
+
+=== Start Both Gateways
 
 [source,bash,role=execute]
 ----
@@ -120,7 +128,9 @@ virtctl start %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
 virtctl start %MICROSHIFT_GW_B% -n %STUDENT_NAMESPACE%
 ----
 
-Wait for VMs to be ready (about 3-4 minutes for MicroShift to start):
+=== Wait for VMs to Boot
+
+Watch VMs boot and MicroShift start (takes 3-4 minutes total):
 
 [source,bash,role=execute]
 ----
@@ -128,6 +138,8 @@ oc get vmi -n %STUDENT_NAMESPACE% -w
 ----
 
 Press `Ctrl+C` when both show `Running`.
+
+TIP: The VMs boot in ~30 seconds, but MicroShift takes an additional 3-4 minutes to fully initialize.
 
 == Step 2: Verify MicroShift Installation
 

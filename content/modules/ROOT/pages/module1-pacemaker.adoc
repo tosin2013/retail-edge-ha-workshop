@@ -89,9 +89,13 @@ By the end of this module, you will:
 * Create a Virtual IP resource
 * Test failover scenarios
 
-== Step 1: Verify VirtualMachines
+== Step 1: Start Your VirtualMachines
 
-Check that your VMs exist:
+Your VMs have been pre-created and are ready to start in seconds.
+
+=== Verify VMs Exist
+
+Check that your VMs have been pre-deployed:
 
 [source,bash,role=execute]
 ----
@@ -107,9 +111,9 @@ rhel-ha-node1   5m    Stopped   False
 rhel-ha-node2   5m    Stopped   False
 ----
 
-== Step 2: Start the VMs
+NOTE: VMs are pre-created in stopped state. This means they're ready to start instantly (~30 seconds) instead of waiting for provisioning (~5 minutes).
 
-Start both nodes:
+=== Start Both Nodes
 
 [source,bash,role=execute]
 ----
@@ -121,7 +125,9 @@ virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
 virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
 ----
 
-Wait for VMs to reach Running state (about 2 minutes):
+=== Wait for Running State
+
+Watch VMs boot (takes ~30 seconds):
 
 [source,bash,role=execute]
 ----
