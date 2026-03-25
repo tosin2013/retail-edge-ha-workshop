@@ -69,13 +69,15 @@
       ansible.builtin.debug:
         msg: "{{ workshop_showroom_urls }}"
 
-    - name: Save workshop URLs to user info
-      agnosticd.core.agnosticd_user_info:
-        msg: "Workshop URL for student {{ '%02d' | format(item.0 + 1) }}: {{ item.1 }}"
-      loop: "{{ workshop_showroom_urls | zip(range(num_users | int)) | list }}"
-      loop_control:
-        index_var: idx
-      when: not silent | bool
+    # AgnosticD user info integration disabled for standalone testing
+    # Uncomment when running in full AgnosticD environment
+    # - name: Save workshop URLs to user info
+    #   agnosticd.core.agnosticd_user_info:
+    #     msg: "Workshop URL for student {{ '%02d' | format(item.0 + 1) }}: {{ item.1 }}"
+    #   loop: "{{ workshop_showroom_urls | zip(range(num_users | int)) | list }}"
+    #   loop_control:
+    #     index_var: idx
+    #   when: not silent | bool
 
 - name: Wait for VirtualMachines to be created (not necessarily running)
   kubernetes.core.k8s_info:
