@@ -14,7 +14,29 @@ In a real retail deployment:
 
 == The Big Picture: Retail Edge at Scale
 
-image::fleet-overview-map.png[Retail Edge Fleet Distribution, align=center]
+[ditaa, align=center]
+....
+    Fleet Distribution Across United States
+
+ West Coast     Central Region    East Coast
+ (150 stores)   (200 stores)      (150 stores)
+
+    cBLU           cGRE              cRED
+  +---------+    +---------+      +---------+
+  |  o o o  |    | o o o o |      |  o o o  |
+  | o o o o |    | o o o o |      | o o o o |
+  | o o o o |    | o o o o |      | o o o o |
+  |  o o o  |    | o o o o |      |  o o o  |
+  +---------+    +---------+      +---------+
+      |              |                 |
+      +------+-------+--------+--------+
+             |                |
+         Regional         Regional
+       Data Center      Data Center
+         (West)           (East)
+....
+
+NOTE: Each 'o' represents approximately 10 retail stores. Total: 500 stores + 3 regional data centers.
 
 === Scenario: National Retail Chain
 
@@ -62,26 +84,27 @@ In production, you would manage this fleet using **RHACM** (formerly Advanced Cl
 
 === Hub-Spoke Architecture
 
-image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
+[mermaid]
+....
+graph TB
+    Hub["🎯 RHACM Hub Cluster<br/>(Regional Data Center)<br/><br/>• Manages 500 spoke clusters<br/>• Deploys policies & apps<br/>• Monitors compliance<br/>• Aggregates metrics"]
 
-[source,text]
-----
-┌─────────────────────────────────────────────┐
-│           RHACM Hub Cluster                 │
-│        (Regional Data Center)               │
-│                                             │
-│  • Manages 500 spoke clusters               │
-│  • Deploys policies and applications        │
-│  • Monitors compliance                      │
-│  • Aggregates metrics                       │
-└─────────────────────────────────────────────┘
-              │        │        │
-              ▼        ▼        ▼
-     ┌─────────┐ ┌─────────┐ ┌─────────┐
-     │ Store 1 │ │ Store 2 │ │ Store N │
-     │ Spoke   │ │ Spoke   │ │ Spoke   │
-     └─────────┘ └─────────┘ └─────────┘
-----
+    Hub -->|Deploy policies<br/>Push updates| Store1["🏪 Store 1<br/>Spoke Cluster"]
+    Hub -->|Deploy policies<br/>Push updates| Store2["🏪 Store 2<br/>Spoke Cluster"]
+    Hub -->|Deploy policies<br/>Push updates| Store3["🏪 Store 3<br/>Spoke Cluster"]
+    Hub -->|Deploy policies<br/>Push updates| StoreN["🏪 Store N<br/>Spoke Cluster<br/>(500 total)"]
+
+    Store1 -.->|Send metrics<br/>Report status| Hub
+    Store2 -.->|Send metrics<br/>Report status| Hub
+    Store3 -.->|Send metrics<br/>Report status| Hub
+    StoreN -.->|Send metrics<br/>Report status| Hub
+
+    style Hub fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style Store1 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Store2 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Store3 fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style StoreN fill:#d4edda,stroke:#28a745,stroke-width:2px
+....
 
 Each store is a **spoke cluster** managed from the central **hub cluster**.
 
@@ -184,7 +207,59 @@ Aggregate metrics from all stores into a central dashboard:
 
 NOTE: This workshop uses simulated dashboards. In production, you'd access the real RHACM console at `https://multicloud-console.apps.<hub-cluster>/`.
 
-image::fleet-dashboard-inventory.png[RHACM Inventory Dashboard, align=center]
+.RHACM Inventory Dashboard
+[cols="1,1,1,1,1,1", options="header"]
+|===
+| Cluster Name | Status | Version | Nodes | Region | Last Seen
+
+| store-0001-chicago-il
+| ✅ Ready
+| 4.21.6
+| 2
+| central
+| 30s ago
+
+| store-0002-boston-ma
+| ✅ Ready
+| 4.21.6
+| 2
+| east
+| 45s ago
+
+| store-0123-seattle-wa
+| ✅ Ready
+| 4.21.6
+| 2
+| west
+| 1m ago
+
+| store-0234-dallas-tx
+| ❌ Offline
+| 4.21.2
+| 2
+| central
+| 5m ago
+
+| store-0456-miami-fl
+| ⚠️ Degraded
+| 4.21.6
+| 2
+| east
+| 2m ago
+
+| ... (495 more stores)
+| —
+| —
+| —
+| —
+| —
+|===
+
+**Summary Statistics:**
+
+* Total Clusters: **1,003** (1,000 devices + 3 regional hubs)
+* Status: **953 Ready**, **45 Offline**, **5 Degraded**
+* Compliance: **95%** (980/1,003 compliant)
 
 **Inventory View** shows:
 
@@ -203,13 +278,41 @@ Your workshop VMs would appear here as:
 
 == Compliance and Security
 
-image::fleet-dashboard-compliance.png[RHACM Compliance Dashboard, align=center]
+[mermaid]
+....
+pie title Fleet Compliance Status (1,003 Total Clusters)
+    "Compliant" : 980
+    "Needs Updates" : 15
+    "Out of Compliance" : 8
+....
 
 **Compliance Dashboard** shows:
 
-* ✅ **980 clusters compliant** (98%)
-* ⚠️ **15 clusters need security updates** (CVE patches)
-* ❌ **5 clusters out of compliance** (old RHCOS image version)
+* ✅ **980 clusters compliant** (97.7%)
+* ⚠️ **15 clusters need security updates** (1.5%)
+* ❌ **8 clusters out of compliance** (0.8%)
+
+.Policy Violations by Type
+[cols="3,1,1", options="header"]
+|===
+| Policy Name | Violated Clusters | Severity
+
+| require-minimum-rhcos-version
+| 5
+| 🔴 High
+
+| enforce-resource-limits
+| 10
+| 🟡 Medium
+
+| network-policy-required
+| 5
+| 🟡 Medium
+
+| pod-security-standards
+| 3
+| 🟢 Low
+|===
 
 Example policy violations:
 
@@ -225,7 +328,52 @@ Remediation: Automated update scheduled for next maintenance window
 
 == Update Orchestration at Scale
 
-image::fleet-dashboard-updates.png[RHACM Update Orchestration, align=center]
+[mermaid]
+....
+gantt
+    title Progressive Rollout - RHCOS 4.21.6 Update
+    dateFormat YYYY-MM-DD
+    section Canary
+    Stage 1 (5% - 25 clusters)     :done, s1, 2026-03-25, 1d
+    section Progressive
+    Stage 2 (10% - 50 clusters)    :active, s2, 2026-03-26, 1d
+    Stage 3 (25% - 125 clusters)   :s3, 2026-03-27, 1d
+    Stage 4 (50% - 250 clusters)   :s4, 2026-03-28, 2d
+    section Full Rollout
+    Stage 5 (100% - 500 clusters)  :s5, 2026-03-30, 2d
+....
+
+**Update Status Summary:**
+
+[cols="2,1,1,3", options="header"]
+|===
+| Stage | Clusters | Status | Progress
+
+| Stage 1 (Canary)
+| 25 (5%)
+| ✅ Complete
+| 25/25 updated successfully
+
+| Stage 2
+| 50 (10%)
+| ⟳ In Progress
+| 35/50 updated (70%)
+
+| Stage 3
+| 125 (25%)
+| ⏳ Pending
+| Scheduled for 2026-03-27 02:00 EST
+
+| Stage 4
+| 250 (50%)
+| ⏳ Pending
+| Scheduled for 2026-03-28 02:00 EST
+
+| Stage 5
+| 500 (100%)
+| ⏳ Pending
+| Scheduled for 2026-03-30 02:00 EST
+|===
 
 **Update Workflow:**
 
@@ -302,7 +450,32 @@ All without sending a technician on-site!
 
 == Your Workshop Environment
 
-image::workshop-fleet-context.png[Workshop VMs in Fleet Context, align=center]
+[mermaid]
+....
+graph LR
+    subgraph Workshop["Your Workshop Environment"]
+        W1["📦 Module 1<br/>2 VMs"]
+        W2["📦 Module 2<br/>2 VMs"]
+        W3["📦 Module 3<br/>3 VMs"]
+    end
+
+    Workshop -->|"× 200 stores"| Fleet
+
+    subgraph Fleet["Production Fleet Scale"]
+        F1["🏢 Module 1<br/>400 Pacemaker Servers<br/>(200 stores × 2 nodes)"]
+        F2["🏢 Module 2<br/>1,000 MicroShift Gateways<br/>(500 stores × 2 nodes)"]
+        F3["🏢 Module 3<br/>200+ OpenShift Nodes<br/>(100 stores × 2 nodes + arbiters)"]
+    end
+
+    style Workshop fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Fleet fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style W1 fill:#fff3e0,stroke:#f57c00
+    style W2 fill:#fff3e0,stroke:#f57c00
+    style W3 fill:#fff3e0,stroke:#f57c00
+    style F1 fill:#e8f5e9,stroke:#388e3c
+    style F2 fill:#e8f5e9,stroke:#388e3c
+    style F3 fill:#e8f5e9,stroke:#388e3c
+....
 
 While you'll work hands-on with **2-9 VMs per module**, imagine these represent a much larger fleet:
 
@@ -492,24 +665,39 @@ Remember: The 2 VMs you configure represent **hundreds or thousands** of similar
 
 == Workshop Architecture Reminder
 
-image::module0-workshop-vms.png[Workshop VM Layout, align=center]
+[mermaid]
+....
+graph TB
+    NS["🗂️ Namespace: retail-edge-student-XX"]
 
-[source,text]
-----
-Your Namespace: retail-edge-student-XX
-├── Module 1 VMs (Pacemaker)
-│   ├── rhel-ha-node1 (10.101.0.20)
-│   └── rhel-ha-node2 (10.101.0.21)
-├── Module 2 VMs (MicroShift)
-│   ├── microshift-gw-a (10.102.0.20)
-│   └── microshift-gw-b (10.102.0.21)
-└── Module 3 VMs (Two-Node OpenShift)
-    ├── twonode-master1 (10.103.0.20)
-    ├── twonode-master2 (10.103.0.21)
-    └── twonode-arbiter (10.103.0.22)
+    NS --> M1["📁 Module 1: Pacemaker HA"]
+    NS --> M2["📁 Module 2: MicroShift VRRP"]
+    NS --> M3["📁 Module 3: Two-Node OpenShift"]
 
-Each set of VMs is isolated via User Defined Networks (UDNs)
-----
+    M1 --> M1N1["💻 rhel-ha-node1<br/>IP: 10.101.0.20<br/>Network: pacemaker-net"]
+    M1 --> M1N2["💻 rhel-ha-node2<br/>IP: 10.101.0.21<br/>Network: pacemaker-net"]
+
+    M2 --> M2N1["💻 microshift-gw-a<br/>IP: 10.102.0.20<br/>Network: microshift-net"]
+    M2 --> M2N2["💻 microshift-gw-b<br/>IP: 10.102.0.21<br/>Network: microshift-net<br/>VIP: 10.102.0.100"]
+
+    M3 --> M3N1["💻 twonode-master1<br/>IP: 10.103.0.20<br/>Network: twonode-net"]
+    M3 --> M3N2["💻 twonode-master2<br/>IP: 10.103.0.21<br/>Network: twonode-net"]
+    M3 --> M3N3["💻 twonode-arbiter<br/>IP: 10.103.0.22<br/>Network: twonode-net"]
+
+    style NS fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style M1 fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style M2 fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style M3 fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style M1N1 fill:#ffcdd2,stroke:#c62828
+    style M1N2 fill:#ffcdd2,stroke:#c62828
+    style M2N1 fill:#c8e6c9,stroke:#2e7d32
+    style M2N2 fill:#c8e6c9,stroke:#2e7d32
+    style M3N1 fill:#ffe0b2,stroke:#f57c00
+    style M3N2 fill:#ffe0b2,stroke:#f57c00
+    style M3N3 fill:#ffe0b2,stroke:#f57c00
+....
+
+NOTE: Each set of VMs is isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
 
 == Ready to Begin?
 
