@@ -36,3 +36,4 @@ target/
 # Antora build artifacts
 content/.cache/
 content/build/
+test-deploy/

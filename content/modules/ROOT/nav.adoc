@@ -1,4 +1,5 @@
 * xref:index.adoc[Introduction]
+* xref:module0-fleet-overview.adoc[Module 0: Fleet Management]
 * xref:module1-pacemaker.adoc[Module 1: Pacemaker HA]
 * xref:module2-microshift.adoc[Module 2: MicroShift VRRP]
 * xref:module3-twonode.adoc[Module 3: Two-Node OpenShift]

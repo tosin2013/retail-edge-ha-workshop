@@ -1,0 +1,525 @@
+= Module 0: Fleet Management Overview
+
+== Introduction
+
+Before diving into individual node HA configurations, let's understand how retail edge deployments are managed at scale.
+
+In a real retail deployment:
+
+* **100-1000+ stores** each with 2-4 edge devices
+* **Centralized management** via Red Hat Advanced Cluster Management (RHACM)
+* **Image-based updates** pushed to entire fleet
+* **Compliance monitoring** across all locations
+* **Remote troubleshooting** without on-site visits
+
+== The Big Picture: Retail Edge at Scale
+
+image::fleet-overview-map.png[Retail Edge Fleet Distribution, align=center]
+
+=== Scenario: National Retail Chain
+
+Imagine you're responsible for IT infrastructure at **RetailCorp**, a national chain with:
+
+* **500 stores** across the United States
+* **2 edge servers per store** (1,000 total devices)
+* **3 regional data centers** providing backup services
+* **Zero tolerance** for downtime during business hours (7 AM - 10 PM)
+
+Each store runs critical applications:
+
+* **Point-of-Sale (POS)** systems (process $10K-100K in transactions daily)
+* **Inventory management** (real-time stock tracking)
+* **Video analytics** (customer traffic, loss prevention)
+* **WiFi authentication** (guest and employee networks)
+* **Local databases** (transaction logs, product catalogs)
+
+*Your challenge:* How do you ensure these 500 stores stay online when hardware fails?
+
+== Why This Workshop Exists
+
+The three HA architectures you'll learn map directly to real retail use cases:
+
+[cols="1,2,2"]
+|===
+|Architecture |Best For |Typical Use Case
+
+|**Pacemaker (Module 1)**
+|Stateful applications with shared storage
+|POS database servers, file servers
+
+|**MicroShift + VRRP (Module 2)**
+|Edge gateways and network services
+|Network gateway, WiFi controller, video aggregator
+
+|**Two-Node OpenShift (Module 3)**
+|Regional clusters serving multiple stores
+|Kubernetes platform for 10-50 stores (shared arbiter)
+|===
+
+== Red Hat Advanced Cluster Management (RHACM)
+
+In production, you would manage this fleet using **RHACM** (formerly Advanced Cluster Management for Kubernetes).
+
+=== Hub-Spoke Architecture
+
+image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
+
+[source,text]
+----
+┌─────────────────────────────────────────────┐
+│           RHACM Hub Cluster                 │
+│        (Regional Data Center)               │
+│                                             │
+│  • Manages 500 spoke clusters               │
+│  • Deploys policies and applications        │
+│  • Monitors compliance                      │
+│  • Aggregates metrics                       │
+└─────────────────────────────────────────────┘
+              │        │        │
+              ▼        ▼        ▼
+     ┌─────────┐ ┌─────────┐ ┌─────────┐
+     │ Store 1 │ │ Store 2 │ │ Store N │
+     │ Spoke   │ │ Spoke   │ │ Spoke   │
+     └─────────┘ └─────────┘ └─────────┘
+----
+
+Each store is a **spoke cluster** managed from the central **hub cluster**.
+
+=== Key Capabilities
+
+**1. Inventory Management**
+
+View all managed clusters across your fleet:
+
+[source,yaml]
+----
+Name: store-0001-chicago-il
+Status: Ready
+OpenShift Version: 4.21.6
+Nodes: 2 (worker + control-plane)
+Workloads: 45 pods
+Last Heartbeat: 30 seconds ago
+----
+
+**2. Policy-Based Governance**
+
+Define compliance policies that apply to all stores:
+
+[source,yaml]
+----
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: enforce-resource-limits
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: require-limits
+      spec:
+        remediationAction: enforce
+        severity: high
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: LimitRange
+            metadata:
+              name: resource-limits
+----
+
+If a store cluster drifts out of compliance, RHACM can automatically remediate.
+
+**3. Application Deployment**
+
+Deploy applications to specific store groups using **Placement**:
+
+[source,yaml]
+----
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
+metadata:
+  name: west-coast-stores
+spec:
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: region
+          operator: In
+          values: ["west"]
+        - key: environment
+          operator: In
+          values: ["production"]
+----
+
+Then deploy applications only to matching clusters:
+
+[source,yaml]
+----
+apiVersion: apps.open-cluster-management.io/v1
+kind: Subscription
+metadata:
+  name: pos-application
+spec:
+  channel: store-apps/stable
+  placement:
+    placementRef:
+      name: west-coast-stores
+----
+
+**4. Observability**
+
+Aggregate metrics from all stores into a central dashboard:
+
+* **Cluster health**: 498 healthy, 2 degraded
+* **Resource utilization**: 65% CPU, 70% memory across fleet
+* **Application status**: 99.8% pods running
+* **Compliance**: 95% compliant (25 stores need patches)
+
+=== Fleet Dashboard (Simulated)
+
+NOTE: This workshop uses simulated dashboards. In production, you'd access the real RHACM console at `https://multicloud-console.apps.<hub-cluster>/`.
+
+image::fleet-dashboard-inventory.png[RHACM Inventory Dashboard, align=center]
+
+**Inventory View** shows:
+
+* **1,000 devices** across 500 retail stores
+* **95% online** (50 offline due to maintenance window)
+* **Device groups**:
+  ** POS-Servers (500 clusters)
+  ** Edge-Gateways (500 clusters)
+  ** Regional-Hubs (3 clusters)
+
+Your workshop VMs would appear here as:
+
+* `retail-edge-student-01-rhel-ha` (Group: Pacemaker-HA-Nodes)
+* `retail-edge-student-01-microshift` (Group: MicroShift-Gateways)
+* `retail-edge-student-01-twonode` (Group: OpenShift-Two-Node)
+
+== Compliance and Security
+
+image::fleet-dashboard-compliance.png[RHACM Compliance Dashboard, align=center]
+
+**Compliance Dashboard** shows:
+
+* ✅ **980 clusters compliant** (98%)
+* ⚠️ **15 clusters need security updates** (CVE patches)
+* ❌ **5 clusters out of compliance** (old RHCOS image version)
+
+Example policy violations:
+
+[source,text]
+----
+Policy: require-minimum-rhcos-version
+Failed Clusters:
+  - store-0234-dallas-tx (RHCOS 4.21.2, required: 4.21.6)
+  - store-0451-miami-fl (RHCOS 4.21.3, required: 4.21.6)
+
+Remediation: Automated update scheduled for next maintenance window
+----
+
+== Update Orchestration at Scale
+
+image::fleet-dashboard-updates.png[RHACM Update Orchestration, align=center]
+
+**Update Workflow:**
+
+1. **Build new RHCOS image** with security patches
+2. **Test on dev/staging clusters** (10 stores)
+3. **Canary rollout** to 5% of stores (25 clusters)
+4. **Monitor for 24 hours** (check for regressions)
+5. **Progressive rollout**: 10%, 25%, 50%, 100%
+6. **Automatic rollback** if failures detected
+
+Example canary deployment:
+
+[source,yaml]
+----
+apiVersion: ran.openshift.io/v1
+kind: ClusterGroupUpgrade
+metadata:
+  name: rhcos-4.21.6-canary
+spec:
+  clusters:
+  - store-0001-chicago-il
+  - store-0123-boston-ma
+  - store-0456-seattle-wa
+  enable: true
+  managedPolicies:
+  - update-rhcos-4.21.6
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+----
+
+**Maintenance Windows** ensure updates happen during off-peak hours:
+
+* **US East Coast**: 2 AM - 5 AM EST
+* **US West Coast**: 2 AM - 5 AM PST
+* **Always avoid**: 7 AM - 10 PM (business hours)
+
+== Remote Troubleshooting
+
+When a store reports issues, you can troubleshoot remotely via RHACM:
+
+**1. Check cluster status:**
+
+[source,bash]
+----
+oc get managedcluster store-0234-dallas-tx -o yaml
+----
+
+**2. Access cluster directly:**
+
+[source,bash]
+----
+oc config use-context store-0234-dallas-tx
+oc get nodes
+oc get pods -A
+----
+
+**3. Run diagnostics:**
+
+[source,bash]
+----
+oc adm must-gather --dest-dir=/tmp/store-0234
+----
+
+**4. SSH to edge server (if needed):**
+
+[source,bash]
+----
+# Via jumphost
+ssh -J jumphost.datacenter.example.com core@store-0234-node1
+----
+
+All without sending a technician on-site!
+
+== Your Workshop Environment
+
+image::workshop-fleet-context.png[Workshop VMs in Fleet Context, align=center]
+
+While you'll work hands-on with **2-9 VMs per module**, imagine these represent a much larger fleet:
+
+[cols="1,3,3"]
+|===
+|Your Lab |Scale Factor |Real-World Equivalent
+
+|**2 VMs (Module 1)**
+|200 stores × 2 nodes
+|**400 Pacemaker servers** for POS databases
+
+|**2 VMs (Module 2)**
+|500 stores × 2 gateways
+|**1,000 MicroShift edge gateways**
+
+|**3 VMs (Module 3)**
+|100 stores × 2 nodes + shared arbiter
+|**200 OpenShift control-plane nodes + arbiters**
+|===
+
+=== What You'll Learn Applies to Fleets
+
+Every command you run in this workshop applies to fleet management:
+
+**Lab command:**
+[source,bash]
+----
+virtctl start rhel-ha-node1 -n retail-edge-student-01
+----
+
+**Fleet equivalent (RHACM):**
+[source,yaml]
+----
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: PlacementDecision
+metadata:
+  name: start-all-pacemaker-nodes
+spec:
+  decisions:
+  - clusterName: store-0001-chicago-il
+  - clusterName: store-0002-boston-ma
+  ... (498 more stores)
+----
+
+The HA patterns you learn (Pacemaker, VRRP, etcd quorum) work identically whether you're managing:
+
+* **1 store** (your lab)
+* **500 stores** (typical retail chain)
+* **5,000 stores** (global enterprise)
+
+== From Learning to Production
+
+=== Your Workshop Journey
+
+[source,text]
+----
+┌─────────────────────────────────────────────────────┐
+│ Module 0: Fleet Management Overview (YOU ARE HERE)  │
+│   ↓ Understand the big picture                      │
+├─────────────────────────────────────────────────────┤
+│ Module 1: Pacemaker HA                              │
+│   ↓ Learn STONITH fencing + shared storage          │
+├─────────────────────────────────────────────────────┤
+│ Module 2: MicroShift with VRRP                      │
+│   ↓ Learn virtual IP failover + local storage       │
+├─────────────────────────────────────────────────────┤
+│ Module 3: Two-Node OpenShift                        │
+│   ↓ Learn etcd quorum + distributed architecture    │
+├─────────────────────────────────────────────────────┤
+│ Module 4: Chaos Engineering                         │
+│   ↓ Validate resilience at scale                    │
+└─────────────────────────────────────────────────────┘
+----
+
+=== Production Deployment Path
+
+After this workshop, deploying to production involves:
+
+**1. Design Phase (1-2 weeks)**
+
+* Choose HA architecture per use case
+* Size hardware (CPU, memory, storage)
+* Plan network topology (Layer 2 requirements)
+* Define SLAs and RTO/RPO targets
+
+**2. Pilot Deployment (2-4 weeks)**
+
+* Deploy to 5-10 pilot stores
+* Validate functionality and performance
+* Train on-site staff
+* Document procedures
+
+**3. Rollout (3-6 months)**
+
+* Progressive deployment: 10 stores/week
+* Monitor metrics continuously
+* Iterate based on feedback
+* Build runbooks for common issues
+
+**4. Steady State Operations**
+
+* RHACM for centralized management
+* Automated compliance checking
+* Monthly patching cycles
+* Quarterly hardware refresh
+
+== Real-World Success Stories
+
+=== Case Study 1: Grocery Chain
+
+**Customer:** 800-store grocery chain
+
+**Challenge:** POS systems on standalone servers (no HA)
+
+**Solution:** Deployed Pacemaker clusters (Module 1 architecture)
+
+**Results:**
+
+* **99.95% uptime** (was 97% before)
+* **$2M saved** in lost transaction recovery
+* **60-second failover** (was 4-hour manual recovery)
+
+=== Case Study 2: Fast Food Franchise
+
+**Customer:** 1,200 franchise locations
+
+**Challenge:** WiFi controllers were single points of failure
+
+**Solution:** Deployed MicroShift + VRRP (Module 2 architecture)
+
+**Results:**
+
+* **Zero guest WiFi outages** in 6 months
+* **3-second failover** (guests don't notice)
+* **50% cost reduction** vs proprietary WiFi controllers
+
+=== Case Study 3: Regional Retail Cooperative
+
+**Customer:** 150 stores sharing IT infrastructure
+
+**Challenge:** Each store had 3-node OpenShift (expensive)
+
+**Solution:** Two-node OpenShift + shared arbiter (Module 3 architecture)
+
+**Results:**
+
+* **40% cost savings** (2 servers/store vs 3)
+* **Same workload capacity**
+* **Shared arbiter** serves all 150 stores from regional datacenter
+
+== Key Concepts to Remember
+
+As you work through the modules, keep these fleet management principles in mind:
+
+[cols="1,3"]
+|===
+|Principle |Why It Matters
+
+|**Infrastructure as Code**
+|All configurations in Git → easy to replicate across 1000s of stores
+
+|**Observability**
+|Can't fix what you can't see → centralized metrics/logs critical
+
+|**Automation**
+|Manual changes don't scale → automate updates, remediation, recovery
+
+|**Standardization**
+|Every store identical → easier troubleshooting, bulk operations
+
+|**Defense in Depth**
+|HA + backups + DR → multiple layers prevent total outages
+|===
+
+== Next Steps
+
+Now that you understand the **big picture** of retail edge fleet management, it's time to get hands-on!
+
+In the next module, you'll:
+
+1. **Start VirtualMachines** representing edge servers
+2. **Configure Pacemaker** with STONITH fencing
+3. **Test failover** scenarios
+4. **Add shared storage** with GFS2
+
+Remember: The 2 VMs you configure represent **hundreds or thousands** of similar deployments in a real retail fleet. The skills you learn here apply at any scale!
+
+== Workshop Architecture Reminder
+
+image::module0-workshop-vms.png[Workshop VM Layout, align=center]
+
+[source,text]
+----
+Your Namespace: retail-edge-student-XX
+├── Module 1 VMs (Pacemaker)
+│   ├── rhel-ha-node1 (10.101.0.20)
+│   └── rhel-ha-node2 (10.101.0.21)
+├── Module 2 VMs (MicroShift)
+│   ├── microshift-gw-a (10.102.0.20)
+│   └── microshift-gw-b (10.102.0.21)
+└── Module 3 VMs (Two-Node OpenShift)
+    ├── twonode-master1 (10.103.0.20)
+    ├── twonode-master2 (10.103.0.21)
+    └── twonode-arbiter (10.103.0.22)
+
+Each set of VMs is isolated via User Defined Networks (UDNs)
+----
+
+== Ready to Begin?
+
+You now understand:
+
+* ✅ How retail edge deployments work at scale (100-1000s of stores)
+* ✅ Red Hat Advanced Cluster Management for fleet management
+* ✅ Why you're learning three different HA architectures
+* ✅ How your lab VMs relate to real-world production
+
+Click **Next Module** below to start with **Module 1: Pacemaker HA Cluster**.
+
+Let's build something resilient! 🚀
