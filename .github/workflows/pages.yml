@@ -58,7 +58,7 @@ jobs:
 
           # Copy Antora output to workshop subdirectory
           cp -r build/site/retail-edge-ha/main/* docs/generated/workshop/
-          cp -r build/site/_/* docs/generated/workshop/_/
+          cp -r build/site/_/ docs/generated/workshop/
 
           # Copy static files
           cp docs/index.html docs/generated/
