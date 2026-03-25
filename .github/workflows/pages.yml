@@ -54,11 +54,11 @@ jobs:
 
       - name: Generate documentation index
         run: |
-          mkdir -p docs/generated/workshop
+          mkdir -p docs/generated
 
-          # Copy Antora output to workshop subdirectory
-          cp -r build/site/retail-edge-ha/main/* docs/generated/workshop/
-          cp -r build/site/_/ docs/generated/workshop/
+          # Copy entire Antora site (preserves correct relative paths)
+          cp -r build/site/retail-edge-ha/ docs/generated/
+          cp -r build/site/_/ docs/generated/
 
           # Copy static files
           cp docs/index.html docs/generated/
