@@ -1,0 +1,40 @@
+graph TB
+    subgraph retail["MicroShift Storage Architecture - Application-Level Replication"]
+        subgraph gwa["Gateway A - 10.102.0.20 - VRRP MASTER Priority 100"]
+            ms1["MicroShift Runtime"]
+            pg1["PostgreSQL PRIMARY<br/>Accepts Writes"]
+            st1["Local Storage<br/>PVC: data-postgres-0<br/>5Gi ReadWriteOnce"]
+
+            ms1 --> pg1
+            pg1 --> st1
+        end
+
+        subgraph gwb["Gateway B - 10.102.0.21 - VRRP BACKUP Priority 90"]
+            ms2["MicroShift Runtime"]
+            pg2["PostgreSQL STANDBY<br/>Receives Replication"]
+            st2["Local Storage<br/>PVC: data-postgres-0<br/>5Gi ReadWriteOnce"]
+
+            ms2 --> pg2
+            pg2 --> st2
+        end
+
+        vip["Virtual IP: 10.102.0.100<br/>Floats to MASTER<br/>Application Connects Here"]
+
+        pg1 -.."Streaming<br/>Replication".-> pg2
+
+        vip --> pg1
+    end
+
+    client["Client Application<br/>POS / Inventory System"]
+    client --> vip
+
+    note1["Key Points:<br/>✅ VIP migrates on failover<br/>❌ Storage does NOT migrate<br/>✅ Data replicated at app level"]
+
+    style gwa fill:#e1f5e1,stroke:#2d6a2d
+    style gwb fill:#fff5e1,stroke:#d4a574
+    style vip fill:#e1e5ff,stroke:#5573d4
+    style st1 fill:#ffe1e1,stroke:#ff6b6b,stroke-width:3px
+    style st2 fill:#ffe1e1,stroke:#ff6b6b,stroke-width:3px
+    style pg1 fill:#90EE90,stroke:#2d6a2d
+    style pg2 fill:#FFE4B5,stroke:#d4a574
+    style note1 fill:#fff9e6,stroke:#ffc107,stroke-width:2px

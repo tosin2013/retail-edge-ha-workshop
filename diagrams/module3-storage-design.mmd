@@ -1,0 +1,60 @@
+graph TB
+    subgraph datacenter["Remote Datacenter"]
+        direction TB
+        arb["etcd Arbiter<br/>10.103.0.22<br/>Quorum Voter Only"]
+        arb_st["Local SSD<br/>256GB 100K IOPS<br/>Minimal I/O Requirements"]
+        arb --> arb_st
+
+        san["Shared SAN Storage<br/>iSCSI / Fibre Channel<br/>10TB 10K IOPS<br/>Application Data"]
+    end
+
+    subgraph store["Retail Store Location"]
+        direction TB
+        subgraph cp1["Control-Plane Node 1 - 10.103.0.20"]
+            direction TB
+            etcd1["etcd Quorum Member"]
+            api1["K8s API + Scheduler"]
+            app1["Application Pods<br/>POS / Inventory / Analytics"]
+            nvme1["Local NVMe<br/>1TB 500K IOPS<br/><1ms latency<br/>OS + etcd Storage"]
+
+            etcd1 --> nvme1
+            api1 --> nvme1
+        end
+
+        subgraph cp2["Control-Plane Node 2 - 10.103.0.21"]
+            direction TB
+            etcd2["etcd Quorum Member"]
+            api2["K8s API + Scheduler"]
+            app2["Application Pods<br/>POS / Inventory / Analytics"]
+            nvme2["Local NVMe<br/>1TB 500K IOPS<br/><1ms latency<br/>OS + etcd Storage"]
+
+            etcd2 --> nvme2
+            api2 --> nvme2
+        end
+
+        etcd1 <-.."Raft Consensus<br/>Low Latency Required".-> etcd2
+    end
+
+    etcd1 <-.."WAN<br/>Quorum Votes".-> arb
+    etcd2 <-.."WAN<br/>Quorum Votes".-> arb
+
+    app1 -.."Remote Block Storage<br/>ReadWriteMany".-> san
+    app2 -.."Remote Block Storage<br/>ReadWriteMany".-> san
+
+    note1["⚠️ Local NVMe for etcd ONLY:<br/>- Fast low-latency writes<br/>- No network overhead<br/>- Critical for cluster stability"]
+    note2["✅ Remote SAN for apps:<br/>- Shared across both nodes<br/>- Survives node failure<br/>- ReadWriteMany support"]
+    note3["❌ Never run ODF here:<br/>- Needs 3+ storage nodes<br/>- Competes with etcd for IOPS<br/>- Quorum conflicts"]
+
+    style cp1 fill:#e1f5e1,stroke:#2d6a2d,stroke-width:2px
+    style cp2 fill:#e1f5e1,stroke:#2d6a2d,stroke-width:2px
+    style datacenter fill:#e1e5ff,stroke:#5573d4,stroke-width:2px
+    style nvme1 fill:#90EE90,stroke:#2d6a2d,stroke-width:3px
+    style nvme2 fill:#90EE90,stroke:#2d6a2d,stroke-width:3px
+    style arb_st fill:#e1e5ff,stroke:#5573d4
+    style san fill:#FFE4B5,stroke:#d4a574,stroke-width:2px
+    style note1 fill:#fff9e6,stroke:#ffc107,stroke-width:2px
+    style note2 fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style note3 fill:#ffebee,stroke:#f44336,stroke-width:2px
+    style etcd1 fill:#90EE90,stroke:#2d6a2d
+    style etcd2 fill:#90EE90,stroke:#2d6a2d
+    style arb fill:#e1e5ff,stroke:#5573d4
