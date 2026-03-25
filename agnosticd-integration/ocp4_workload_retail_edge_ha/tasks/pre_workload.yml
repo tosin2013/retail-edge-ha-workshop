@@ -4,7 +4,7 @@
 
 - name: Print AgnosticD user info
   ansible.builtin.debug:
-    msg: "{{ agnosticd_user_info }}"
+    msg: "{{ agnosticd_user_info | default('Not running in AgnosticD context') }}"
     verbosity: 2
 
 - name: Get cluster version

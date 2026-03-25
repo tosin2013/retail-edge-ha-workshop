@@ -3,14 +3,15 @@
 # Cleans up all workshop resources
 
 - name: Remove workshop Helm release
-  kubernetes.core.helm:
-    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
-    release_namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
-    state: absent
-    wait: true
-    wait_timeout: "300s"
+  ansible.builtin.command:
+    cmd: >
+      helm uninstall {{ ocp4_workload_retail_edge_ha_release_name }}
+      --namespace {{ ocp4_workload_retail_edge_ha_namespace }}
+      --wait
+      --timeout 5m
   register: r_helm_uninstall
   ignore_errors: true
+  failed_when: false
 
 - name: Print Helm removal status
   ansible.builtin.debug:

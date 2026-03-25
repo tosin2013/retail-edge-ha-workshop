@@ -34,17 +34,28 @@
     msg: "{{ lookup('file', r_workshop_temp_dir.path + '/custom-values.yaml') }}"
     verbosity: 1
 
+- name: Check if Helm release already exists
+  ansible.builtin.command:
+    cmd: "helm list -n {{ ocp4_workload_retail_edge_ha_namespace }} -o json"
+  register: r_helm_list
+  changed_when: false
+  failed_when: false
+
 - name: Install workshop Helm chart
-  kubernetes.core.helm:
-    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
-    chart_ref: "{{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha"
-    release_namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
-    create_namespace: true
-    values_files:
-      - "{{ r_workshop_temp_dir.path }}/custom-values.yaml"
-    wait: true
-    wait_timeout: "600s"
+  ansible.builtin.command:
+    cmd: >
+      helm install {{ ocp4_workload_retail_edge_ha_release_name }}
+      {{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha
+      --namespace {{ ocp4_workload_retail_edge_ha_namespace }}
+      --create-namespace
+      --values {{ r_workshop_temp_dir.path }}/custom-values.yaml
+      --wait
+      --timeout 10m
   register: r_helm_install
+  when: >
+    r_helm_list.stdout | from_json |
+    selectattr('name', 'equalto', ocp4_workload_retail_edge_ha_release_name) |
+    list | length == 0
 
 - name: Print Helm installation status
   ansible.builtin.debug:

@@ -108,6 +108,8 @@ By the end of this module, you will:
 
 * Understand two-node OpenShift architecture
 * Manage etcd quorum in distributed environments
+* Understand etcd storage performance requirements
+* Learn why ODF is not suitable for two-node clusters
 * Simulate node failures and observe recovery
 * Validate split-brain prevention
 * Monitor etcd health and performance
@@ -464,6 +466,274 @@ Note the difference:
 * **Arbiter node**: 1 core, 2Gi RAM (etcd only)
 
 This demonstrates the arbiter's efficiency for remote datacenter placement.
+
+== Step 12: etcd Storage Requirements
+
+etcd is the **most I/O-sensitive component** in OpenShift. Poor disk performance directly impacts cluster stability and API responsiveness.
+
+=== Why etcd Storage Matters
+
+etcd stores:
+
+* All Kubernetes object state (pods, services, configmaps, secrets)
+* OpenShift cluster configuration
+* Raft consensus logs for replication
+
+Every API write operation requires etcd to:
+
+1. Write to local disk (fsync)
+2. Replicate to quorum (2/3 nodes)
+3. Acknowledge success to API server
+
+**If disk writes are slow, the entire cluster becomes slow.**
+
+=== Performance Requirements
+
+OpenShift requires:
+
+[cols="1,2,3"]
+|===
+|Metric |Requirement |Why It Matters
+
+|**Disk Latency**
+|< 10ms per fsync
+|etcd uses synchronous writes for durability
+
+|**IOPS**
+|3000+ sustained
+|High transaction rate during cluster operations
+
+|**Sequential Write**
+|50 MB/s minimum
+|Raft log replication and snapshotting
+
+|**Filesystem**
+|ext4 or xfs (NOT NFS!)
+|NFS adds latency and does not guarantee fsync
+|===
+
+=== Test Disk Performance (Simulated)
+
+SSH into master1:
+
+[source,bash,role=execute]
+----
+virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+----
+
+In production, etcd data is stored in `/var/lib/etcd`. Test disk latency:
+
+[source,bash]
+----
+# Test fsync latency (simulated on root filesystem)
+sudo dd if=/dev/zero of=/var/tmp/test-etcd bs=4k count=10000 oflag=dsync 2>&1 | grep -E 'copied|MB'
+----
+
+Expected output (good performance):
+
+[source,text]
+----
+40960000 bytes (41 MB, 39 MiB) copied, 8.5 s, 4.8 MB/s
+----
+
+Calculate latency:
+
+[source,text]
+----
+10000 writes in 8.5 seconds = 0.85 ms per write ✓
+----
+
+**Good**: < 10ms per write
+**Warning**: 10-50ms (cluster will be slow)
+**Critical**: > 50ms (cluster may become unstable)
+
+In this lab, we're using Ceph RBD storage which has network overhead. Production two-node clusters use local NVMe for etcd.
+
+Exit:
+
+[source,bash]
+----
+exit
+----
+
+=== Why NOT Use ODF on Two-Node Clusters
+
+OpenShift Data Foundation (ODF/Ceph) requires:
+
+[cols="1,2,2"]
+|===
+|Requirement |ODF Minimum |Two-Node Reality
+
+|**Nodes**
+|3 storage nodes
+|Only 2 control-plane nodes
+
+|**Quorum**
+|2/3 Ceph monitors
+|Would conflict with etcd quorum
+
+|**Dedicated Nodes**
+|Separate storage workers
+|Control-plane already runs workloads
+
+|**Network Bandwidth**
+|10 Gbps between nodes
+|Edge stores often have 1 Gbps
+
+|**Latency**
+|< 5ms (same rack)
+|Not guaranteed in retail environments
+|===
+
+**Problem**: If you ran ODF on the same 2 nodes:
+
+* etcd competes with Ceph for disk IOPS
+* Ceph monitors compete with etcd for quorum
+* Both are I/O-intensive and latency-sensitive
+* **Result**: Cluster instability, poor performance
+
+=== Two-Node Storage Architecture
+
+For production two-node OpenShift:
+
+[cols="1,2,2"]
+|===
+|Storage Type |Technology |Use Case
+
+|**Local NVMe**
+|Direct-attached SSD in each server
+|✅ **etcd** (control-plane components, OS)
+
+|**Remote Block**
+|iSCSI/FC SAN from datacenter
+|✅ **Application PVCs** (databases, persistent workloads)
+
+|**Remote File**
+|NFS from file server
+|✅ **Shared storage** (registry, monitoring)
+
+|**External S3**
+|Object storage (AWS S3, MinIO, Red Hat Ceph)
+|✅ **Backups**, image registry backend
+
+|**Local ODF**
+|❌ Not supported on 2 nodes
+|N/A (requires 3+ nodes)
+|===
+
+=== Real-World Retail Storage Design
+
+image::module3-storage-design.png[Two-Node Storage Architecture, align=center]
+
+Example retail store configuration:
+
+[source,yaml]
+----
+Control-Plane Node 1:
+  - OS + etcd: Local NVMe (1TB, 500K IOPS)
+  - Application workloads: Remote iSCSI SAN (10TB, 10K IOPS)
+
+Control-Plane Node 2:
+  - OS + etcd: Local NVMe (1TB, 500K IOPS)
+  - Application workloads: Same remote SAN (shared)
+
+etcd Arbiter (Remote Datacenter):
+  - OS + etcd: Local SSD (256GB, 100K IOPS)
+  - No application workloads
+----
+
+=== etcd Disk Monitoring (Production Commands)
+
+In a running two-node OpenShift cluster, monitor etcd disk performance:
+
+[source,bash]
+----
+# Check etcd fsync duration (should be < 10ms)
+oc rsh -n openshift-etcd \
+  $(oc get pods -n openshift-etcd -l app=etcd -o name | head -1) \
+  etcdctl endpoint status --cluster -w table
+
+# Check etcd disk backend commit duration
+oc adm must-gather -- /usr/bin/gather_audit_logs
+# Review etcd metrics for backend_commit_duration_seconds
+----
+
+Example metrics to watch:
+
+[source,text]
+----
+etcd_disk_backend_commit_duration_seconds_bucket{le="0.01"}
+# 99th percentile should be < 10ms
+----
+
+If you see high latency:
+
+1. Check disk I/O: `iostat -x 1`
+2. Check for I/O wait: `top` (look for high `%wa`)
+3. Verify no other processes competing for disk (Ceph, databases)
+4. Consider upgrading to NVMe if on SATA SSD
+
+=== Impact of Poor etcd Storage
+
+*Symptoms:*
+
+* Slow `oc` commands (e.g., `oc get pods` takes 5-10 seconds)
+* Pod scheduling delays
+* Cluster operators degraded
+* API server timeouts
+
+*Error messages:*
+
+[source,text]
+----
+etcdserver: request timed out
+context deadline exceeded
+the server was unable to return a response
+----
+
+*Fix:*
+
+1. Migrate etcd to faster storage (NVMe)
+2. Reduce I/O contention (move workloads to different volumes)
+3. Tune etcd settings (increase heartbeat interval for high-latency WANs)
+
+=== Storage Comparison Across All Modules
+
+[cols="1,2,2,2"]
+|===
+|Module |Architecture |Storage Type |Failover Scope
+
+|**Module 1**
+|Pacemaker
+|Shared (GFS2, RWX)
+|VIP + storage + application
+
+|**Module 2**
+|MicroShift + VRRP
+|Local only (RWO)
+|VIP only (no data migration)
+
+|**Module 3**
+|Two-Node OpenShift
+|Local (etcd) + Remote (apps)
+|Full cluster HA (quorum-based)
+|===
+
+*Key insight:* Two-node OpenShift combines the best of both:
+
+* Local NVMe for etcd (fast like Module 1's SAN)
+* Remote storage for apps (flexible like Module 2, but shared across nodes)
+* Quorum management via remote arbiter (distributed resilience)
+
+=== Key Takeaways
+
+* ✅ etcd requires **< 10ms** disk latency for production use
+* ✅ Use local NVMe/SSD for etcd, never NFS
+* ❌ Do NOT run ODF on the same 2 nodes as etcd
+* ✅ Use remote SAN/NFS for application workloads
+* ✅ Monitor etcd disk performance continuously
+* ✅ Arbiter can use slower storage (only holds Raft votes, minimal I/O)
+* 💡 In retail: Local NVMe per store, shared SAN from datacenter
 
 == Verification
 

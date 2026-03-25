@@ -98,6 +98,7 @@ By the end of this module, you will:
 * Test VIP failover scenarios
 * Monitor VRRP state transitions
 * Deploy workloads to validate HA
+* Understand MicroShift local storage limitations and solutions
 
 == Step 1: Start Your MicroShift Gateways
 
@@ -552,6 +553,345 @@ Exit:
 ----
 exit
 ----
+
+== Step 11: Understanding MicroShift Storage Limitations
+
+This section explores a critical limitation of MicroShift: **local storage only**. Unlike Pacemaker with GFS2 (Module 1), MicroShift nodes cannot share storage. This has major implications for stateful applications.
+
+=== Why This Matters in Retail
+
+In retail edge environments, you might need:
+
+* **Local databases** for POS transactions
+* **Inventory caches** stored on disk
+* **Configuration persistence** across reboots
+
+With VRRP, the VIP migrates instantly, but **storage does NOT migrate** with it.
+
+=== The Challenge
+
+[cols="1,2,2"]
+|===
+|Architecture |Storage Behavior |What Happens on Failover
+
+|**Pacemaker + GFS2**
+|Shared storage (both nodes access same data)
+|✅ VIP + storage migrate together
+
+|**MicroShift + VRRP**
+|Local storage (each node has its own disk)
+|❌ VIP migrates, but data stays on failed node
+|===
+
+Let's demonstrate this limitation with a StatefulSet.
+
+=== Deploy StatefulSet with Local Storage
+
+Start Gateway A (if not already running):
+
+[source,bash,role=execute]
+----
+virtctl start %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+----
+
+Wait 60 seconds for MicroShift to be ready, then SSH in:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+----
+
+Create a StatefulSet with PostgreSQL:
+
+[source,bash]
+----
+cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+  - port: 5432
+    name: postgres
+  clusterIP: None
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_PASSWORD
+          value: redhat123
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 5Gi
+EOF
+----
+
+Wait for the pod to start:
+
+[source,bash]
+----
+watch -n 2 oc get pods
+----
+
+Press `Ctrl+C` when `postgres-0` shows `Running`.
+
+=== Insert Test Data
+
+Create sample retail data:
+
+[source,bash]
+----
+oc exec -it postgres-0 -- psql -U postgres <<'EOF'
+CREATE DATABASE storedb;
+\c storedb
+
+CREATE TABLE transactions (
+    id SERIAL PRIMARY KEY,
+    product VARCHAR(100),
+    amount DECIMAL(10,2),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO transactions (product, amount) VALUES
+    ('Coffee', 4.99),
+    ('Bread', 3.49),
+    ('Milk', 5.29);
+
+SELECT * FROM transactions;
+EOF
+----
+
+You should see 3 transactions.
+
+Check which node the pod is running on:
+
+[source,bash]
+----
+oc get pod postgres-0 -o wide
+----
+
+Note the `NODE` column - it should show the MicroShift node name (Gateway A).
+
+=== Test Storage Behavior During Failover
+
+Now, stop Gateway A to trigger VIP migration:
+
+[source,bash]
+----
+exit  # Exit SSH from Gateway A
+----
+
+[source,bash,role=execute]
+----
+virtctl stop %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+----
+
+Wait 10 seconds for VRRP to migrate the VIP to Gateway B.
+
+SSH into Gateway B:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%MICROSHIFT_GW_B% -n %STUDENT_NAMESPACE%
+----
+
+Check pod status:
+
+[source,bash]
+----
+oc get pods
+----
+
+You'll see one of these scenarios:
+
+[source,text]
+----
+NAME         READY   STATUS    RESTARTS   AGE
+postgres-0   0/1     Pending   0          5m
+----
+
+OR
+
+[source,text]
+----
+NAME         READY   STATUS             RESTARTS   AGE
+postgres-0   0/1     CrashLoopBackOff   3          5m
+----
+
+Why is the pod not running on Gateway B?
+
+Check the PersistentVolumeClaim:
+
+[source,bash]
+----
+oc get pvc
+----
+
+[source,text]
+----
+NAME             STATUS   VOLUME   CAPACITY   ACCESS MODES   STORAGECLASS
+data-postgres-0  Bound    pvc-...  5Gi        RWO            ...
+----
+
+The PVC is bound to a volume on **Gateway A's local storage**! Gateway B cannot access it because MicroShift uses `ReadWriteOnce` (RWO) - only one node can mount at a time.
+
+Try to access the database via the VIP:
+
+[source,bash]
+----
+curl -v telnet://%MICROSHIFT_VIP%:5432 --max-time 5
+----
+
+This will timeout - the database pod cannot start on Gateway B.
+
+=== The Problem
+
+[source,text]
+----
+┌─────────────────┐       ┌─────────────────┐
+│ Gateway A       │       │ Gateway B       │
+│ (STOPPED)       │       │ (VIP: MASTER)   │
+├─────────────────┤       ├─────────────────┤
+│ Pod: postgres-0 │       │ Pod: Pending    │
+│ PVC: Bound      │ ─X──► │ PVC: Inaccessible
+│ Data: 3 rows    │       │ Data: None      │
+└─────────────────┘       └─────────────────┘
+      │                           │
+      │ Local Storage (RWO)       │ Cannot mount
+      └─────────────────────────  │
+                                  ✗
+----
+
+**Key insight:** VRRP migrated the VIP (network access) but the StatefulSet pod is stuck because its data is on Gateway A!
+
+=== Solution: Application-Level Replication
+
+For stateful applications on MicroShift, you must use application-level replication:
+
+[cols="1,2,2"]
+|===
+|Database |Replication Method |How It Works
+
+|**PostgreSQL**
+|Streaming Replication
+|Primary → standby, promote standby on failover
+
+|**MySQL**
+|InnoDB Cluster (Group Replication)
+|Multi-primary, automatic failover
+
+|**MongoDB**
+|Replica Set
+|3+ replicas, automatic primary election
+|===
+
+=== Real-World Retail Architecture
+
+image::module2-storage-architecture.png[MicroShift Storage Architecture, align=center]
+
+In production, you would deploy:
+
+1. **PostgreSQL on both gateways** with streaming replication
+2. **VIP points to current primary** (same as Module 1 optional exercise)
+3. **On failure:** VRRP migrates VIP, PostgreSQL on backup promotes to primary
+4. **Data survives** because it's replicated, not shared
+
+=== Clean Up Test Resources
+
+Delete the StatefulSet to free resources:
+
+[source,bash]
+----
+oc delete statefulset postgres
+oc delete pvc data-postgres-0
+oc delete svc postgres
+----
+
+Start Gateway A again:
+
+[source,bash]
+----
+exit
+----
+
+[source,bash,role=execute]
+----
+virtctl start %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+----
+
+=== Key Takeaways
+
+* ❌ MicroShift does NOT support shared storage (no ReadWriteMany)
+* ✅ VRRP migrates the VIP only, not data
+* ✅ StatefulSets remain bound to the node where data exists
+* ✅ Applications must handle data replication themselves
+* 💡 MicroShift is best for:
+  ** Stateless workloads (web apps, proxies, load balancers)
+  ** Stateful apps with built-in replication (databases, message queues)
+  ** Edge gateways where network HA is more important than storage HA
+
+=== Comparison: Pacemaker vs. MicroShift Storage
+
+[cols="1,2,2"]
+|===
+|Feature |Pacemaker (Module 1) |MicroShift (Module 2)
+
+|**Shared Storage**
+|✅ Yes (GFS2, NFS, SAN)
+|❌ No (local storage only)
+
+|**Failover Scope**
+|VIP + storage + application
+|VIP only
+
+|**Data Migration**
+|Automatic (same PVC on both nodes)
+|Not possible (PVC stays on original node)
+
+|**Recovery Time**
+|30-60 seconds (full stack)
+|3-5 seconds (VIP only, app may not start)
+
+|**Complexity**
+|Higher (cluster + fencing + GFS2)
+|Lower (just VRRP)
+
+|**Best For**
+|Stateful HA (databases, file servers)
+|Stateless HA (gateways, proxies)
+|===
 
 == Verification
 

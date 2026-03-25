@@ -87,7 +87,8 @@ By the end of this module, you will:
 * Configure a Pacemaker cluster with pcs
 * Set up fence_kubevirt for STONITH fencing
 * Create a Virtual IP resource
-* Test failover scenarios
+* Configure shared storage with GFS2 clustered filesystem
+* Test failover scenarios including storage resilience
 
 == Step 1: Start Your VirtualMachines
 
@@ -459,6 +460,403 @@ Exit the SSH session:
 ----
 exit
 ----
+
+== Step 11: Shared Storage with Pacemaker
+
+In retail environments, shared storage enables critical capabilities like shared POS transaction logs, replicated inventory databases, and synchronized configuration files. Let's configure a clustered filesystem that automatically fails over with the cluster.
+
+=== Why Shared Storage Matters
+
+*Retail use cases:*
+
+* **POS Transaction Logs**: All sales data available on both nodes for immediate failover
+* **Inventory Database**: Real-time stock levels accessible from either server
+* **Configuration Files**: Consistent settings across the HA pair
+* **Store Reports**: Generated on one node, accessible from both
+
+=== Create Shared PersistentVolumeClaim
+
+First, exit any SSH session and create a shared PVC from your terminal:
+
+[source,bash,role=execute]
+----
+cat <<EOF | oc apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pacemaker-shared-storage
+  namespace: %STUDENT_NAMESPACE%
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: ocs-external-storagecluster-cephfs
+EOF
+----
+
+Verify the PVC is bound:
+
+[source,bash,role=execute]
+----
+oc get pvc pacemaker-shared-storage -n %STUDENT_NAMESPACE%
+----
+
+You should see `STATUS: Bound`.
+
+NOTE: ReadWriteMany (RWX) access mode allows both VMs to mount the volume simultaneously - essential for clustered filesystems.
+
+=== Attach Shared Storage to VMs
+
+Stop both VMs to attach the storage:
+
+[source,bash,role=execute]
+----
+virtctl stop %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait for VMs to stop (check with `oc get vmi -n %STUDENT_NAMESPACE%`).
+
+Patch node1 to add the shared disk:
+
+[source,bash,role=execute]
+----
+oc patch vm rhel-ha-node1 -n %STUDENT_NAMESPACE% --type=merge -p '
+spec:
+  template:
+    spec:
+      domain:
+        devices:
+          disks:
+          - name: containerdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          - name: shared-data
+            disk:
+              bus: virtio
+      volumes:
+      - name: containerdisk
+        containerDisk:
+          image: registry.redhat.io/rhel9/rhel-guest-image:latest
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            # (existing cloud-init - unchanged)
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: pacemaker-shared-storage
+'
+----
+
+Repeat for node2:
+
+[source,bash,role=execute]
+----
+oc patch vm rhel-ha-node2 -n %STUDENT_NAMESPACE% --type=merge -p '
+spec:
+  template:
+    spec:
+      domain:
+        devices:
+          disks:
+          - name: containerdisk
+            disk:
+              bus: virtio
+          - name: cloudinitdisk
+            disk:
+              bus: virtio
+          - name: shared-data
+            disk:
+              bus: virtio
+      volumes:
+      - name: containerdisk
+        containerDisk:
+          image: registry.redhat.io/rhel9/rhel-guest-image:latest
+      - name: cloudinitdisk
+        cloudInitNoCloud:
+          userData: |
+            # (existing cloud-init - unchanged)
+      - name: shared-data
+        persistentVolumeClaim:
+          claimName: pacemaker-shared-storage
+'
+----
+
+IMPORTANT: In production, you would use DataVolumes or edit VM manifests directly. This patch command is simplified for workshop purposes.
+
+Start the VMs:
+
+[source,bash,role=execute]
+----
+virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait for VMs to boot (~30 seconds).
+
+=== Configure GFS2 Clustered Filesystem
+
+SSH into node1:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+Check that the shared disk appears as `/dev/vdb`:
+
+[source,bash]
+----
+lsblk
+----
+
+You should see:
+
+[source,text]
+----
+NAME   MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
+vda    252:0    0  30G  0 disk
+└─vda1 252:1    0  30G  0 part /
+vdb    252:16   0  10G  0 disk
+----
+
+Install GFS2 utilities (pre-installed via cloud-init):
+
+[source,bash]
+----
+sudo dnf install -y gfs2-utils dlm
+----
+
+Create GFS2 filesystem on the shared disk:
+
+[source,bash]
+----
+sudo mkfs.gfs2 -p lock_dlm -t ha-cluster:shared-data -j 2 /dev/vdb
+----
+
+Parameters explained:
+* `-p lock_dlm`: Use DLM (Distributed Lock Manager) for cluster locking
+* `-t ha-cluster:shared-data`: Cluster name and filesystem name
+* `-j 2`: Two journals (one per node)
+
+Create mount point:
+
+[source,bash]
+----
+sudo mkdir -p /mnt/shared
+----
+
+=== Add Filesystem Resource to Pacemaker
+
+Create a Pacemaker resource for the GFS2 filesystem:
+
+[source,bash]
+----
+sudo pcs resource create shared-fs Filesystem \
+  device="/dev/vdb" \
+  directory="/mnt/shared" \
+  fstype="gfs2" \
+  options="noatime" \
+  op monitor interval=20s \
+  clone interleave=true
+----
+
+The `clone` parameter allows both nodes to mount the filesystem simultaneously.
+
+Check the resource status:
+
+[source,bash]
+----
+sudo pcs status resources
+----
+
+You should see `shared-fs-clone` started on both nodes.
+
+Verify the filesystem is mounted:
+
+[source,bash]
+----
+mount | grep /mnt/shared
+----
+
+Expected output:
+
+[source,text]
+----
+/dev/vdb on /mnt/shared type gfs2 (rw,noatime)
+----
+
+=== Test Storage Failover
+
+Create a test file on node1:
+
+[source,bash]
+----
+echo "Transaction log $(date)" | sudo tee /mnt/shared/test-transaction.log
+cat /mnt/shared/test-transaction.log
+----
+
+SSH into node2 from node1:
+
+[source,bash]
+----
+ssh rhel-ha-node2
+----
+
+Verify the file is immediately visible on node2 (concurrent access):
+
+[source,bash]
+----
+cat /mnt/shared/test-transaction.log
+----
+
+You should see the same content - both nodes can read/write simultaneously!
+
+Create another file from node2:
+
+[source,bash]
+----
+echo "Sales data from node2 $(date)" | sudo tee /mnt/shared/sales-node2.log
+----
+
+Exit back to node1:
+
+[source,bash]
+----
+exit
+----
+
+Verify node1 sees the file from node2:
+
+[source,bash]
+----
+ls -l /mnt/shared/
+cat /mnt/shared/sales-node2.log
+----
+
+=== Test Node Failure Scenario
+
+Now test what happens when a node fails. Stop node2 entirely:
+
+[source,bash]
+----
+exit  # Exit SSH from node1
+----
+
+From your terminal:
+
+[source,bash,role=execute]
+----
+virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+SSH back into node1:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+----
+
+Check that the shared filesystem is still accessible:
+
+[source,bash]
+----
+ls -l /mnt/shared/
+echo "Node2 is down, but storage still works $(date)" | sudo tee /mnt/shared/failover-test.log
+----
+
+The filesystem remains available on node1 despite node2 being offline!
+
+Check Pacemaker status:
+
+[source,bash]
+----
+sudo pcs status
+----
+
+You'll see `shared-fs-clone` running only on node1 (node2 is offline).
+
+Start node2 again:
+
+[source,bash]
+----
+exit
+----
+
+[source,bash,role=execute]
+----
+virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait 60 seconds for node2 to rejoin the cluster, then SSH into node2:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Verify node2 automatically remounted the shared filesystem:
+
+[source,bash]
+----
+mount | grep /mnt/shared
+ls -l /mnt/shared/
+cat /mnt/shared/failover-test.log
+----
+
+All files created during node2's downtime are now accessible!
+
+Exit:
+
+[source,bash]
+----
+exit
+----
+
+=== Real-World Storage Architecture
+
+In production retail deployments:
+
+[cols="1,2,2"]
+|===
+|Storage Type |Technology |Use Case
+
+|**Shared SAN**
+|iSCSI, Fibre Channel
+|High-performance database storage
+
+|**Clustered Filesystem**
+|GFS2 (RHEL), OCFS2
+|Configuration files, logs, reports
+
+|**Network Storage**
+|NFS, Ceph RBD
+|Backups, large file shares
+
+|**Local RAID**
+|Hardware RAID 1/10
+|OS disks, temporary data
+|===
+
+*Key difference from this lab:*
+
+* Lab uses Ceph RBD (ODF) over network
+* Production stores typically use local SAN (lower latency, higher cost)
+* Both support ReadWriteMany for GFS2
+
+=== Key Takeaways
+
+* ✅ GFS2 enables concurrent filesystem access from multiple nodes
+* ✅ Pacemaker manages mounting/unmounting automatically
+* ✅ Fencing prevents data corruption during split-brain scenarios
+* ✅ Shared storage requires ReadWriteMany (RWX) access mode
+* ✅ Real retail stores use GFS2 for transaction logs and shared data
+* ⚠️ Performance depends on storage backend (local SAN is fastest)
 
 == Verification
 

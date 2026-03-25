@@ -24,17 +24,19 @@ Over the next few hours, you'll work through four modules:
 |Module |Description
 
 |*Module 1*
-|Deploy a two-node Pacemaker/Corosync cluster with STONITH fencing
+|Deploy a two-node Pacemaker/Corosync cluster with STONITH fencing + shared storage (GFS2)
 
 |*Module 2*
-|Configure MicroShift with VRRP-based virtual IP failover
+|Configure MicroShift with VRRP-based virtual IP failover + understand local storage limitations
 
 |*Module 3*
-|Install a two-node OpenShift cluster with remote etcd arbiter
+|Install a two-node OpenShift cluster with remote etcd arbiter + learn etcd storage requirements
 
 |*Module 4*
 |Perform chaos engineering tests to validate resilience
 |===
+
+NOTE: Each module includes a storage resilience exercise to help you understand how data persistence works in different HA architectures.
 
 == Your Environment
 
