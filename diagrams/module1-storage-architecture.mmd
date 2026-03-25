@@ -1,0 +1,47 @@
+graph TB
+    subgraph retail["Retail Store Location - Pacemaker HA Cluster"]
+        subgraph node1["RHEL HA Node 1 - 10.101.0.20"]
+            pcs1["Pacemaker + Corosync"]
+            app1["Application Pods<br/>POS / Inventory"]
+            gfs1["GFS2 Mount<br/>/mnt/shared"]
+
+            pcs1 --> gfs1
+            app1 --> gfs1
+        end
+
+        subgraph node2["RHEL HA Node 2 - 10.101.0.21"]
+            pcs2["Pacemaker + Corosync"]
+            app2["Application Pods<br/>POS / Inventory"]
+            gfs2["GFS2 Mount<br/>/mnt/shared"]
+
+            pcs2 --> gfs2
+            app2 --> gfs2
+        end
+
+        vip["Cluster IP: 10.101.0.100<br/>Floats to Active Node"]
+
+        pcs1 -.->|"Corosync Heartbeat<br/>Multicast 239.255.1.1"| pcs2
+        vip --> pcs1
+    end
+
+    storage["Shared Storage<br/>PVC: pacemaker-shared-storage<br/>10Gi ReadWriteMany<br/>StorageClass: ocs-external-storagecluster-cephfs"]
+
+    gfs1 -->|"Concurrent Access<br/>DLM Locking"| storage
+    gfs2 -->|"Concurrent Access<br/>DLM Locking"| storage
+
+    client["Client Application<br/>POS Terminal / Web App"]
+    client --> vip
+
+    note1["Key Points:<br/>✅ Both nodes can read/write simultaneously<br/>✅ GFS2 uses DLM for lock coordination<br/>✅ Storage survives node failure<br/>✅ Pacemaker manages mount resource"]
+    note2["Storage Comparison:<br/>Module 1 GFS2: ReadWriteMany shared<br/>Module 2 MicroShift: ReadWriteOnce local<br/>Module 3 OpenShift: Local NVMe for etcd"]
+
+    style node1 fill:#e1f5e1,stroke:#2d6a2d,stroke-width:2px
+    style node2 fill:#e1f5e1,stroke:#2d6a2d,stroke-width:2px
+    style storage fill:#90EE90,stroke:#2d6a2d,stroke-width:3px
+    style vip fill:#e1e5ff,stroke:#5573d4
+    style gfs1 fill:#FFE4B5,stroke:#d4a574
+    style gfs2 fill:#FFE4B5,stroke:#d4a574
+    style note1 fill:#fff9e6,stroke:#ffc107,stroke-width:2px
+    style note2 fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style pcs1 fill:#e1e5ff,stroke:#5573d4
+    style pcs2 fill:#e1e5ff,stroke:#5573d4

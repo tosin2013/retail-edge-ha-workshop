@@ -465,6 +465,8 @@ exit
 
 In retail environments, shared storage enables critical capabilities like shared POS transaction logs, replicated inventory databases, and synchronized configuration files. Let's configure a clustered filesystem that automatically fails over with the cluster.
 
+image::module1-storage-architecture.png[Pacemaker Shared Storage Architecture, align=center]
+
 === Why Shared Storage Matters
 
 *Retail use cases:*
