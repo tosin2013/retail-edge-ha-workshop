@@ -1,0 +1,59 @@
+{{- if .Values.fleetManagement.enabled }}
+---
+# =============================================================================
+# Fleet Management Child Application
+# =============================================================================
+# Deploys RHACM operator, MultiClusterHub, and ManagedCluster CRs for fleet management
+# Sync Wave: -2 (before all other operators to establish fleet management early)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-fleet
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: fleet-management
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.fleetManagement.syncWave | quote }}
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.showroom.git.repository }}
+    targetRevision: {{ .Values.showroom.git.branch }}
+    path: manifests/infrastructure/fleet
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: open-cluster-management
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  # Ignore MultiClusterHub status fields managed by operator
+  ignoreDifferences:
+  - group: operator.open-cluster-management.io
+    kind: MultiClusterHub
+    jsonPointers:
+    - /status
+    - /spec/availabilityConfig
+
+  - group: cluster.open-cluster-management.io
+    kind: ManagedCluster
+    jsonPointers:
+    - /status
+
+  info:
+    - name: Component
+      value: Fleet Management (RHACM + Edge Manager)
+    - name: Wait Time
+      value: "10-15 minutes for RHACM installation"
+    - name: Version
+      value: {{ .Values.fleetManagement.rhacm.version | quote }}
+    - name: Features
+      value: "Edge Manager, Multi-cluster Management, Policy Governance"
+{{- end }}

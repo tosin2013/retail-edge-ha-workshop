@@ -1,0 +1,121 @@
+# =============================================================================
+# ManagedCluster CRs for Student Edge Sites
+# =============================================================================
+# Creates placeholder managed clusters representing student edge locations
+# Students will see these in RHACM console as their "fleet"
+# Sync Wave: 1 (after MultiClusterHub is ready)
+# =============================================================================
+
+# Student 01 - Module 1: Pacemaker HA Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-01-pacemaker
+  namespace: open-cluster-management
+  labels:
+    student-id: "01"
+    module: "module1"
+    architecture: "pacemaker-ha"
+    location: "edge-store-001"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+# Student 01 - Module 2: MicroShift Gateway Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-01-microshift
+  namespace: open-cluster-management
+  labels:
+    student-id: "01"
+    module: "module2"
+    architecture: "microshift-vrrp"
+    location: "edge-store-001"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+# Student 01 - Module 3: Two-Node OpenShift Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-01-twonode
+  namespace: open-cluster-management
+  labels:
+    student-id: "01"
+    module: "module3"
+    architecture: "two-node-openshift"
+    location: "edge-store-001"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+# Student 02 - Module 1: Pacemaker HA Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-02-pacemaker
+  namespace: open-cluster-management
+  labels:
+    student-id: "02"
+    module: "module1"
+    architecture: "pacemaker-ha"
+    location: "edge-store-002"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+# Student 02 - Module 2: MicroShift Gateway Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-02-microshift
+  namespace: open-cluster-management
+  labels:
+    student-id: "02"
+    module: "module2"
+    architecture: "microshift-vrrp"
+    location: "edge-store-002"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+# Student 02 - Module 3: Two-Node OpenShift Cluster
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: student-02-twonode
+  namespace: open-cluster-management
+  labels:
+    student-id: "02"
+    module: "module3"
+    architecture: "two-node-openshift"
+    location: "edge-store-002"
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60

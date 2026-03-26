@@ -1,0 +1,46 @@
+# =============================================================================
+# Red Hat Advanced Cluster Management (RHACM) Operator Subscription
+# =============================================================================
+# Deploys RHACM 2.13+ which includes Edge Manager capabilities for fleet management
+# Sync Wave: -2 (before CNV operator in wave -1)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: fleet-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: open-cluster-management-operatorgroup
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: fleet-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  targetNamespaces:
+  - open-cluster-management
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: advanced-cluster-management
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: fleet-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  channel: release-2.16
+  installPlanApproval: Automatic
+  name: advanced-cluster-management
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace

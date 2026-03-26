@@ -1,0 +1,25 @@
+# =============================================================================
+# MultiClusterHub Custom Resource
+# =============================================================================
+# Deploys RHACM hub cluster components including Edge Manager
+# Sync Wave: 0 (after operators are ready)
+# =============================================================================
+apiVersion: operator.open-cluster-management.io/v1
+kind: MultiClusterHub
+metadata:
+  name: multiclusterhub
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: fleet-management
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  # High availability for production
+  availabilityConfig: High
+
+  # Disable cluster backup (not needed for workshop)
+  enableClusterBackup: false
+
+  # Note: RHACM 2.16+ includes all components by default
+  # Component overrides not needed for basic deployment

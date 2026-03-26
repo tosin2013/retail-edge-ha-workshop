@@ -1,0 +1,134 @@
+# =============================================================================
+# RHACM Student Access RBAC
+# =============================================================================
+# Grants students view access to RHACM resources and managed clusters
+# Students can explore fleet management console and view their ManagedClusters
+# =============================================================================
+
+# Student 01 - RHACM Viewer Role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: student-01-rhacm-view
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+    student-id: "01"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+- kind: User
+  name: student-01
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: open-cluster-management:view
+  apiGroup: rbac.authorization.k8s.io
+
+# Student 02 - RHACM Viewer Role
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: student-02-rhacm-view
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+    student-id: "02"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+- kind: User
+  name: student-02
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: open-cluster-management:view
+  apiGroup: rbac.authorization.k8s.io
+
+# ClusterRole for viewing ManagedClusters (scoped to student's own clusters)
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: retail-edge-managedcluster-viewer
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+rules:
+# View ManagedClusters
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - managedclusters
+  verbs:
+  - get
+  - list
+  - watch
+
+# View ManagedCluster status
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - managedclusters/status
+  verbs:
+  - get
+  - list
+  - watch
+
+# View cluster inventory
+- apiGroups:
+  - inventory.open-cluster-management.io
+  resources:
+  - baremetalhosts
+  verbs:
+  - get
+  - list
+  - watch
+
+# Bind ClusterRole to Student 01
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: student-01-managedcluster-viewer
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+    student-id: "01"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+- kind: User
+  name: student-01
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: retail-edge-managedcluster-viewer
+  apiGroup: rbac.authorization.k8s.io
+
+# Bind ClusterRole to Student 02
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: student-02-managedcluster-viewer
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+    student-id: "02"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+- kind: User
+  name: student-02
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: retail-edge-managedcluster-viewer
+  apiGroup: rbac.authorization.k8s.io

@@ -88,6 +88,51 @@ operators:
     # External Ceph doesn't support VolumeSnapshots for boot sources
     enableBootImageImport: false
 
+# Fleet Management Configuration
+# -----------------------------------------------------------------------------
+fleetManagement:
+  # Enable RHACM and Edge Manager for fleet management capabilities
+  enabled: true
+
+  # Sync wave (-2 = before CNV operator, establishes fleet management first)
+  syncWave: "-2"
+
+  # Red Hat Advanced Cluster Management (RHACM) configuration
+  rhacm:
+    # RHACM version (2.16+ includes Edge Manager)
+    version: "2.16"
+
+    # Operator channel
+    channel: "release-2.16"
+
+    # RHACM namespace
+    namespace: "open-cluster-management"
+
+    # Edge Manager capabilities
+    edgeManager:
+      # Enable Edge Manager for device fleet management
+      enabled: true
+
+      # Create ManagedCluster CRs for each student representing edge sites
+      createManagedClusters: true
+
+    # MultiClusterHub configuration
+    hub:
+      # Availability configuration (High for production-like experience)
+      availabilityConfig: "High"
+
+      # Enable cluster backup (false for workshop)
+      enableClusterBackup: false
+
+      # Components to enable
+      components:
+        console: true          # RHACM web console
+        insights: true         # Cluster insights and recommendations
+        applicationUI: true    # Application lifecycle management UI
+        clusterLifecycle: true # Cluster provisioning and management
+        grc: true             # Governance, risk, and compliance
+        search: true          # Fleet inventory search
+
 # Infrastructure Configuration
 # -----------------------------------------------------------------------------
 infrastructure:

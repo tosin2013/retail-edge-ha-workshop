@@ -33,6 +33,10 @@ data:
   CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
   CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
 
+  # Fleet management (RHACM + Edge Manager)
+  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
+
   # VM credentials
   VM_USER: "cloud-user"
   VM_PASSWORD: "redhat"
@@ -66,6 +70,10 @@ data:
   # Cluster information
   CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
   CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
+
+  # Fleet management (RHACM + Edge Manager)
+  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
 
   # VM credentials
   VM_USER: "cloud-user"

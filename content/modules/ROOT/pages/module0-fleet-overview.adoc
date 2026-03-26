@@ -599,6 +599,217 @@ As you work through the modules, keep these fleet management principles in mind:
 |HA + backups + DR → multiple layers prevent total outages
 |===
 
+== Hands-On Lab: Exploring Your Fleet Manager
+
+In this workshop, you have access to a **real RHACM hub cluster** managing your edge infrastructure. Let's explore the fleet management capabilities!
+
+=== Lab Setup
+
+Your workshop environment includes:
+
+* **RHACM 2.16 Hub Cluster** (already deployed)
+* **6 ManagedClusters** representing your edge sites (3 per student)
+* **Fleet Manager Console** integrated into OpenShift
+
+Each student manages a simulated retail store with 3 edge deployments:
+
+[cols="1,2,2"]
+|===
+|ManagedCluster Name |Architecture |Purpose
+
+|`student-{STUDENT_ID}-pacemaker`
+|Pacemaker HA
+|Represents your store's database servers (Module 1)
+
+|`student-{STUDENT_ID}-microshift`
+|MicroShift + VRRP
+|Represents your store's edge gateway (Module 2)
+
+|`student-{STUDENT_ID}-twonode`
+|Two-Node OpenShift
+|Represents your regional cluster (Module 3)
+|===
+
+=== Exercise 1: Access the Fleet Manager Console
+
+The RHACM console is integrated into the OpenShift web console.
+
+**Step 1:** Access the OpenShift Console
+
+Open your terminal and get the console URL:
+
+[source,bash,role=execute]
+----
+echo $RHACM_CONSOLE_URL
+----
+
+Or use the direct link:
+
+[source,bash,role=execute]
+----
+oc whoami --show-console
+----
+
+**Step 2:** Login to OpenShift Console
+
+. Open the console URL in a new browser tab
+. Login with your workshop credentials (provided by instructor)
+. Accept any security warnings if prompted
+
+**Step 3:** Navigate to Fleet Manager
+
+. Click **All Clusters** in the top navigation bar (or use the cluster switcher)
+. Go to **Infrastructure** → **Clusters** in the left navigation
+
+You should see the RHACM dashboard with your managed clusters!
+
+=== Exercise 2: View Your Fleet Inventory
+
+Now let's explore your edge fleet using the CLI.
+
+**Step 1:** List All Managed Clusters
+
+[source,bash,role=execute]
+----
+oc get managedclusters
+----
+
+You should see:
+
+* `local-cluster` - The hub cluster itself
+* Your 3 edge sites (pacemaker, microshift, twonode)
+* Other students' edge sites (if in a multi-user session)
+
+**Step 2:** View Your Fleet with Details
+
+[source,bash,role=execute]
+----
+oc get managedclusters -l student-id=$STUDENT_ID -o custom-columns=\
+NAME:.metadata.name,\
+ARCHITECTURE:.metadata.labels.architecture,\
+LOCATION:.metadata.labels.location,\
+MODULE:.metadata.labels.module
+----
+
+This shows your 3 edge sites organized by:
+
+* **Architecture** - The HA pattern (pacemaker-ha, microshift-vrrp, two-node-openshift)
+* **Location** - Your simulated store location (edge-store-00X)
+* **Module** - Which workshop module covers this architecture
+
+**Step 3:** Filter Fleet by Architecture
+
+See all Pacemaker HA deployments across the fleet:
+
+[source,bash,role=execute]
+----
+oc get managedclusters -l architecture=pacemaker-ha
+----
+
+See all MicroShift deployments:
+
+[source,bash,role=execute]
+----
+oc get managedclusters -l architecture=microshift-vrrp
+----
+
+💡 **Real-World Application:** In production, you'd have labels like `region=west`, `store-type=flagship`, `compliance-level=pci` to organize hundreds of stores.
+
+=== Exercise 3: Inspect a Managed Cluster
+
+Let's dive deeper into one of your edge sites.
+
+**Step 1:** Get Detailed Information
+
+[source,bash,role=execute]
+----
+oc describe managedcluster student-$STUDENT_ID-pacemaker
+----
+
+Look for:
+
+* **Labels** - How this cluster is categorized
+* **Status** - Whether the cluster is accepted and joined
+* **Conditions** - Health indicators
+
+**Step 2:** View Cluster Labels
+
+[source,bash,role=execute]
+----
+oc get managedcluster student-$STUDENT_ID-pacemaker -o jsonpath='{.metadata.labels}' | jq '.'
+----
+
+These labels enable:
+
+* **Placement decisions** - Deploy apps only to specific stores
+* **Policy targeting** - Apply governance rules to groups
+* **Search and filtering** - Find clusters by attributes
+
+=== Exercise 4: Understand Fleet Organization
+
+In a real retail deployment, you'd organize stores by business attributes.
+
+**Step 1:** Count Clusters by Architecture
+
+[source,bash,role=execute]
+----
+echo "Pacemaker HA stores: $(oc get managedclusters -l architecture=pacemaker-ha --no-headers | wc -l)"
+echo "MicroShift stores: $(oc get managedclusters -l architecture=microshift-vrrp --no-headers | wc -l)"
+echo "Two-Node OpenShift: $(oc get managedclusters -l architecture=two-node-openshift --no-headers | wc -l)"
+----
+
+**Step 2:** View Fleet Summary
+
+[source,bash,role=execute]
+----
+cat <<'EOF'
+Fleet Distribution
+==================
+EOF
+
+oc get managedclusters -l location=edge-store-001 --no-headers | wc -l | xargs -I {} echo "Store 001: {} edge systems"
+oc get managedclusters -l location=edge-store-002 --no-headers | wc -l | xargs -I {} echo "Store 002: {} edge systems"
+----
+
+**Real-World Scale:**
+
+* Lab: 6 edge systems (2 stores × 3 systems)
+* Production: 1,000-3,000 edge systems (500 stores × 2-6 systems)
+
+=== Exercise 5: Fleet Manager Console Exploration (Optional)
+
+If you have access to the OpenShift web console, explore these features:
+
+**In the RHACM Console:**
+
+1. **Clusters View**
+   * See all managed clusters at a glance
+   * Filter by labels (try filtering by your student ID)
+   * Check cluster status and health
+
+2. **Search Feature**
+   * Search for resources across all clusters
+   * Try searching: `kind:ManagedCluster label:student-id={STUDENT_ID}`
+
+3. **Overview Dashboard**
+   * View fleet-wide statistics
+   * See cluster distribution
+   * Monitor compliance status
+
+NOTE: The console provides a visual interface for the same data you just explored via CLI. In production, operations teams use the console for day-to-day fleet management, while automation uses the CLI/API.
+
+=== What You Learned
+
+In this hands-on lab, you:
+
+✅ Accessed a real RHACM hub cluster
+✅ Viewed your managed edge clusters (fleet inventory)
+✅ Filtered and organized clusters using labels
+✅ Explored fleet organization patterns
+✅ Understood how lab VMs map to production scale
+
+**Key Takeaway:** The 3 ManagedClusters you see represent the 3 HA architectures you'll build in Modules 1-3. In production, these same patterns scale to hundreds or thousands of stores.
+
 == Next Steps
 
 Now that you understand the **big picture** of retail edge fleet management, it's time to get hands-on!
