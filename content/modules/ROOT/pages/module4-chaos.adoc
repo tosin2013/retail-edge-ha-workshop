@@ -189,27 +189,7 @@ Before testing chaos scenarios, understand the fundamental trade-offs each archi
 
 === CAP Theorem Overview
 
-[mermaid]
-....
-graph TB
-    CAP["CAP Theorem<br/>Pick 2 of 3"]
-
-    CAP --> C["Consistency<br/>All nodes see same data"]
-    CAP --> A["Availability<br/>Always responds to requests"]
-    CAP --> P["Partition Tolerance<br/>Works despite network splits"]
-
-    C --> CP["CP System<br/>Consistent + Partition Tolerant<br/>Example: etcd, ZooKeeper"]
-    A --> AP["AP System<br/>Available + Partition Tolerant<br/>Example: Cassandra, DynamoDB"]
-    P --> CP
-    P --> AP
-
-    style CAP fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
-    style C fill:#ffebee,stroke:#c62828,stroke-width:2px
-    style A fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
-    style P fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style CP fill:#fce4ec,stroke:#c62828
-    style AP fill:#f3e5f5,stroke:#7b1fa2
-....
+image::cap-theorem.png[CAP Theorem Triangle, align=center]
 
 **The CAP Theorem states:** In a distributed system experiencing a network partition, you must choose between **Consistency** and **Availability** - you cannot have both.
 
