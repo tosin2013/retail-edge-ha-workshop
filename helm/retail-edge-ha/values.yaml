@@ -32,7 +32,7 @@ students:
   enabled: true
 
   # Number of students (1-50 supported)
-  count: 5
+  count: 2
 
   # Username prefix (creates student-01, student-02, etc.)
   userbase: "student"
@@ -215,7 +215,7 @@ virtualMachines:
 
   # Module 2: MicroShift with VRRP (2 VMs per student)
   module2:
-    enabled: true
+    enabled: false
     name: "microshift"
     vmCount: 2
 
@@ -250,7 +250,7 @@ virtualMachines:
 
   # Module 3: OpenShift Two-Node with Arbiter (3 VMs per student)
   module3:
-    enabled: true
+    enabled: false
     name: "twonode-ocp"
     vmCount: 3
     controlPlaneNodes: 2

@@ -1,0 +1,43 @@
+{{- if .Values.showroom.enabled }}
+---
+# =============================================================================
+# Showroom Configuration Child Application
+# =============================================================================
+# Deploys ConfigMaps with student environment variables to showroom namespaces.
+# These are injected into showroom-terminal pods via patch script.
+# Sync Wave: 4 (after showroom instances are deployed)
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-showroom-config
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: showroom-config
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.showroom.git.repository }}
+    targetRevision: {{ .Values.showroom.git.branch }}
+    path: manifests/showroom
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.infrastructure.namespace }}
+
+  syncPolicy:
+    {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
+
+  info:
+    - name: Component
+      value: Showroom Configuration (ConfigMaps for terminals)
+    - name: Students
+      value: {{ .Values.students.count | quote }}
+{{- end }}

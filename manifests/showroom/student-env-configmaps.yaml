@@ -1,0 +1,80 @@
+# =============================================================================
+# Student Environment ConfigMaps for Showroom Terminals
+# =============================================================================
+# This file creates ConfigMaps in showroom-student-XX namespaces with
+# student-specific environment variables for terminal access.
+#
+# These ConfigMaps are injected into showroom-terminal deployments via
+# the patch script: scripts/patch-showroom-terminals.sh
+#
+# NOTE: This is a static file for 2 students (testing configuration).
+# For production with more students, generate dynamically or update manually.
+# =============================================================================
+
+---
+# Student 01 Environment Variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-env
+  namespace: showroom-student-01
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: showroom
+    student-id: "01"
+data:
+  # Student identity
+  STUDENT_ID: "01"
+  STUDENT_NAMESPACE: "retail-edge-student-01"
+  STUDENT_UDN_NAMESPACE: "retail-edge-student-01-udn"
+  STUDENT_USER: "student-01"
+
+  # Cluster information
+  CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
+
+  # VM credentials
+  VM_USER: "cloud-user"
+  VM_PASSWORD: "redhat"
+
+  # Module 1 - Pacemaker HA
+  RHEL_NODE1: "rhel-ha-node1"
+  RHEL_NODE2: "rhel-ha-node2"
+  PACEMAKER_NET: "pacemaker-net"
+  PACEMAKER_IP1: "10.101.0.20"
+  PACEMAKER_IP2: "10.101.0.21"
+  PACEMAKER_VIP: "10.101.0.100"
+
+---
+# Student 02 Environment Variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-env
+  namespace: showroom-student-02
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: showroom
+    student-id: "02"
+data:
+  # Student identity
+  STUDENT_ID: "02"
+  STUDENT_NAMESPACE: "retail-edge-student-02"
+  STUDENT_UDN_NAMESPACE: "retail-edge-student-02-udn"
+  STUDENT_USER: "student-02"
+
+  # Cluster information
+  CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
+
+  # VM credentials
+  VM_USER: "cloud-user"
+  VM_PASSWORD: "redhat"
+
+  # Module 1 - Pacemaker HA
+  RHEL_NODE1: "rhel-ha-node1"
+  RHEL_NODE2: "rhel-ha-node2"
+  PACEMAKER_NET: "pacemaker-net"
+  PACEMAKER_IP1: "10.101.0.20"
+  PACEMAKER_IP2: "10.101.0.21"
+  PACEMAKER_VIP: "10.101.0.100"
