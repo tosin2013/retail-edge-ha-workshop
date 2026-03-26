@@ -4,6 +4,131 @@
 
 In this final module, you'll perform chaos engineering experiments to validate the resilience of the three HA architectures you've deployed. You'll simulate real-world failure scenarios common in retail edge environments.
 
+== Architecture Comparison
+
+=== Lab Environment (What You'll Test)
+
+[source,text]
+----
+┌─────────────────────────────────────────────────────────┐
+│          Lab Chaos Testing Environment                  │
+│                                                          │
+│  Student Namespace: retail-edge-student-XX              │
+│                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ Module 1     │  │ Module 2     │  │ Module 3     │  │
+│  │ 2 VMs        │  │ 2 VMs        │  │ 3 VMs        │  │
+│  │ (Pacemaker)  │  │ (MicroShift) │  │ (Two-Node)   │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  │
+│         ↓                 ↓                  ↓          │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │     Chaos Injection Points                       │  │
+│  │  • VM Stop     • CPU Stress                      │  │
+│  │  • Network Partition • Process Crash            │  │
+│  └──────────────────────────────────────────────────┘  │
+│         ↓                                               │
+│  ┌──────────────────────────────────────────────────┐  │
+│  │     Monitoring & Recovery                        │  │
+│  │  • oc get vmi  • virtctl ssh                     │  │
+│  │  • pcs status  • Validation scripts              │  │
+│  └──────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+----
+
+NOTE: In this lab, you manually inject failures and observe recovery in an isolated namespace with 7 VMs.
+
+=== Real-World Deployment (Production GameDays)
+
+[source,text]
+----
+┌─────────────────────────────────────────────────────────┐
+│      Production Chaos Engineering GameDay               │
+│                                                          │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │  RHACM Hub (Regional NOC)                         │  │
+│  │  • Orchestrates chaos across fleet                │  │
+│  │  • Monitors recovery metrics                      │  │
+│  │  • Triggers automated remediation                 │  │
+│  │  • Alerts on-call teams                           │  │
+│  └───────────────────────────────────────────────────┘  │
+│         ↓         ↓         ↓         ↓                 │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐      │
+│  │ Store 1 │ │ Store 2 │ │Store 50 │ │Store 500│      │
+│  │ 2 nodes │ │ 2 nodes │ │ 2 nodes │ │ 2 nodes │      │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘      │
+│                                                          │
+│  Chaos Scenarios:                                       │
+│  • Regional power outage (10-50 stores)                 │
+│  • WAN link failure (isolate store cluster)             │
+│  • Resource exhaustion (memory/CPU/disk)                │
+│  • Database corruption (test backup/restore)            │
+│                                                          │
+│  Stakeholders Monitoring:                               │
+│  • NOC Team (24/7 ops center)                           │
+│  • Store Managers (notified of outage drills)           │
+│  • Engineering (root cause analysis)                    │
+│  • Executive Dashboard (availability SLA tracking)      │
+└─────────────────────────────────────────────────────────┘
+----
+
+NOTE: Production GameDays involve hundreds of stores, automated orchestration, and coordinated incident response across teams.
+
+=== Key Differences
+
+[cols="1,2,2"]
+|===
+|Component |Lab Environment |Real-World Deployment
+
+|**Chaos Scope**
+|7 VMs in single namespace
+|100-1000s of edge servers across stores
+
+|**Failure Impact**
+|Test environment (no revenue impact)
+|Live store operations ($10K-100K daily revenue/store)
+
+|**Recovery Testing**
+|Manual VM restart (virtctl)
+|Automated recovery, on-call escalation
+
+|**Monitoring**
+|oc get commands, VM console
+|Grafana, PagerDuty, RHACM dashboard
+
+|**Blast Radius**
+|Isolated student namespace
+|Multiple stores, customer transactions
+
+|**GameDay Duration**
+|30-60 minutes (one module)
+|4-8 hours (planned maintenance window)
+
+|**Rollback Capability**
+|Instant (stop chaos script)
+|Coordinated across fleet, change control
+
+|**Stakeholders**
+|Student (learning)
+|NOC team, store managers, customers
+
+|**Cost of Failure**
+|Zero (learning opportunity)
+|Lost sales, customer dissatisfaction, SLA violations
+
+|**Compliance**
+|None
+|PCI-DSS (payment card), SOX (audit trails)
+|===
+
+*What's the Same:*
+
+* Failure scenarios (network, CPU, disk, process crash)
+* STONITH/fencing behavior
+* VRRP failover mechanics
+* etcd quorum math
+* Recovery procedures
+* Incident response workflow
+
 == Chaos Engineering Principles
 
 Chaos engineering is the practice of deliberately introducing failures to:
@@ -12,6 +137,174 @@ Chaos engineering is the practice of deliberately introducing failures to:
 * Discover hidden dependencies
 * Improve incident response
 * Build confidence in production readiness
+
+=== Real-World Retail Edge Failures
+
+Common failure modes in retail environments:
+
+[cols="2,1,3"]
+|===
+|Failure Type |Frequency |Business Impact
+
+|**Power Outage**
+|2-4 times/year
+|POS offline, sales lost, manual backup registers
+
+|**Network Partition**
+|1-2 times/month
+|Store isolated from HQ, credit card processing fails
+
+|**Hardware Failure**
+|1-2 times/year
+|Server down, workloads migrate, potential data loss
+
+|**Software Crash**
+|Weekly
+|Application restart, 30-60 second downtime
+
+|**Disk Full**
+|Monthly
+|Logs fill disk, writes fail, system unstable
+
+|**High CPU/Memory**
+|Daily
+|Slow response times, health check failures
+|===
+
+*Cost of downtime:*
+
+* **Small store** (5 POS terminals): $500-1,000/hour lost revenue
+* **Large store** (20 POS terminals): $5,000-10,000/hour lost revenue
+* **Enterprise** (500 stores): $2.5M-5M/hour if widespread outage
+
+*Mean Time To Repair (MTTR) targets:*
+
+* **Hardware failure**: < 4 hours (vendor SLA)
+* **Network partition**: < 15 minutes (automatic failover)
+* **Software crash**: < 1 minute (automatic restart)
+
+== CAP Theorem and HA Trade-offs
+
+Before testing chaos scenarios, understand the fundamental trade-offs each architecture makes.
+
+=== CAP Theorem Overview
+
+[mermaid]
+....
+graph TB
+    CAP["CAP Theorem<br/>Pick 2 of 3"]
+
+    CAP --> C["Consistency<br/>All nodes see same data"]
+    CAP --> A["Availability<br/>Always responds to requests"]
+    CAP --> P["Partition Tolerance<br/>Works despite network splits"]
+
+    C --> CP["CP System<br/>Consistent + Partition Tolerant<br/>Example: etcd, ZooKeeper"]
+    A --> AP["AP System<br/>Available + Partition Tolerant<br/>Example: Cassandra, DynamoDB"]
+    P --> CP
+    P --> AP
+
+    style CAP fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style C fill:#ffebee,stroke:#c62828,stroke-width:2px
+    style A fill:#e8f5e9,stroke:#2e7d32,stroke-width:2px
+    style P fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style CP fill:#fce4ec,stroke:#c62828
+    style AP fill:#f3e5f5,stroke:#7b1fa2
+....
+
+**The CAP Theorem states:** In a distributed system experiencing a network partition, you must choose between **Consistency** and **Availability** - you cannot have both.
+
+=== How Each Architecture Handles CAP
+
+[cols="1,1,1,2"]
+|===
+|Architecture |Chooses |Reasoning |During Network Partition
+
+|**Pacemaker**
+|**CP**
+|Consistency + Partition Tolerance
+|STONITH fences the isolated node. Surviving partition continues. Service is consistent but unavailable on fenced node.
+
+|**MicroShift VRRP**
+|**AP**
+|Availability + Partition Tolerance
+|VIP migrates to available node. Service remains available but both nodes might think they're active (split-brain risk without STONITH).
+
+|**Two-Node OpenShift**
+|**CP**
+|Consistency + Partition Tolerance
+|Without quorum (2/3 nodes), cluster becomes read-only. Prioritizes data consistency over availability.
+|===
+
+=== Hands-On CAP Demonstration
+
+Let's prove the CAP theorem with a simple experiment.
+
+**Scenario:** Isolate one Pacemaker node and observe the trade-off.
+
+[source,bash,role=execute]
+----
+# Start Pacemaker VMs
+virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+----
+
+Wait 2 minutes for cluster to form, then create a network partition:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- \
+  sudo firewall-cmd --direct --add-rule ipv4 filter INPUT 0 -s 10.101.0.21 -j DROP
+----
+
+**Observe the CAP trade-off:**
+
+1. **Consistency preserved**: Only one node has the VIP (no split-brain)
+2. **Availability sacrificed**: Isolated node2 is fenced (becomes unavailable)
+3. **Partition tolerance**: Node1 continues serving requests despite partition
+
+Check cluster status:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+----
+
+You'll see node2 offline - this is the **CP choice** in action.
+
+Clean up:
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- \
+  sudo firewall-cmd --direct --remove-rule ipv4 filter INPUT 0 -s 10.101.0.21 -j DROP
+----
+
+**Key insight:** Pacemaker chose consistency (prevent split-brain) over availability (node2 fenced). This is the correct choice for stateful applications like databases.
+
+=== CAP Trade-offs Summary
+
+[cols="2,3,3"]
+|===
+|What You Want |Choose |Example Use Cases
+
+|**Strong Consistency**
+|CP (sacrifice availability during partition)
+|Financial transactions, inventory counts, POS databases
+
+|**High Availability**
+|AP (accept eventual consistency)
+|Content caching, session storage, read-heavy APIs
+
+|**Both C and A**
+|Not possible during network partition
+|Only works in non-partitioned systems (single datacenter)
+|===
+
+In retail edge environments, **CP is usually preferred** because:
+
+* Inventory must be accurate (can't sell what you don't have)
+* Financial transactions must be consistent (no duplicate charges)
+* Better to be temporarily unavailable than permanently inconsistent
 
 == Learning Objectives
 
@@ -497,6 +790,274 @@ virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
 
 **Result**: 2 of 3 architectures survived simultaneous multi-component failures.
 
+== Post-Chaos Validation Checklist
+
+After each chaos experiment, validate that systems have fully recovered.
+
+=== Automated Validation Script
+
+Run this script to validate all systems:
+
+[source,bash,role=execute]
+----
+cat > /tmp/validate-chaos-recovery.sh << 'SCRIPT'
+#!/bin/bash
+# Chaos Recovery Validation Script
+
+echo "=========================================="
+echo "Post-Chaos Validation Checklist"
+echo "=========================================="
+echo ""
+
+NAMESPACE="${1:-retail-edge-student-01}"
+PASSED=0
+FAILED=0
+
+# Function to check status
+check() {
+    local test_name="$1"
+    local command="$2"
+
+    echo -n "Checking ${test_name}... "
+    if eval "${command}" &>/dev/null; then
+        echo "✓ PASS"
+        ((PASSED++))
+    else
+        echo "✗ FAIL"
+        ((FAILED++))
+    fi
+}
+
+# Pacemaker Validation
+echo "Module 1: Pacemaker Cluster"
+echo "----------------------------"
+check "Pacemaker node1 running" "oc get vmi rhel-ha-node1 -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "Pacemaker node2 running" "oc get vmi rhel-ha-node2 -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "Pacemaker cluster online" "virtctl ssh redhat@rhel-ha-node1 -n ${NAMESPACE} -- sudo pcs status 2>/dev/null | grep -q 'Online:'"
+check "STONITH devices active" "virtctl ssh redhat@rhel-ha-node1 -n ${NAMESPACE} -- sudo pcs status 2>/dev/null | grep -q 'fence-node'"
+check "VIP resource running" "virtctl ssh redhat@rhel-ha-node1 -n ${NAMESPACE} -- sudo pcs status 2>/dev/null | grep -q 'cluster-vip'"
+echo ""
+
+# MicroShift Validation
+echo "Module 2: MicroShift VRRP"
+echo "-------------------------"
+check "MicroShift gw-a running" "oc get vmi microshift-gw-a -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "MicroShift gw-b running" "oc get vmi microshift-gw-b -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "MicroShift API responsive" "virtctl ssh redhat@microshift-gw-a -n ${NAMESPACE} -- curl -k -s https://localhost:6443/readyz 2>/dev/null | grep -q ok"
+check "Keepalived active on gw-a" "virtctl ssh redhat@microshift-gw-a -n ${NAMESPACE} -- sudo systemctl is-active keepalived 2>/dev/null | grep -q active"
+check "VIP assigned" "virtctl ssh redhat@microshift-gw-a -n ${NAMESPACE} -- ip addr show eth1 2>/dev/null | grep -q '10.102.0.100' || virtctl ssh redhat@microshift-gw-b -n ${NAMESPACE} -- ip addr show eth1 2>/dev/null | grep -q '10.102.0.100'"
+echo ""
+
+# Two-Node OpenShift Validation
+echo "Module 3: Two-Node OpenShift"
+echo "----------------------------"
+check "TwoNode master1 running" "oc get vmi twonode-master1 -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "TwoNode master2 running" "oc get vmi twonode-master2 -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "TwoNode arbiter running" "oc get vmi twonode-arbiter -n ${NAMESPACE} -o jsonpath='{.status.phase}' | grep -q Running"
+check "Network connectivity" "virtctl ssh core@twonode-master1 -n ${NAMESPACE} -- ping -c 1 10.103.0.21 2>/dev/null"
+echo ""
+
+# Summary
+echo "=========================================="
+echo "Validation Summary"
+echo "=========================================="
+echo "Passed: ${PASSED}"
+echo "Failed: ${FAILED}"
+echo ""
+
+if [ ${FAILED} -eq 0 ]; then
+    echo "✓ All systems recovered successfully!"
+    exit 0
+else
+    echo "⚠ ${FAILED} checks failed. Review logs and retry recovery steps."
+    exit 1
+fi
+SCRIPT
+
+chmod +x /tmp/validate-chaos-recovery.sh
+/tmp/validate-chaos-recovery.sh %STUDENT_NAMESPACE%
+----
+
+=== Manual Validation Steps
+
+If automated validation fails, check each system manually:
+
+==== Pacemaker Cluster
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+----
+
+Expected output:
+
+[source,text]
+----
+Cluster name: ha-cluster
+Status:
+  * Node rhel-ha-node1: Online
+  * Node rhel-ha-node2: Online
+
+Full List of Resources:
+  * fence-node1  (stonith:fence_kubevirt): Started rhel-ha-node2
+  * fence-node2  (stonith:fence_kubevirt): Started rhel-ha-node1
+  * cluster-vip  (ocf::heartbeat:IPaddr2): Started rhel-ha-node1
+----
+
+**If nodes are offline:**
+
+[source,bash,role=execute]
+----
+# Check VM status
+oc get vmi -n %STUDENT_NAMESPACE% | grep rhel-ha
+
+# Restart if needed
+virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+
+# Wait for cluster to reform
+sleep 120
+----
+
+==== MicroShift VRRP
+
+[source,bash,role=execute]
+----
+virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
+  ip addr show eth1 | grep %MICROSHIFT_VIP%
+----
+
+Expected: VIP on Gateway A or Gateway B (not both, not neither).
+
+**If VIP is missing:**
+
+[source,bash,role=execute]
+----
+# Check Keepalived status
+virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
+  sudo systemctl status keepalived
+
+# Restart if failed
+virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
+  sudo systemctl restart keepalived
+----
+
+==== Two-Node OpenShift
+
+[source,bash,role=execute]
+----
+# Check VM status
+oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+----
+
+Expected: All 3 VMs (master1, master2, arbiter) Running.
+
+**If VMs are stopped:**
+
+[source,bash,role=execute]
+----
+virtctl start %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+sleep 120
+virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+sleep 60
+virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+----
+
+=== Expected vs Actual Results
+
+Use this table to track recovery validation:
+
+[cols="3,1,1,2"]
+|===
+|Validation Check |Expected |Actual |Notes
+
+|Pacemaker nodes online
+|2/2
+|____
+|
+
+|STONITH devices active
+|2/2
+|____
+|
+
+|Pacemaker VIP running
+|Yes
+|____
+|Check with `pcs status`
+
+|MicroShift VMs running
+|2/2
+|____
+|
+
+|MicroShift VIP assigned
+|Yes (on 1 node)
+|____
+|Should NOT be on both nodes
+
+|Keepalived active
+|2/2
+|____
+|
+
+|Two-Node VMs running
+|3/3
+|____
+|
+
+|Network connectivity
+|Full mesh
+|____
+|Ping between all nodes
+
+|etcd quorum
+|2/3 or 3/3
+|____
+|At least 2 needed
+|===
+
+=== Recovery Time Objectives (RTO)
+
+Track actual vs target recovery times:
+
+[cols="2,1,1,2"]
+|===
+|System |Target RTO |Actual RTO |Gap Analysis
+
+|Pacemaker failover
+|< 60 seconds
+|__________
+|
+
+|MicroShift VRRP failover
+|< 5 seconds
+|__________
+|
+
+|Two-Node quorum restore
+|< 120 seconds
+|__________
+|
+
+|Manual VM restart
+|< 30 seconds
+|__________
+|virtctl start time
+
+|Cluster reform after partition
+|< 180 seconds
+|__________
+|Includes STONITH + rejoin
+|===
+
+**If RTO targets are missed:**
+
+* Review logs: `virtctl console <vm-name> -n %STUDENT_NAMESPACE%`
+* Check resource limits: `oc describe vmi <vm-name> -n %STUDENT_NAMESPACE%`
+* Verify network: `oc get userdefinednetwork -n %STUDENT_UDN_NAMESPACE%`
+* Check for conflicts: `oc get events -n %STUDENT_NAMESPACE% --sort-by='.lastTimestamp'`
+
 == Chaos Report Template
 
 For each scenario, document:
@@ -543,6 +1104,326 @@ For each scenario, document:
 * Network partitions are the most common edge failure mode
 * Automatic recovery is faster than manual intervention
 * Monitoring and alerting are critical for invisible failures
+
+== Automated Chaos GameDay
+
+For a more realistic chaos engineering experience, use the automated GameDay script.
+
+=== What is a GameDay?
+
+A **GameDay** is a scheduled chaos engineering exercise where teams:
+
+1. **Plan** failure scenarios in advance
+2. **Execute** automated chaos injection
+3. **Monitor** system behavior and recovery
+4. **Document** findings and improvements
+5. **Review** with stakeholders
+
+=== Running the Automated Script
+
+The workshop includes a chaos GameDay script that randomly injects failures.
+
+==== Basic Usage
+
+Run a 15-minute GameDay with medium failure rate:
+
+[source,bash,role=execute]
+----
+./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 15 medium
+----
+
+Output:
+
+[source,text]
+----
+==========================================
+🔥 Chaos Engineering GameDay 🔥
+==========================================
+Namespace:     retail-edge-student-01
+Duration:      15 minutes
+Failure Rate:  medium (every 180-300s)
+Log File:      /tmp/chaos-gameday-retail-edge-student-01-20260325-143022.log
+==========================================
+
+[2026-03-25 14:30:22] [INFO] GameDay started!
+[2026-03-25 14:30:22] [INFO] Press Ctrl+C to stop early
+[2026-03-25 14:30:22] [INFO] Selected chaos scenario: network_partition on VM: rhel-ha-node1
+[2026-03-25 14:30:22] [CHAOS] 🔥 Injecting network partition on rhel-ha-node1
+...
+----
+
+==== Failure Rates
+
+Choose failure rate based on desired chaos intensity:
+
+[cols="1,2,2"]
+|===
+|Rate |Interval |Use Case
+
+|**low**
+|Every 5-10 minutes
+|First-time GameDay, low-stress testing
+
+|**medium**
+|Every 3-5 minutes
+|Standard chaos testing, balanced load
+
+|**high**
+|Every 1-2 minutes
+|Aggressive testing, stress validation
+|===
+
+==== Example GameDay Scenarios
+
+**Scenario 1: Quick Validation (5 minutes, low rate)**
+
+[source,bash,role=execute]
+----
+./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 5 low
+----
+
+Inject 1-2 failures. Verify basic recovery.
+
+**Scenario 2: Standard GameDay (30 minutes, medium rate)**
+
+[source,bash,role=execute]
+----
+./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 30 medium
+----
+
+Inject 6-10 failures. Test sustained resilience.
+
+**Scenario 3: Stress Test (60 minutes, high rate)**
+
+[source,bash,role=execute]
+----
+./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 60 high
+----
+
+Inject 30-60 failures. Identify breaking points.
+
+=== Chaos Scenarios Injected
+
+The script randomly selects from these failure types:
+
+1. **VM Stop** (Hardware Failure)
+   - Simulates server crash or power loss
+   - Random VM is stopped via `virtctl stop`
+   - Tests automatic recovery or manual restart
+
+2. **Network Partition** (Split-Brain)
+   - Simulates network cable unplug or switch failure
+   - Firewall rule blocks communication between nodes
+   - Tests STONITH fencing and quorum management
+
+3. **CPU Saturation** (Resource Exhaustion)
+   - Simulates runaway process or denial-of-service
+   - Stress test runs for 30 seconds
+   - Tests health check failures and failover
+
+4. **Process Crash** (Software Bug)
+   - Simulates application crash or segfault
+   - Kills critical process (corosync, kube-apiserver)
+   - Tests systemd automatic restart
+
+=== Monitoring During GameDay
+
+Open multiple terminals to monitor systems:
+
+**Terminal 1: Watch VMs**
+
+[source,bash,role=execute]
+----
+watch -n 5 "oc get vmi -n %STUDENT_NAMESPACE%"
+----
+
+**Terminal 2: Watch Pacemaker**
+
+[source,bash,role=execute]
+----
+watch -n 5 "virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status 2>/dev/null || echo 'Node offline'"
+----
+
+**Terminal 3: Watch MicroShift VIP**
+
+[source,bash,role=execute]
+----
+watch -n 5 "virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- ip addr show eth1 2>/dev/null | grep -A1 'inet 10.102' || echo 'Gateway offline'"
+----
+
+**Terminal 4: Follow GameDay Log**
+
+[source,bash]
+----
+tail -f /tmp/chaos-gameday-*.log
+----
+
+=== Post-GameDay Analysis
+
+After the GameDay completes:
+
+1. **Review the log file:**
+
+[source,bash]
+----
+less /tmp/chaos-gameday-retail-edge-student-01-*.log
+----
+
+2. **Count failures by type:**
+
+[source,bash]
+----
+grep "\[CHAOS\]" /tmp/chaos-gameday-*.log | wc -l
+echo "Total chaos injections"
+
+grep "vm_stop" /tmp/chaos-gameday-*.log | wc -l
+echo "VM stops"
+
+grep "network_partition" /tmp/chaos-gameday-*.log | wc -l
+echo "Network partitions"
+
+grep "cpu_saturation" /tmp/chaos-gameday-*.log | wc -l
+echo "CPU stress events"
+
+grep "process_crash" /tmp/chaos-gameday-*.log | wc -l
+echo "Process crashes"
+----
+
+3. **Check recovery success rate:**
+
+[source,bash]
+----
+grep "✓" /tmp/chaos-gameday-*.log | wc -l
+echo "Successful recoveries"
+
+grep "WARN.*requires manual" /tmp/chaos-gameday-*.log | wc -l
+echo "Manual interventions needed"
+----
+
+4. **Run validation checklist:**
+
+[source,bash,role=execute]
+----
+/tmp/validate-chaos-recovery.sh %STUDENT_NAMESPACE%
+----
+
+=== GameDay Metrics
+
+Document these metrics for each GameDay:
+
+[cols="2,1,2"]
+|===
+|Metric |Your Result |Target
+
+|Total failures injected
+|__________
+|> 5 (for 15-min GameDay)
+
+|Automatic recoveries
+|__________
+|> 80%
+
+|Manual interventions
+|__________
+|< 20%
+
+|Longest downtime
+|__________
+|< 3 minutes
+
+|Systems still degraded
+|__________
+|0
+
+|Data loss events
+|__________
+|0
+
+|Split-brain incidents
+|__________
+|0
+|===
+
+=== Real-World GameDay Process
+
+In production retail environments, GameDays follow this process:
+
+**1 Week Before:**
+
+* Announce GameDay to stakeholders (stores, NOC, management)
+* Define failure scenarios and scope
+* Create rollback procedures
+* Schedule during low-traffic window (e.g., 2-5 AM)
+
+**Day Of:**
+
+* Pre-GameDay checklist: Verify backups, confirm on-call staffing
+* Execute chaos script with telemetry enabled
+* Monitor metrics dashboards (Grafana, RHACM)
+* Document all observations and manual interventions
+
+**Day After:**
+
+* Post-GameDay report: Success rate, failures, lessons learned
+* Action items: Fix issues discovered, improve runbooks
+* Update disaster recovery procedures
+* Share results with engineering and operations teams
+
+**Monthly:**
+
+* Repeat GameDays with increasing complexity
+* Add new failure scenarios based on production incidents
+* Measure improvement in recovery times
+* Build organizational muscle memory
+
+=== Safety Limits
+
+The chaos script includes safety features:
+
+* **Runs only in specified namespace** (isolated from other students)
+* **Self-healing**: Most scenarios auto-recover within 60 seconds
+* **Cleanup on exit**: Ctrl+C removes firewall rules and stops stress tests
+* **Logs all actions**: Full audit trail in `/tmp/chaos-gameday-*.log`
+
+**To stop early:**
+
+Press `Ctrl+C` - the script will clean up and exit gracefully.
+
+=== Advanced: Custom Chaos Scenarios
+
+Extend the script with your own scenarios:
+
+[source,bash]
+----
+# Edit scripts/chaos-gameday.sh
+
+# Add new scenario function
+chaos_disk_full() {
+    local vm="$1"
+    log CHAOS "💾 Filling disk on ${vm}"
+
+    # Fill /tmp to 90%
+    virtctl ssh redhat@"${vm}" -n "${NAMESPACE}" -- \
+        "dd if=/dev/zero of=/tmp/chaos-fill bs=1M count=1000 2>/dev/null || true"
+
+    sleep 30
+
+    # Clean up
+    virtctl ssh redhat@"${vm}" -n "${NAMESPACE}" -- \
+        "rm -f /tmp/chaos-fill"
+
+    log INFO "✓ Disk pressure relieved on ${vm}"
+}
+
+# Add to SCENARIOS array
+SCENARIOS=(
+    "vm_stop"
+    "network_partition"
+    "cpu_saturation"
+    "process_crash"
+    "disk_full"  # New scenario
+)
+----
 
 == Cleanup
 
