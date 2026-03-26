@@ -47,28 +47,30 @@ You have a dedicated namespace with pre-provisioned resources:
 
 [source,bash,role=execute]
 ----
-oc get namespace %STUDENT_NAMESPACE%
+oc get namespace {student-namespace}
 ----
 
 Your User Defined Network (UDN) namespace for Layer 2 networking:
 
 [source,bash,role=execute]
 ----
-oc get namespace %STUDENT_UDN_NAMESPACE%
+oc get namespace {student-udn-namespace}
 ----
+
+NOTE: This workshop uses Antora attributes for personalization. When deployed via Showroom, these are automatically customized for each student. In standalone builds, default values (student-01) are used.
 
 == Access Information
 
-*Namespace:* `%STUDENT_NAMESPACE%`
+*Namespace:* `{student-namespace}`
 
-*UDN Namespace:* `%STUDENT_UDN_NAMESPACE%`
+*UDN Namespace:* `{student-udn-namespace}`
 
 *VM Credentials:*
 
-* Username: `%VM_USER%`
-* Password: `%VM_PASSWORD%`
+* Username: `{vm-user}`
+* Password: `{vm-password}`
 
-*Cluster Console:* https://console-%CLUSTER_DOMAIN%[OpenShift Web Console,window=_blank]
+*Cluster Console:* https://console-{cluster-domain}[OpenShift Web Console,window=_blank]
 
 == Pre-requisites
 
@@ -100,7 +102,7 @@ Each module runs in isolated VirtualMachines connected via User Defined Networks
 If you get stuck:
 
 1. Check the *Troubleshooting* section in each module
-2. Review VM logs: `virtctl console <vm-name> -n %STUDENT_NAMESPACE%`
+2. Review VM logs: `virtctl console <vm-name> -n {student-namespace}`
 3. Ask your instructor for assistance
 
 == Ready?

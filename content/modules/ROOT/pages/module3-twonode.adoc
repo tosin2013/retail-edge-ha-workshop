@@ -133,7 +133,7 @@ Check your two-node cluster VMs:
 
 [source,bash,role=execute]
 ----
-oc get vm -n %STUDENT_NAMESPACE% | grep twonode
+oc get vm -n {student-namespace} | grep twonode
 ----
 
 You should see:
@@ -154,7 +154,7 @@ Start the VMs in sequence (Bootstrap-in-Place order):
 [source,bash,role=execute]
 ----
 # Master1 acts as bootstrap node
-virtctl start %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master1} -n {student-namespace}
 ----
 
 Wait 2 minutes for initialization.
@@ -162,7 +162,7 @@ Wait 2 minutes for initialization.
 [source,bash,role=execute]
 ----
 # Master2 joins the cluster
-virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master2} -n {student-namespace}
 ----
 
 Wait 1 minute.
@@ -170,14 +170,14 @@ Wait 1 minute.
 [source,bash,role=execute]
 ----
 # Arbiter joins etcd only
-virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-arbiter} -n {student-namespace}
 ----
 
 Monitor VM status:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+oc get vmi -n {student-namespace} | grep twonode
 ----
 
 == Step 4: Verify Network Configuration
@@ -186,7 +186,7 @@ SSH into master1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl ssh core@{twonode-master1} -n {student-namespace}
 ----
 
 Note: The default user for RHCOS is `core`.
@@ -209,14 +209,14 @@ Verify connectivity to master2:
 
 [source,bash]
 ----
-ping -c 3 %TWONODE_IP2%
+ping -c 3 {twonode-ip2}
 ----
 
 Verify connectivity to arbiter:
 
 [source,bash]
 ----
-ping -c 3 %TWONODE_IP_ARBITER%
+ping -c 3 {twonode-ip-arbiter}
 ----
 
 Exit:
@@ -290,7 +290,7 @@ If we stopped master2:
 
 [source,bash]
 ----
-virtctl stop %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-master2} -n {student-namespace}
 ----
 
 The cluster would:
@@ -306,7 +306,7 @@ Workloads on master2 would be rescheduled to master1.
 
 [source,bash]
 ----
-virtctl stop %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
 
 The cluster would:
@@ -320,8 +320,8 @@ The cluster would:
 
 [source,bash]
 ----
-virtctl stop %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
-virtctl stop %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-master2} -n {student-namespace}
+virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
 
 The cluster would:
@@ -347,14 +347,14 @@ Stop master2:
 
 [source,bash,role=execute]
 ----
-virtctl stop %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-master2} -n {student-namespace}
 ----
 
 Check VM status:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+oc get vmi -n {student-namespace} | grep twonode
 ----
 
 You should see master2 absent (stopped).
@@ -363,14 +363,14 @@ SSH into master1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl ssh core@{twonode-master1} -n {student-namespace}
 ----
 
 Verify arbiter is still reachable:
 
 [source,bash]
 ----
-ping -c 3 %TWONODE_IP_ARBITER%
+ping -c 3 {twonode-ip-arbiter}
 ----
 
 This demonstrates that 2 of 3 nodes are online (simulating quorum).
@@ -386,7 +386,7 @@ Restart master2:
 
 [source,bash,role=execute]
 ----
-virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master2} -n {student-namespace}
 ----
 
 == Step 9: Understanding Bootstrap-in-Place
@@ -419,7 +419,7 @@ SSH into the arbiter node:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl ssh core@{twonode-arbiter} -n {student-namespace}
 ----
 
 Check the hostname:
@@ -457,7 +457,7 @@ Compare VM resources:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% -o custom-columns=NAME:.metadata.name,CPU:.spec.domain.cpu.cores,MEMORY:.spec.domain.resources.requests.memory
+oc get vmi -n {student-namespace} -o custom-columns=NAME:.metadata.name,CPU:.spec.domain.cpu.cores,MEMORY:.spec.domain.resources.requests.memory
 ----
 
 Note the difference:
@@ -518,7 +518,7 @@ SSH into master1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl ssh core@{twonode-master1} -n {student-namespace}
 ----
 
 In production, etcd data is stored in `/var/lib/etcd`. Test disk latency:
@@ -741,7 +741,7 @@ Check that all three VMs are running:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+oc get vmi -n {student-namespace} | grep twonode
 ----
 
 All should show `Running` and `True`.
@@ -755,7 +755,7 @@ All should show `Running` and `True`.
 *Solution:*
 [source,bash]
 ----
-oc describe vm %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+oc describe vm {twonode-master1} -n {student-namespace}
 # Check for DataVolume issues with RHCOS image
 ----
 
@@ -765,10 +765,10 @@ oc describe vm %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
 [source,bash]
 ----
 # Verify UDN exists
-oc get userdefinednetwork twonode-net -n %STUDENT_UDN_NAMESPACE%
+oc get userdefinednetwork twonode-net -n {student-udn-namespace}
 
 # Check VM network interfaces
-oc describe vmi %TWONODE_MASTER1% -n %STUDENT_NAMESPACE% | grep -A10 "Interfaces"
+oc describe vmi {twonode-master1} -n {student-namespace} | grep -A10 "Interfaces"
 ----
 ====
 
@@ -798,9 +798,9 @@ Stop all two-node cluster VMs:
 
 [source,bash,role=execute]
 ----
-virtctl stop %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
-virtctl stop %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
-virtctl stop %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-master1} -n {student-namespace}
+virtctl stop {twonode-master2} -n {student-namespace}
+virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
 
 == Next Steps

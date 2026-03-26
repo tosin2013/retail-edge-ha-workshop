@@ -224,15 +224,15 @@ Let's prove the CAP theorem with a simple experiment.
 [source,bash,role=execute]
 ----
 # Start Pacemaker VMs
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
+virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 Wait 2 minutes for cluster to form, then create a network partition:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- \
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- \
   sudo firewall-cmd --direct --add-rule ipv4 filter INPUT 0 -s 10.101.0.21 -j DROP
 ----
 
@@ -246,7 +246,7 @@ Check cluster status:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status
 ----
 
 You'll see node2 offline - this is the **CP choice** in action.
@@ -255,7 +255,7 @@ Clean up:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- \
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- \
   sudo firewall-cmd --direct --remove-rule ipv4 filter INPUT 0 -s 10.101.0.21 -j DROP
 ----
 
@@ -304,8 +304,8 @@ Start your Pacemaker VMs:
 
 [source,bash,role=execute]
 ----
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
+virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 Wait for cluster to form:
@@ -319,7 +319,7 @@ Verify cluster is healthy:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status
 ----
 
 === Chaos Experiment: Firewall-Induced Network Partition
@@ -328,7 +328,7 @@ SSH into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 **Hypothesis**: When node2 cannot communicate via Corosync, STONITH will fence it, and the VIP will remain on node1.
@@ -386,7 +386,7 @@ SSH into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 **Hypothesis**: Killing Corosync on both nodes simultaneously will trigger fencing, and the faster node will survive.
@@ -402,14 +402,14 @@ Immediately SSH to node2 and kill Corosync there:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE2% -n %STUDENT_NAMESPACE% -- sudo killall -9 corosync
+virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace} -- sudo killall -9 corosync
 ----
 
 Check which node gets fenced (check VM status from outside):
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% -w
+oc get vmi -n {student-namespace} -w
 ----
 
 One VM should restart (fenced). Press `Ctrl+C` after observing.
@@ -433,8 +433,8 @@ Start MicroShift VMs:
 
 [source,bash,role=execute]
 ----
-virtctl start %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
-virtctl start %MICROSHIFT_GW_B% -n %STUDENT_NAMESPACE%
+virtctl start {microshift-gw-a} -n {student-namespace}
+virtctl start {microshift-gw-b} -n {student-namespace}
 ----
 
 Wait for MicroShift to start:
@@ -448,7 +448,7 @@ Verify VIP is on Gateway A:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- ip addr show eth1 | grep %MICROSHIFT_VIP%
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- ip addr show eth1 | grep {microshift-vip}
 ----
 
 === Chaos Experiment: CPU Saturation
@@ -457,7 +457,7 @@ SSH into Gateway A:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
 
 **Hypothesis**: Saturating CPU will cause health checks to fail, triggering VIP migration.
@@ -495,7 +495,7 @@ Check if VIP moved to Gateway B:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_B% -n %STUDENT_NAMESPACE% -- ip addr show eth1 | grep %MICROSHIFT_VIP%
+virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace} -- ip addr show eth1 | grep {microshift-vip}
 ----
 
 Stop the CPU load on Gateway A:
@@ -528,7 +528,7 @@ SSH into the active gateway (whichever has the VIP):
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
 
 **Hypothesis**: Crashing the API server will trigger health check failure and VIP migration.
@@ -582,11 +582,11 @@ Start all two-node cluster VMs:
 
 [source,bash,role=execute]
 ----
-virtctl start %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master1} -n {student-namespace}
 sleep 120
-virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master2} -n {student-namespace}
 sleep 60
-virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-arbiter} -n {student-namespace}
 ----
 
 === Chaos Experiment: Arbiter Disconnection
@@ -597,14 +597,14 @@ Stop the arbiter:
 
 [source,bash,role=execute]
 ----
-virtctl stop %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
 
 Verify connectivity between masters:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE% -- ping -c 3 %TWONODE_IP2%
+virtctl ssh core@{twonode-master1} -n {student-namespace} -- ping -c 3 %TWONODE_IP2%
 ----
 
 In a production cluster, you would observe:
@@ -619,7 +619,7 @@ Restart the arbiter:
 
 [source,bash,role=execute]
 ----
-virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-arbiter} -n {student-namespace}
 ----
 
 **Result**: Cluster continued operating with 2/3 quorum.
@@ -632,15 +632,15 @@ Stop both masters:
 
 [source,bash,role=execute]
 ----
-virtctl stop %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
-virtctl stop %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-master1} -n {student-namespace}
+virtctl stop {twonode-master2} -n {student-namespace}
 ----
 
 Check that only the arbiter is running:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+oc get vmi -n {student-namespace} | grep twonode
 ----
 
 In a production cluster, this would result in:
@@ -654,7 +654,7 @@ Restore quorum by starting master1:
 
 [source,bash,role=execute]
 ----
-virtctl start %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master1} -n {student-namespace}
 ----
 
 Wait 2 minutes for startup, then start master2:
@@ -662,7 +662,7 @@ Wait 2 minutes for startup, then start master2:
 [source,bash,role=execute]
 ----
 sleep 120
-virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master2} -n {student-namespace}
 ----
 
 **Result**: Cluster becomes available again when quorum is restored.
@@ -673,7 +673,7 @@ SSH into master1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh core@%TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl ssh core@{twonode-master1} -n {student-namespace}
 ----
 
 **Hypothesis**: High latency to arbiter will cause etcd warnings but not immediate failure.
@@ -730,21 +730,21 @@ This scenario simulates multiple simultaneous failures:
 [source,bash,role=execute]
 ----
 # Pacemaker: Stop both nodes
-virtctl stop %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl stop {rhel-node1} -n {student-namespace}
+virtctl stop {rhel-node2} -n {student-namespace}
 
 # MicroShift: Stop Gateway A
-virtctl stop %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+virtctl stop {microshift-gw-a} -n {student-namespace}
 
 # Two-Node: Stop arbiter
-virtctl stop %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
 
 **Observe the impact**:
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE%
+oc get vmi -n {student-namespace}
 ----
 
 Count how many services are still available:
@@ -758,14 +758,14 @@ Count how many services are still available:
 [source,bash,role=execute]
 ----
 # Restore Pacemaker
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
+virtctl start {rhel-node2} -n {student-namespace}
 
 # Restore MicroShift
-virtctl start %MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE%
+virtctl start {microshift-gw-a} -n {student-namespace}
 
 # Restore arbiter
-virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-arbiter} -n {student-namespace}
 ----
 
 **Result**: 2 of 3 architectures survived simultaneous multi-component failures.
@@ -855,7 +855,7 @@ fi
 SCRIPT
 
 chmod +x /tmp/validate-chaos-recovery.sh
-/tmp/validate-chaos-recovery.sh %STUDENT_NAMESPACE%
+/tmp/validate-chaos-recovery.sh {student-namespace}
 ----
 
 === Manual Validation Steps
@@ -866,7 +866,7 @@ If automated validation fails, check each system manually:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status
 ----
 
 Expected output:
@@ -889,11 +889,11 @@ Full List of Resources:
 [source,bash,role=execute]
 ----
 # Check VM status
-oc get vmi -n %STUDENT_NAMESPACE% | grep rhel-ha
+oc get vmi -n {student-namespace} | grep rhel-ha
 
 # Restart if needed
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
+virtctl start {rhel-node2} -n {student-namespace}
 
 # Wait for cluster to reform
 sleep 120
@@ -903,8 +903,8 @@ sleep 120
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
-  ip addr show eth1 | grep %MICROSHIFT_VIP%
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- \
+  ip addr show eth1 | grep {microshift-vip}
 ----
 
 Expected: VIP on Gateway A or Gateway B (not both, not neither).
@@ -914,11 +914,11 @@ Expected: VIP on Gateway A or Gateway B (not both, not neither).
 [source,bash,role=execute]
 ----
 # Check Keepalived status
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- \
   sudo systemctl status keepalived
 
 # Restart if failed
-virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- \
   sudo systemctl restart keepalived
 ----
 
@@ -927,7 +927,7 @@ virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- \
 [source,bash,role=execute]
 ----
 # Check VM status
-oc get vmi -n %STUDENT_NAMESPACE% | grep twonode
+oc get vmi -n {student-namespace} | grep twonode
 ----
 
 Expected: All 3 VMs (master1, master2, arbiter) Running.
@@ -936,11 +936,11 @@ Expected: All 3 VMs (master1, master2, arbiter) Running.
 
 [source,bash,role=execute]
 ----
-virtctl start %TWONODE_MASTER1% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master1} -n {student-namespace}
 sleep 120
-virtctl start %TWONODE_MASTER2% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-master2} -n {student-namespace}
 sleep 60
-virtctl start %TWONODE_ARBITER% -n %STUDENT_NAMESPACE%
+virtctl start {twonode-arbiter} -n {student-namespace}
 ----
 
 === Expected vs Actual Results
@@ -1033,10 +1033,10 @@ Track actual vs target recovery times:
 
 **If RTO targets are missed:**
 
-* Review logs: `virtctl console <vm-name> -n %STUDENT_NAMESPACE%`
-* Check resource limits: `oc describe vmi <vm-name> -n %STUDENT_NAMESPACE%`
-* Verify network: `oc get userdefinednetwork -n %STUDENT_UDN_NAMESPACE%`
-* Check for conflicts: `oc get events -n %STUDENT_NAMESPACE% --sort-by='.lastTimestamp'`
+* Review logs: `virtctl console <vm-name> -n {student-namespace}`
+* Check resource limits: `oc describe vmi <vm-name> -n {student-namespace}`
+* Verify network: `oc get userdefinednetwork -n {student-udn-namespace}`
+* Check for conflicts: `oc get events -n {student-namespace} --sort-by='.lastTimestamp'`
 
 == Chaos Report Template
 
@@ -1109,7 +1109,7 @@ Run a 15-minute GameDay with medium failure rate:
 
 [source,bash,role=execute]
 ----
-./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 15 medium
+./scripts/chaos-gameday.sh {student-namespace} 15 medium
 ----
 
 Output:
@@ -1159,7 +1159,7 @@ Choose failure rate based on desired chaos intensity:
 
 [source,bash,role=execute]
 ----
-./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 5 low
+./scripts/chaos-gameday.sh {student-namespace} 5 low
 ----
 
 Inject 1-2 failures. Verify basic recovery.
@@ -1168,7 +1168,7 @@ Inject 1-2 failures. Verify basic recovery.
 
 [source,bash,role=execute]
 ----
-./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 30 medium
+./scripts/chaos-gameday.sh {student-namespace} 30 medium
 ----
 
 Inject 6-10 failures. Test sustained resilience.
@@ -1177,7 +1177,7 @@ Inject 6-10 failures. Test sustained resilience.
 
 [source,bash,role=execute]
 ----
-./scripts/chaos-gameday.sh %STUDENT_NAMESPACE% 60 high
+./scripts/chaos-gameday.sh {student-namespace} 60 high
 ----
 
 Inject 30-60 failures. Identify breaking points.
@@ -1214,21 +1214,21 @@ Open multiple terminals to monitor systems:
 
 [source,bash,role=execute]
 ----
-watch -n 5 "oc get vmi -n %STUDENT_NAMESPACE%"
+watch -n 5 "oc get vmi -n {student-namespace}"
 ----
 
 **Terminal 2: Watch Pacemaker**
 
 [source,bash,role=execute]
 ----
-watch -n 5 "virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status 2>/dev/null || echo 'Node offline'"
+watch -n 5 "virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status 2>/dev/null || echo 'Node offline'"
 ----
 
 **Terminal 3: Watch MicroShift VIP**
 
 [source,bash,role=execute]
 ----
-watch -n 5 "virtctl ssh %VM_USER%@%MICROSHIFT_GW_A% -n %STUDENT_NAMESPACE% -- ip addr show eth1 2>/dev/null | grep -A1 'inet 10.102' || echo 'Gateway offline'"
+watch -n 5 "virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- ip addr show eth1 2>/dev/null | grep -A1 'inet 10.102' || echo 'Gateway offline'"
 ----
 
 **Terminal 4: Follow GameDay Log**
@@ -1284,7 +1284,7 @@ echo "Manual interventions needed"
 
 [source,bash,role=execute]
 ----
-/tmp/validate-chaos-recovery.sh %STUDENT_NAMESPACE%
+/tmp/validate-chaos-recovery.sh {student-namespace}
 ----
 
 === GameDay Metrics
@@ -1411,7 +1411,7 @@ Stop all VMs:
 
 [source,bash,role=execute]
 ----
-oc get vm -n %STUDENT_NAMESPACE% -o name | xargs -I {} virtctl stop {} -n %STUDENT_NAMESPACE%
+oc get vm -n {student-namespace} -o name | xargs -I {} virtctl stop {} -n {student-namespace}
 ----
 
 == Bonus Challenge (Optional)

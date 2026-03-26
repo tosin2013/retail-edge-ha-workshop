@@ -100,7 +100,7 @@ Check that your VMs have been pre-deployed:
 
 [source,bash,role=execute]
 ----
-oc get vm -n %STUDENT_NAMESPACE%
+oc get vm -n {student-namespace}
 ----
 
 You should see:
@@ -118,12 +118,12 @@ NOTE: VMs are pre-created in stopped state. This means they're ready to start in
 
 [source,bash,role=execute]
 ----
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
 ----
 
 [source,bash,role=execute]
 ----
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 === Wait for Running State
@@ -132,7 +132,7 @@ Watch VMs boot (takes ~30 seconds):
 
 [source,bash,role=execute]
 ----
-oc get vmi -n %STUDENT_NAMESPACE% -w
+oc get vmi -n {student-namespace} -w
 ----
 
 Press `Ctrl+C` when both show `Running` and `True` under READY.
@@ -143,10 +143,10 @@ SSH into node1 to check the network setup:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
-Password: `%VM_PASSWORD%`
+Password: `{vm-password}`
 
 Check the IP addresses:
 
@@ -183,7 +183,7 @@ SSH into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Authenticate the cluster nodes (password: `redhat`):
@@ -254,7 +254,7 @@ Back in the terminal, create the ServiceAccount:
 
 [source,bash,role=execute]
 ----
-oc create sa pacemaker-fencing -n %STUDENT_NAMESPACE%
+oc create sa pacemaker-fencing -n {student-namespace}
 ----
 
 Grant permissions to manage VMs:
@@ -264,22 +264,22 @@ Grant permissions to manage VMs:
 oc create role vm-manager \
   --verb=get,list,update,patch,delete \
   --resource=virtualmachines,virtualmachineinstances \
-  -n %STUDENT_NAMESPACE%
+  -n {student-namespace}
 ----
 
 [source,bash,role=execute]
 ----
 oc create rolebinding vm-manager-binding \
   --role=vm-manager \
-  --serviceaccount=%STUDENT_NAMESPACE%:pacemaker-fencing \
-  -n %STUDENT_NAMESPACE%
+  --serviceaccount={student-namespace}:pacemaker-fencing \
+  -n {student-namespace}
 ----
 
 Get the ServiceAccount token:
 
 [source,bash,role=execute]
 ----
-oc create token pacemaker-fencing -n %STUDENT_NAMESPACE% --duration=8760h
+oc create token pacemaker-fencing -n {student-namespace} --duration=8760h
 ----
 
 *Copy the token output* - you'll need it in the next step.
@@ -290,7 +290,7 @@ SSH back into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Create fence device for node1:
@@ -300,8 +300,8 @@ Create fence device for node1:
 sudo pcs stonith create fence-node1 fence_kubevirt \
   token="<paste-token-here>" \
   plug=rhel-ha-node1 \
-  namespace=%STUDENT_NAMESPACE% \
-  apiserveraddr=%CLUSTER_API% \
+  namespace={student-namespace} \
+  apiserveraddr={cluster-api} \
   pcmk_host_list="rhel-ha-node1" \
   pcmk_reboot_action="reboot" \
   ssl_insecure=1
@@ -314,8 +314,8 @@ Create fence device for node2:
 sudo pcs stonith create fence-node2 fence_kubevirt \
   token="<paste-token-here>" \
   plug=rhel-ha-node2 \
-  namespace=%STUDENT_NAMESPACE% \
-  apiserveraddr=%CLUSTER_API% \
+  namespace={student-namespace} \
+  apiserveraddr={cluster-api} \
   pcmk_host_list="rhel-ha-node2" \
   pcmk_reboot_action="reboot" \
   ssl_insecure=1
@@ -359,7 +359,7 @@ Create the VIP resource:
 [source,bash]
 ----
 sudo pcs resource create cluster-vip IPaddr2 \
-  ip=%PACEMAKER_VIP% \
+  ip={pacemaker-vip} \
   cidr_netmask=24 \
   nic=eth1 \
   op monitor interval=5s
@@ -378,7 +378,7 @@ Verify the VIP is accessible:
 
 [source,bash]
 ----
-ping -c 3 %PACEMAKER_VIP%
+ping -c 3 {pacemaker-vip}
 ----
 
 == Step 9: Test Failover
@@ -403,7 +403,7 @@ Verify the VIP still responds:
 
 [source,bash]
 ----
-ping -c 3 %PACEMAKER_VIP%
+ping -c 3 {pacemaker-vip}
 ----
 
 Bring node1 back online:
@@ -487,7 +487,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: pacemaker-shared-storage
-  namespace: %STUDENT_NAMESPACE%
+  namespace: {student-namespace}
 spec:
   accessModes:
     - ReadWriteMany
@@ -502,7 +502,7 @@ Verify the PVC is bound:
 
 [source,bash,role=execute]
 ----
-oc get pvc pacemaker-shared-storage -n %STUDENT_NAMESPACE%
+oc get pvc pacemaker-shared-storage -n {student-namespace}
 ----
 
 You should see `STATUS: Bound`.
@@ -515,17 +515,17 @@ Stop both VMs to attach the storage:
 
 [source,bash,role=execute]
 ----
-virtctl stop %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl stop {rhel-node1} -n {student-namespace}
+virtctl stop {rhel-node2} -n {student-namespace}
 ----
 
-Wait for VMs to stop (check with `oc get vmi -n %STUDENT_NAMESPACE%`).
+Wait for VMs to stop (check with `oc get vmi -n {student-namespace}`).
 
 Patch node1 to add the shared disk:
 
 [source,bash,role=execute]
 ----
-oc patch vm rhel-ha-node1 -n %STUDENT_NAMESPACE% --type=merge -p '
+oc patch vm rhel-ha-node1 -n {student-namespace} --type=merge -p '
 spec:
   template:
     spec:
@@ -559,7 +559,7 @@ Repeat for node2:
 
 [source,bash,role=execute]
 ----
-oc patch vm rhel-ha-node2 -n %STUDENT_NAMESPACE% --type=merge -p '
+oc patch vm rhel-ha-node2 -n {student-namespace} --type=merge -p '
 spec:
   template:
     spec:
@@ -595,8 +595,8 @@ Start the VMs:
 
 [source,bash,role=execute]
 ----
-virtctl start %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node1} -n {student-namespace}
+virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 Wait for VMs to boot (~30 seconds).
@@ -607,7 +607,7 @@ SSH into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Check that the shared disk appears as `/dev/vdb`:
@@ -754,14 +754,14 @@ From your terminal:
 
 [source,bash,role=execute]
 ----
-virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl stop {rhel-node2} -n {student-namespace}
 ----
 
 SSH back into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Check that the shared filesystem is still accessible:
@@ -792,14 +792,14 @@ exit
 
 [source,bash,role=execute]
 ----
-virtctl start %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 Wait 60 seconds for node2 to rejoin the cluster, then SSH into node2:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace}
 ----
 
 Verify node2 automatically remounted the shared filesystem:
@@ -866,7 +866,7 @@ Verify your Pacemaker cluster is fully functional:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE% -- sudo pcs status
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status
 ----
 
 You should see:
@@ -885,8 +885,8 @@ You should see:
 *Solution:*
 [source,bash]
 ----
-oc describe vm %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-oc get events -n %STUDENT_NAMESPACE% --sort-by='.lastTimestamp'
+oc describe vm {rhel-node1} -n {student-namespace}
+oc get events -n {student-namespace} --sort-by='.lastTimestamp'
 ----
 
 *Problem:* Cluster authentication fails
@@ -903,7 +903,7 @@ sudo passwd hacluster  # Set password to 'redhat'
 *Solution:* Verify ServiceAccount permissions:
 [source,bash]
 ----
-oc auth can-i update vm --as=system:serviceaccount:%STUDENT_NAMESPACE%:pacemaker-fencing -n %STUDENT_NAMESPACE%
+oc auth can-i update vm --as=system:serviceaccount:{student-namespace}:pacemaker-fencing -n {student-namespace}
 ----
 ====
 
@@ -921,8 +921,8 @@ If you want to reset for another attempt:
 
 [source,bash,role=execute]
 ----
-virtctl stop %RHEL_NODE1% -n %STUDENT_NAMESPACE%
-virtctl stop %RHEL_NODE2% -n %STUDENT_NAMESPACE%
+virtctl stop {rhel-node1} -n {student-namespace}
+virtctl stop {rhel-node2} -n {student-namespace}
 ----
 
 Wait for VMs to stop, then start again.
@@ -959,7 +959,7 @@ SSH into node1:
 
 [source,bash,role=execute]
 ----
-virtctl ssh %VM_USER%@%RHEL_NODE1% -n %STUDENT_NAMESPACE%
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Install PostgreSQL on both nodes:
@@ -1136,7 +1136,7 @@ Connect to database via VIP:
 
 [source,bash]
 ----
-sudo -u postgres psql -h %PACEMAKER_VIP% -d storedb -c "SELECT * FROM test_replication;"
+sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
 
 Trigger failover by putting the active node into standby:
@@ -1164,7 +1164,7 @@ Connect to database again (same VIP, now on node2):
 
 [source,bash]
 ----
-sudo -u postgres psql -h %PACEMAKER_VIP% -d storedb -c "SELECT * FROM test_replication;"
+sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
 
 Application sees no difference - same VIP, same connection string!
@@ -1182,7 +1182,7 @@ Create a realistic store database schema:
 
 [source,bash]
 ----
-sudo -u postgres psql -h %PACEMAKER_VIP% -d storedb <<'EOF'
+sudo -u postgres psql -h {pacemaker-vip} -d storedb <<'EOF'
 -- Products table
 CREATE TABLE products (
     sku VARCHAR(20) PRIMARY KEY,
@@ -1228,7 +1228,7 @@ Open a new terminal and run this loop (simulates POS system):
 [source,bash]
 ----
 while true; do
-  sudo -u postgres psql -h %PACEMAKER_VIP% -d storedb -c \
+  sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
     "INSERT INTO transactions (sku, quantity, total) VALUES ('PROD-002', 1, 5.49); SELECT NOW() as inserted_at;"
   sleep 2
 done
@@ -1261,7 +1261,7 @@ After node2 rejoins, check transaction history:
 
 [source,bash]
 ----
-sudo -u postgres psql -h %PACEMAKER_VIP% -d storedb -c \
+sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
   "SELECT COUNT(*) as total_transactions, MAX(timestamp) as last_transaction FROM transactions;"
 ----
 
@@ -1334,7 +1334,7 @@ Remove PostgreSQL resources:
 [source,bash]
 ----
 sudo pcs resource delete postgres-ha
-sudo pcs resource create cluster-vip IPaddr2 ip=%PACEMAKER_VIP% cidr_netmask=24 nic=eth1
+sudo pcs resource create cluster-vip IPaddr2 ip={pacemaker-vip} cidr_netmask=24 nic=eth1
 ----
 
 Or keep it if you want to experiment more!

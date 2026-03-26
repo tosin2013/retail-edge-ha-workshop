@@ -174,13 +174,13 @@ If you're done exploring, clean up your namespace:
 [source,bash,role=execute]
 ----
 # Stop all VMs
-oc get vm -n %STUDENT_NAMESPACE% -o name | xargs -I {} virtctl stop {} -n %STUDENT_NAMESPACE%
+oc get vm -n {student-namespace} -o name | xargs -I {} virtctl stop {} -n {student-namespace}
 
 # (Optional) Delete all VMs
-oc delete vm --all -n %STUDENT_NAMESPACE%
+oc delete vm --all -n {student-namespace}
 
 # Delete UDNs
-oc delete userdefinednetwork --all -n %STUDENT_UDN_NAMESPACE%
+oc delete userdefinednetwork --all -n {student-udn-namespace}
 ----
 
 Note: Your instructor may want to preserve resources for review.
