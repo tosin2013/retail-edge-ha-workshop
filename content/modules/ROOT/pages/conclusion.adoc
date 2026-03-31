@@ -129,7 +129,7 @@ Before deploying these architectures in production:
 
 Clone this workshop repository:
 
-[source,bash]
+[source,role="execute"]
 ----
 git clone https://github.com/tosin2013/retail-edge-ha-workshop.git
 cd retail-edge-ha-workshop
@@ -137,7 +137,7 @@ cd retail-edge-ha-workshop
 
 Deploy the workshop on your own OpenShift cluster:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Install Helm chart for 5 students
 helm install retail-edge-ha ./helm/retail-edge-ha \

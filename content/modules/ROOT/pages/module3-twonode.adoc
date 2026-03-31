@@ -8,11 +8,11 @@ In this module, you'll explore a two-node OpenShift cluster with a remote etcd a
 
 === Lab Environment (Simulated Cluster)
 
-image::module3-lab-architecture.png[Lab Two-Node OpenShift with etcd Arbiter, align=center]
+image::module3-lab-architecture.png[Lab Two-Node OpenShift with etcd Arbiter, align=center,link=self,window=blank]
 
 === Real-World Deployment (Multi-Store Regional Cluster)
 
-image::module3-real-architecture.png[Real-World Multi-Store Regional Deployment, align=center]
+image::module3-real-architecture.png[Real-World Multi-Store Regional Deployment, align=center,link=self,window=blank]
 
 === Key Differences
 
@@ -71,7 +71,7 @@ image::module3-real-architecture.png[Real-World Multi-Store Regional Deployment,
 
 == Two-Node vs Standard OpenShift Comparison
 
-image::module3-cost-comparison.png[Cost Comparison - Two-Node vs Standard OpenShift, align=center]
+image::module3-cost-comparison.png[Cost Comparison - Two-Node vs Standard OpenShift, align=center,link=self,window=blank]
 
 == Lab Architecture Details
 
@@ -193,7 +193,7 @@ Note: The default user for RHCOS is `core`.
 
 Check the static IP on eth1:
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1
 ----
@@ -207,21 +207,21 @@ inet 10.103.0.20/24 brd 10.103.0.255 scope global eth1
 
 Verify connectivity to master2:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {twonode-ip2}
 ----
 
 Verify connectivity to arbiter:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {twonode-ip-arbiter}
 ----
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -255,7 +255,7 @@ Key insight: **Any 2 of the 3 nodes** maintains quorum.
 
 In a running two-node OpenShift cluster, you would verify etcd health with:
 
-[source,bash]
+[source,role="execute"]
 ----
 # List etcd members
 oc rsh -n openshift-etcd \
@@ -270,7 +270,7 @@ oc rsh -n openshift-etcd \
 
 Check endpoint health:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc rsh -n openshift-etcd \
   $(oc get pods -n openshift-etcd -l app=etcd -o name | head -1) \
@@ -288,7 +288,7 @@ oc rsh -n openshift-etcd \
 
 If we stopped master2:
 
-[source,bash]
+[source,role="execute"]
 ----
 virtctl stop {twonode-master2} -n {student-namespace}
 ----
@@ -304,7 +304,7 @@ Workloads on master2 would be rescheduled to master1.
 
 **Test 2: Lose the arbiter**
 
-[source,bash]
+[source,role="execute"]
 ----
 virtctl stop {twonode-arbiter} -n {student-namespace}
 ----
@@ -318,7 +318,7 @@ The cluster would:
 
 **Test 3: Lose quorum (both master2 and arbiter)**
 
-[source,bash]
+[source,role="execute"]
 ----
 virtctl stop {twonode-master2} -n {student-namespace}
 virtctl stop {twonode-arbiter} -n {student-namespace}
@@ -333,7 +333,7 @@ The cluster would:
 
 Example:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc create namespace test
 # Error: The connection to the server ... was refused
@@ -368,7 +368,7 @@ virtctl ssh core@{twonode-master1} -n {student-namespace}
 
 Verify arbiter is still reachable:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {twonode-ip-arbiter}
 ----
@@ -377,7 +377,7 @@ This demonstrates that 2 of 3 nodes are online (simulating quorum).
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -424,7 +424,7 @@ virtctl ssh core@{twonode-arbiter} -n {student-namespace}
 
 Check the hostname:
 
-[source,bash]
+[source,role="execute"]
 ----
 hostname
 ----
@@ -433,7 +433,7 @@ Expected: `twonode-arbiter`
 
 In a real cluster, check node taints:
 
-[source,bash]
+[source,role="execute"]
 ----
 # This would show (in production):
 oc describe node twonode-arbiter | grep Taints
@@ -446,7 +446,7 @@ The `NoSchedule` taint prevents workloads from running on the arbiter.
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -523,7 +523,7 @@ virtctl ssh core@{twonode-master1} -n {student-namespace}
 
 In production, etcd data is stored in `/var/lib/etcd`. Test disk latency:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Test fsync latency (simulated on root filesystem)
 sudo dd if=/dev/zero of=/var/tmp/test-etcd bs=4k count=10000 oflag=dsync 2>&1 | grep -E 'copied|MB'
@@ -551,7 +551,7 @@ In this lab, we're using Ceph RBD storage which has network overhead. Production
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -623,7 +623,7 @@ For production two-node OpenShift:
 
 === Real-World Retail Storage Design
 
-image::module3-storage-design.png[Two-Node Storage Architecture, align=center]
+image::module3-storage-design.png[Two-Node Storage Architecture, align=center,link=self,window=blank]
 
 Example retail store configuration:
 
@@ -646,7 +646,7 @@ etcd Arbiter (Remote Datacenter):
 
 In a running two-node OpenShift cluster, monitor etcd disk performance:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Check etcd fsync duration (should be < 10ms)
 oc rsh -n openshift-etcd \
@@ -753,7 +753,7 @@ All should show `Running` and `True`.
 *Problem:* VMs not starting
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 oc describe vm {twonode-master1} -n {student-namespace}
 # Check for DataVolume issues with RHCOS image
@@ -762,7 +762,7 @@ oc describe vm {twonode-master1} -n {student-namespace}
 *Problem:* Network connectivity issues
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 # Verify UDN exists
 oc get userdefinednetwork twonode-net -n {student-udn-namespace}

@@ -1,0 +1,32 @@
+/* Retail Edge HA Workshop Custom Styles */
+
+/* Improve code block readability */
+.doc pre.highlight {
+  background-color: #282c34;
+  border-left: 3px solid #ee0000;
+}
+
+/* Enhance table styling */
+.doc table.tableblock {
+  border: 1px solid #d0d0d0;
+}
+
+.doc table.tableblock th {
+  background-color: #f5f5f5;
+  font-weight: 600;
+}
+
+/* Better visibility for admonition blocks */
+.doc .admonitionblock {
+  margin: 1.5rem 0;
+}
+
+/* Highlight executable code blocks */
+.doc pre[role="execute"] {
+  border-left: 3px solid #00a400;
+}
+
+/* Workshop-specific branding */
+.navbar {
+  background-color: #ee0000;
+}

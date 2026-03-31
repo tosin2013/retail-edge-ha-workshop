@@ -189,7 +189,7 @@ Before testing chaos scenarios, understand the fundamental trade-offs each archi
 
 === CAP Theorem Overview
 
-image::cap-theorem.png[CAP Theorem Triangle, align=center]
+image::cap-theorem.png[CAP Theorem Triangle, align=center,link=self,window=blank]
 
 **The CAP Theorem states:** In a distributed system experiencing a network partition, you must choose between **Consistency** and **Availability** - you cannot have both.
 
@@ -335,14 +335,14 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Block Corosync traffic from node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo firewall-cmd --direct --add-rule ipv4 filter INPUT 0 -s 10.101.0.21 -p udp --dport 5405 -j DROP
 ----
 
 Watch the cluster status:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 sudo pcs status
 ----
@@ -358,14 +358,14 @@ Press `Ctrl+C` to stop watching.
 
 Remove the firewall rule:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo firewall-cmd --direct --remove-rule ipv4 filter INPUT 0 -s 10.101.0.21 -p udp --dport 5405 -j DROP
 ----
 
 Wait for node2 to rejoin:
 
-[source,bash]
+[source,role="execute"]
 ----
 sleep 60
 sudo pcs status
@@ -375,7 +375,7 @@ sudo pcs status
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -393,7 +393,7 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 On node1, kill Corosync:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo killall -9 corosync
 ----
@@ -464,21 +464,21 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Create CPU load:
 
-[source,bash]
+[source,role="execute"]
 ----
 stress-ng --cpu 4 --timeout 120s &
 ----
 
 If `stress-ng` is not installed:
 
-[source,bash]
+[source,role="execute"]
 ----
 for i in {1..4}; do yes > /dev/null & done
 ----
 
 Monitor Keepalived logs in another window:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived -f
 ----
@@ -500,7 +500,7 @@ virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace} -- ip addr show e
 
 Stop the CPU load on Gateway A:
 
-[source,bash]
+[source,role="execute"]
 ----
 killall yes
 # or wait for stress-ng to finish
@@ -508,7 +508,7 @@ killall yes
 
 Wait for health check to recover:
 
-[source,bash]
+[source,role="execute"]
 ----
 curl -k https://localhost:6443/readyz
 ----
@@ -517,7 +517,7 @@ VIP should migrate back to Gateway A within 30 seconds (higher priority).
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -535,21 +535,21 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Find the API server process:
 
-[source,bash]
+[source,role="execute"]
 ----
 ps aux | grep kube-apiserver
 ----
 
 Kill the API server:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pkill -9 kube-apiserver
 ----
 
 MicroShift should automatically restart it, but watch for VIP migration:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 1 ip addr show eth1
 ----
@@ -560,7 +560,7 @@ Press `Ctrl+C`.
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -609,7 +609,7 @@ virtctl ssh core@{twonode-master1} -n {student-namespace} -- ping -c 3 %TWONODE_
 
 In a production cluster, you would observe:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get etcd cluster -o jsonpath='{.status.conditions}' | jq
 # Status: Available (2/3 quorum)
@@ -680,14 +680,14 @@ virtctl ssh core@{twonode-master1} -n {student-namespace}
 
 Add 200ms latency to arbiter traffic:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo tc qdisc add dev eth1 root netem delay 200ms
 ----
 
 In a production cluster, check etcd metrics:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get --raw /metrics | grep etcd_network_peer_round_trip_time_seconds
 # Should show increased latency
@@ -695,14 +695,14 @@ oc get --raw /metrics | grep etcd_network_peer_round_trip_time_seconds
 
 Remove the latency:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo tc qdisc del dev eth1 root
 ----
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -1233,7 +1233,7 @@ watch -n 5 "virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- ip
 
 **Terminal 4: Follow GameDay Log**
 
-[source,bash]
+[source,role="execute"]
 ----
 tail -f /tmp/chaos-gameday-*.log
 ----
@@ -1244,14 +1244,14 @@ After the GameDay completes:
 
 1. **Review the log file:**
 
-[source,bash]
+[source,role="execute"]
 ----
 less /tmp/chaos-gameday-retail-edge-student-01-*.log
 ----
 
 2. **Count failures by type:**
 
-[source,bash]
+[source,role="execute"]
 ----
 grep "\[CHAOS\]" /tmp/chaos-gameday-*.log | wc -l
 echo "Total chaos injections"
@@ -1271,7 +1271,7 @@ echo "Process crashes"
 
 3. **Check recovery success rate:**
 
-[source,bash]
+[source,role="execute"]
 ----
 grep "✓" /tmp/chaos-gameday-*.log | wc -l
 echo "Successful recoveries"
@@ -1373,7 +1373,7 @@ Press `Ctrl+C` - the script will clean up and exit gracefully.
 
 Extend the script with your own scenarios:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Edit scripts/chaos-gameday.sh
 

@@ -25,6 +25,8 @@ ARGOCD_NAMESPACE="openshift-gitops"
 CNV_NAMESPACE="openshift-cnv"
 STORAGE_CLASS="ocs-external-storagecluster-ceph-rbd"
 MIN_OPENSHIFT_VERSION="4.21"
+OUTPUT_FORMAT="${OUTPUT_FORMAT:-text}"  # Options: text, json, both
+OUTPUT_FILE="${OUTPUT_FILE:-/tmp/validation-report.json}"
 
 # Color codes
 RED='\033[0;31m'
@@ -178,10 +180,12 @@ validate_namespaces() {
     local expected_total=$((EXPECTED_STUDENTS * 2 + EXPECTED_STUDENTS + 2))
 
     # Count retail-edge namespaces
-    local retail_count=$(oc get namespaces --no-headers 2>/dev/null | grep -c "^retail-edge-" || echo "0")
+    local retail_count=$(oc get namespaces --no-headers 2>/dev/null | grep "^retail-edge-" | wc -l || echo "0")
+    retail_count=${retail_count:-0}
 
     # Count showroom namespaces
-    local showroom_count=$(oc get namespaces --no-headers 2>/dev/null | grep -c "^showroom-student-" || echo "0")
+    local showroom_count=$(oc get namespaces --no-headers 2>/dev/null | grep "^showroom-student-" | wc -l || echo "0")
+    showroom_count=${showroom_count:-0}
 
     local total_count=$((retail_count + showroom_count))
 
@@ -320,6 +324,56 @@ validate_showroom() {
     fi
 }
 
+validate_fleet_management() {
+    print_section "Fleet Management (RHACM)"
+
+    # Check if fleet management is enabled (namespace exists)
+    if ! oc get namespace open-cluster-management &>/dev/null; then
+        check_info "Fleet management not enabled (open-cluster-management namespace not found)"
+        return 0  # Not a failure, just optional
+    fi
+
+    # Check RHACM operator
+    if oc get csv -n open-cluster-management 2>/dev/null | grep -i "advanced-cluster-management" | grep -q "Succeeded"; then
+        local acm_version=$(oc get csv -n open-cluster-management -o json 2>/dev/null | jq -r '.items[] | select(.metadata.name | contains("advanced-cluster-management")) | .spec.version')
+        check_pass "RHACM operator installed: $acm_version"
+    else
+        check_fail "RHACM operator not found or not ready"
+        return 0
+    fi
+
+    # Check MultiClusterHub status
+    if oc get multiclusterhub -n open-cluster-management &>/dev/null; then
+        local hub_status=$(oc get multiclusterhub -n open-cluster-management -o json 2>/dev/null | jq -r '.items[0].status.phase // "Unknown"')
+        if [[ "$hub_status" == "Running" ]]; then
+            check_pass "MultiClusterHub status: Running"
+        else
+            check_fail "MultiClusterHub status: $hub_status (expected: Running)"
+        fi
+    else
+        check_fail "MultiClusterHub not found"
+    fi
+
+    # Check ManagedCluster CRs (one per student)
+    local managed_cluster_count=$(oc get managedcluster 2>/dev/null | grep -c "retail-edge-student" || echo "0")
+    if [[ $managed_cluster_count -ge $EXPECTED_STUDENTS ]]; then
+        check_pass "ManagedClusters created: $managed_cluster_count (expected: $EXPECTED_STUDENTS)"
+    else
+        check_warn "ManagedClusters created: $managed_cluster_count (expected: $EXPECTED_STUDENTS)"
+    fi
+
+    # Check ManagedCluster availability (sample student-01)
+    if oc get managedcluster retail-edge-student-01 &>/dev/null 2>&1; then
+        local cluster_available=$(oc get managedcluster retail-edge-student-01 -o json 2>/dev/null | \
+            jq -r '.status.conditions[] | select(.type=="ManagedClusterConditionAvailable") | .status')
+        if [[ "$cluster_available" == "True" ]]; then
+            check_pass "ManagedCluster available: retail-edge-student-01"
+        else
+            check_warn "ManagedCluster not available: retail-edge-student-01"
+        fi
+    fi
+}
+
 generate_summary() {
     print_header "Validation Summary"
 
@@ -363,8 +417,137 @@ generate_summary() {
     fi
 }
 
+generate_json_output() {
+    # Generate JSON report for RHDP catalog integration
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local status="HEALTHY"
+
+    if [[ $FAILED -gt 0 ]]; then
+        status="FAILED"
+    elif [[ $WARNINGS -gt 0 ]]; then
+        status="DEGRADED"
+    fi
+
+    # Pre-compute all values to avoid escaping issues in heredoc
+    local argocd_total=$(oc get applications -n $ARGOCD_NAMESPACE --no-headers 2>/dev/null | grep "$WORKSHOP_NAME" | wc -l || echo "0")
+    local argocd_synced=$(oc get applications -n $ARGOCD_NAMESPACE --no-headers 2>/dev/null | grep "$WORKSHOP_NAME" | awk '{print $2}' | grep "Synced" | wc -l || echo "0")
+    local argocd_healthy=$(oc get applications -n $ARGOCD_NAMESPACE --no-headers 2>/dev/null | grep "$WORKSHOP_NAME" | awk '{print $3}' | grep "Healthy" | wc -l || echo "0")
+
+    local ns_student=$(oc get namespaces --no-headers 2>/dev/null | grep "^retail-edge-student-" | wc -l || echo "0")
+    local ns_showroom=$(oc get namespaces --no-headers 2>/dev/null | grep "^showroom-student-" | wc -l || echo "0")
+    local ns_quotas=$(oc get resourcequota -A 2>/dev/null | grep "retail-edge-student" | wc -l || echo "0")
+
+    local vm_total=$(oc get virtualmachines -A 2>/dev/null | grep "retail-edge-student" | wc -l || echo "0")
+    local dv_ready=$(oc get datavolumes -A 2>/dev/null | grep "retail-edge" | grep "Succeeded" | wc -l || echo "0")
+
+    local showroom_pods=$(oc get pods -n showroom-student-01 --no-headers 2>/dev/null | grep "Running" | wc -l || echo "0")
+    local showroom_url=$(oc get route -n showroom-student-01 -o jsonpath='{.items[0].spec.host}' 2>/dev/null || echo "not-found")
+
+    # Trim whitespace
+    argocd_total=$(echo "$argocd_total" | tr -d ' \n')
+    argocd_synced=$(echo "$argocd_synced" | tr -d ' \n')
+    argocd_healthy=$(echo "$argocd_healthy" | tr -d ' \n')
+    ns_student=$(echo "$ns_student" | tr -d ' \n')
+    ns_showroom=$(echo "$ns_showroom" | tr -d ' \n')
+    ns_quotas=$(echo "$ns_quotas" | tr -d ' \n')
+    vm_total=$(echo "$vm_total" | tr -d ' \n')
+    dv_ready=$(echo "$dv_ready" | tr -d ' \n')
+    showroom_pods=$(echo "$showroom_pods" | tr -d ' \n')
+
+    local status_message
+    if [[ $status == "HEALTHY" ]]; then
+        status_message="Workshop is ready for students"
+    elif [[ $status == "DEGRADED" ]]; then
+        status_message="Workshop has warnings but is mostly ready"
+    else
+        status_message="Workshop is not ready - review failed checks"
+    fi
+
+    cat > "$OUTPUT_FILE" <<EOF
+{
+  "validation_timestamp": "$timestamp",
+  "validation_status": "$status",
+  "expected_students": $EXPECTED_STUDENTS,
+  "summary": {
+    "total_checks": $((PASSED + FAILED + WARNINGS)),
+    "passed": $PASSED,
+    "warnings": $WARNINGS,
+    "failed": $FAILED
+  },
+  "components": {
+    "argocd_applications": {
+      "total": $argocd_total,
+      "synced": $argocd_synced,
+      "healthy": $argocd_healthy
+    },
+    "namespaces": {
+      "student_namespaces": $ns_student,
+      "showroom_namespaces": $ns_showroom,
+      "resource_quotas": $ns_quotas
+    },
+    "virtualmachines": {
+      "total": $vm_total,
+      "datavolumes_succeeded": $dv_ready
+    },
+    "showroom": {
+      "running_pods": $showroom_pods,
+      "sample_url": "https://$showroom_url"
+    }
+  },
+  "status_message": "$status_message"
+}
+EOF
+
+    if [[ "$OUTPUT_FORMAT" == "json" ]] || [[ "$OUTPUT_FORMAT" == "both" ]]; then
+        echo -e "${BLUE}JSON report saved to: $OUTPUT_FILE${NC}"
+        cat "$OUTPUT_FILE"
+    fi
+}
+
+# Parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -s|--students)
+                EXPECTED_STUDENTS="$2"
+                shift 2
+                ;;
+            -f|--format)
+                OUTPUT_FORMAT="$2"
+                shift 2
+                ;;
+            -o|--output)
+                OUTPUT_FILE="$2"
+                shift 2
+                ;;
+            -h|--help)
+                echo "Usage: $0 [OPTIONS] [STUDENT_COUNT]"
+                echo ""
+                echo "Options:"
+                echo "  -s, --students NUM    Expected number of students (default: 5)"
+                echo "  -f, --format FORMAT   Output format: text, json, both (default: text)"
+                echo "  -o, --output FILE     JSON output file (default: /tmp/validation-report.json)"
+                echo "  -h, --help            Show this help message"
+                echo ""
+                echo "Examples:"
+                echo "  $0 10                                    # Validate for 10 students"
+                echo "  $0 --students 25 --format json           # JSON output for 25 students"
+                echo "  $0 -s 5 -f both -o report.json           # Both text and JSON output"
+                exit 0
+                ;;
+            *)
+                # Positional argument (student count)
+                EXPECTED_STUDENTS="$1"
+                shift
+                ;;
+        esac
+    done
+}
+
 # Main execution
 main() {
+    parse_arguments "$@"
+
     print_header "Retail Edge HA Workshop - Post-Deployment Validation"
     echo "Expected students: $EXPECTED_STUDENTS"
     echo "Workshop name: $WORKSHOP_NAME"
@@ -378,9 +561,16 @@ main() {
     validate_networking
     validate_virtualmachines
     validate_showroom
+    validate_fleet_management
 
     # Generate summary and exit with appropriate code
     generate_summary
+
+    # Generate JSON output if requested
+    if [[ "$OUTPUT_FORMAT" == "json" ]] || [[ "$OUTPUT_FORMAT" == "both" ]]; then
+        generate_json_output
+    fi
+
     exit $?
 }
 

@@ -93,7 +93,7 @@ Throughout this workshop, you'll use:
 
 == Workshop Architecture
 
-image::workshop-architecture.png[Workshop Architecture, align=center]
+image::workshop-architecture.png[Workshop Architecture, align=center,link=self,window=blank]
 
 Each module runs in isolated VirtualMachines connected via User Defined Networks (UDNs) that provide Layer 2 connectivity for multicast protocols (Corosync, VRRP).
 

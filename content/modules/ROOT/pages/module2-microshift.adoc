@@ -8,11 +8,11 @@ In this module, you'll deploy two MicroShift instances with Keepalived managing 
 
 === Lab Environment (What You'll Build)
 
-image::module2-lab-architecture.png[Lab Architecture - MicroShift with VRRP, align=center]
+image::module2-lab-architecture.png[Lab Architecture - MicroShift with VRRP, align=center,link=self,window=blank]
 
 === Real-World Deployment (Retail Store Edge Gateway)
 
-image::module2-real-architecture.png[Real-World Edge Gateway Deployment, align=center]
+image::module2-real-architecture.png[Real-World Edge Gateway Deployment, align=center,link=self,window=blank]
 
 === Key Differences
 
@@ -155,7 +155,7 @@ Password: `{vm-password}`
 
 Check MicroShift status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl status microshift
 ----
@@ -164,7 +164,7 @@ You should see `active (running)`.
 
 Verify MicroShift is ready:
 
-[source,bash]
+[source,role="execute"]
 ----
 curl -k https://localhost:6443/readyz
 ----
@@ -173,7 +173,7 @@ Expected output: `ok`
 
 Check the kubeconfig:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get nodes
 ----
@@ -182,7 +182,7 @@ You should see the MicroShift node in `Ready` state.
 
 Check network configuration:
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1
 ----
@@ -196,7 +196,7 @@ inet 10.102.0.20/24 brd 10.102.0.255 scope global eth1
 
 Exit the session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -212,14 +212,14 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Check Keepalived status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl status keepalived
 ----
 
 View the Keepalived configuration:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo cat /etc/keepalived/keepalived.conf
 ----
@@ -233,7 +233,7 @@ Note the configuration:
 
 Check VRRP advertisements in the logs:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived --no-pager -n 20 | grep VRRP
 ----
@@ -249,7 +249,7 @@ VRRP_Instance(MICROSHIFT_VIP) Entering MASTER STATE
 
 Check if the VIP is assigned to Gateway A:
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -265,14 +265,14 @@ The `secondary` keyword indicates this is the virtual IP.
 
 Test VIP connectivity:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {microshift-vip}
 ----
 
 Access MicroShift API via the VIP:
 
-[source,bash]
+[source,role="execute"]
 ----
 curl -k https://{microshift-vip}:6443/readyz
 ----
@@ -281,7 +281,7 @@ Expected: `ok`
 
 Exit the session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -297,7 +297,7 @@ virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 
 Check the VIP (should NOT be present):
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -306,7 +306,7 @@ Expected: No output (VIP not assigned to backup).
 
 Check Keepalived state:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived --no-pager -n 20 | grep VRRP
 ----
@@ -320,14 +320,14 @@ VRRP_Instance(MICROSHIFT_VIP) Entering BACKUP STATE
 
 Run the status check script:
 
-[source,bash]
+[source,role="execute"]
 ----
 ./check-vrrp.sh
 ----
 
 Exit the session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -350,7 +350,7 @@ virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 
 Check if the VIP has migrated:
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -364,7 +364,7 @@ inet 10.102.0.100/24 scope global secondary eth1
 
 Check the Keepalived logs:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived --no-pager -n 30 | grep VRRP
 ----
@@ -378,7 +378,7 @@ VRRP_Instance(MICROSHIFT_VIP) Transition to MASTER STATE
 
 Verify the VIP responds:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {microshift-vip}
 curl -k https://{microshift-vip}:6443/readyz
@@ -386,7 +386,7 @@ curl -k https://{microshift-vip}:6443/readyz
 
 Exit the session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -409,7 +409,7 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Check if the VIP has migrated back (higher priority wins):
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -418,14 +418,14 @@ The VIP should be back on Gateway A because it has higher priority (100 vs 90).
 
 Check Keepalived logs:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived --no-pager -n 30 | grep VRRP
 ----
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -441,21 +441,21 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Create a test deployment:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc create deployment nginx --image=nginx --replicas=2
 ----
 
 Expose the deployment:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc expose deployment nginx --port=80 --type=NodePort
 ----
 
 Get the NodePort:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get svc nginx
 ----
@@ -464,7 +464,7 @@ Note the port (e.g., `80:31234/TCP`).
 
 Test access via the VIP:
 
-[source,bash]
+[source,role="execute"]
 ----
 curl http://{microshift-vip}:<nodeport>
 ----
@@ -475,7 +475,7 @@ You should see the nginx welcome page.
 
 Open a second terminal and run continuous requests:
 
-[source,bash]
+[source,role="execute"]
 ----
 while true; do
   curl -s -o /dev/null -w "Status: %{http_code}\n" http://{microshift-vip}:<nodeport>
@@ -509,14 +509,14 @@ virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 
 Stop MicroShift (simulating API failure):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl stop microshift
 ----
 
 Watch Keepalived detect the failure:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u keepalived -f
 ----
@@ -533,14 +533,14 @@ However, since Gateway A is still stopped, Gateway B will retain MASTER state ev
 
 Restart MicroShift:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl start microshift
 ----
 
 Wait for MicroShift to be ready:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 curl -k -s https://localhost:6443/readyz
 ----
@@ -549,7 +549,7 @@ Press `Ctrl+C` when it returns `ok`.
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -603,7 +603,7 @@ virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 
 Create a StatefulSet with PostgreSQL:
 
-[source,bash]
+[source,role="execute"]
 ----
 cat <<EOF | oc apply -f -
 apiVersion: v1
@@ -660,7 +660,7 @@ EOF
 
 Wait for the pod to start:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 oc get pods
 ----
@@ -671,7 +671,7 @@ Press `Ctrl+C` when `postgres-0` shows `Running`.
 
 Create sample retail data:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc exec -it postgres-0 -- psql -U postgres <<'EOF'
 CREATE DATABASE storedb;
@@ -697,7 +697,7 @@ You should see 3 transactions.
 
 Check which node the pod is running on:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get pod postgres-0 -o wide
 ----
@@ -708,7 +708,7 @@ Note the `NODE` column - it should show the MicroShift node name (Gateway A).
 
 Now, stop Gateway A to trigger VIP migration:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit  # Exit SSH from Gateway A
 ----
@@ -729,7 +729,7 @@ virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 
 Check pod status:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get pods
 ----
@@ -754,7 +754,7 @@ Why is the pod not running on Gateway B?
 
 Check the PersistentVolumeClaim:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get pvc
 ----
@@ -769,7 +769,7 @@ The PVC is bound to a volume on **Gateway A's local storage**! Gateway B cannot 
 
 Try to access the database via the VIP:
 
-[source,bash]
+[source,role="execute"]
 ----
 curl -v telnet://{microshift-vip}:5432 --max-time 5
 ----
@@ -819,7 +819,7 @@ For stateful applications on MicroShift, you must use application-level replicat
 
 === Real-World Retail Architecture
 
-image::module2-storage-architecture.png[MicroShift Storage Architecture, align=center]
+image::module2-storage-architecture.png[MicroShift Storage Architecture, align=center,link=self,window=blank]
 
 In production, you would deploy:
 
@@ -832,7 +832,7 @@ In production, you would deploy:
 
 Delete the StatefulSet to free resources:
 
-[source,bash]
+[source,role="execute"]
 ----
 oc delete statefulset postgres
 oc delete pvc data-postgres-0
@@ -841,7 +841,7 @@ oc delete svc postgres
 
 Start Gateway A again:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -922,7 +922,7 @@ Both should return `active`.
 *Problem:* VIP not appearing on either node
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl restart keepalived
 sudo journalctl -u keepalived --no-pager -n 50
@@ -931,7 +931,7 @@ sudo journalctl -u keepalived --no-pager -n 50
 *Problem:* VRRP advertisements not seen
 
 *Solution:* Check firewall:
-[source,bash]
+[source,role="execute"]
 ----
 sudo firewall-cmd --list-all
 # Should show: protocols: vrrp
@@ -940,7 +940,7 @@ sudo firewall-cmd --list-all
 *Problem:* MicroShift not starting
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 sudo journalctl -u microshift --no-pager -n 50
 sudo systemctl restart microshift

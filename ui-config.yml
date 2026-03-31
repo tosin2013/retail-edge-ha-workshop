@@ -1,0 +1,17 @@
+type: showroom
+
+view_switcher:
+  enabled: true
+  default_mode: split
+
+persist_url_state: true
+
+tabs:
+  - title: Terminal 1
+    console_url: ""
+
+  - title: OpenShift Console
+    url: "{openshift_console_url}"
+
+  - title: RHACM Console
+    url: "{rhacm_console_url}"

@@ -84,7 +84,7 @@ In production, you would manage this fleet using **RHACM** (formerly Advanced Cl
 
 === Hub-Spoke Architecture
 
-image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
+image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center,link=self,window=blank]
 
 Each store is a **spoke cluster** managed from the central **hub cluster**.
 
@@ -258,7 +258,7 @@ Your workshop VMs would appear here as:
 
 == Compliance and Security
 
-image::fleet-dashboard-compliance.png[Fleet Compliance Status, align=center]
+image::fleet-dashboard-compliance.png[Fleet Compliance Status, align=center,link=self,window=blank]
 
 **Compliance Dashboard** shows:
 
@@ -391,14 +391,14 @@ When a store reports issues, you can troubleshoot remotely via RHACM:
 
 **1. Check cluster status:**
 
-[source,bash]
+[source,role="execute"]
 ----
 oc get managedcluster store-0234-dallas-tx -o yaml
 ----
 
 **2. Access cluster directly:**
 
-[source,bash]
+[source,role="execute"]
 ----
 oc config use-context store-0234-dallas-tx
 oc get nodes
@@ -407,14 +407,14 @@ oc get pods -A
 
 **3. Run diagnostics:**
 
-[source,bash]
+[source,role="execute"]
 ----
 oc adm must-gather --dest-dir=/tmp/store-0234
 ----
 
 **4. SSH to edge server (if needed):**
 
-[source,bash]
+[source,role="execute"]
 ----
 # Via jumphost
 ssh -J jumphost.datacenter.example.com core@store-0234-node1
@@ -424,7 +424,7 @@ All without sending a technician on-site!
 
 == Your Workshop Environment
 
-image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center]
+image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center,link=self,window=blank]
 
 While you'll work hands-on with **2-9 VMs per module**, imagine these represent a much larger fleet:
 
@@ -450,7 +450,7 @@ While you'll work hands-on with **2-9 VMs per module**, imagine these represent 
 Every command you run in this workshop applies to fleet management:
 
 **Lab command:**
-[source,bash]
+[source,role="execute"]
 ----
 virtctl start rhel-ha-node1 -n retail-edge-student-01
 ----
@@ -825,7 +825,7 @@ Remember: The 2 VMs you configure represent **hundreds or thousands** of similar
 
 == Workshop Architecture Reminder
 
-image::module0-workshop-vms.png[Workshop VM Layout, align=center]
+image::module0-workshop-vms.png[Workshop VM Layout, align=center,link=self,window=blank]
 
 NOTE: Each set of VMs is isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
 

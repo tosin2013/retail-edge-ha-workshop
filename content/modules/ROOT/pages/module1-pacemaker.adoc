@@ -8,11 +8,11 @@ In this module, you'll deploy a two-node Pacemaker/Corosync cluster with STONITH
 
 === Lab Environment (What You'll Build)
 
-image::module1-lab-architecture.png[Lab Architecture - VMs with Pacemaker, align=center]
+image::module1-lab-architecture.png[Lab Architecture - VMs with Pacemaker, align=center,link=self,window=blank]
 
 === Real-World Deployment (Retail Store)
 
-image::module1-real-architecture.png[Real-World Architecture - Physical Servers, align=center]
+image::module1-real-architecture.png[Real-World Architecture - Physical Servers, align=center,link=self,window=blank]
 
 === Key Differences
 
@@ -150,7 +150,7 @@ Password: `{vm-password}`
 
 Check the IP addresses:
 
-[source,bash]
+[source,role="execute"]
 ----
 ip addr show eth1
 ----
@@ -165,14 +165,14 @@ You should see:
 
 Verify connectivity to node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 10.101.0.21
 ----
 
 Exit the SSH session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -188,14 +188,14 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Authenticate the cluster nodes (password: `redhat`):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs host auth rhel-ha-node1 rhel-ha-node2 -u hacluster -p redhat
 ----
 
 Create the cluster:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 \
   --transport udp \
@@ -204,14 +204,14 @@ sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 \
 
 Start the cluster:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs cluster start --all
 ----
 
 Enable cluster auto-start:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs cluster enable --all
 ----
@@ -220,21 +220,21 @@ sudo pcs cluster enable --all
 
 Disable STONITH temporarily (we'll enable it after configuring fencing):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs property set stonith-enabled=false
 ----
 
 Set quorum policy for two-node cluster:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs property set no-quorum-policy=ignore
 ----
 
 Check cluster status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status
 ----
@@ -245,7 +245,7 @@ You should see both nodes online.
 
 Create a ServiceAccount for fence_kubevirt:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -295,7 +295,7 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Create fence device for node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs stonith create fence-node1 fence_kubevirt \
   token="<paste-token-here>" \
@@ -309,7 +309,7 @@ sudo pcs stonith create fence-node1 fence_kubevirt \
 
 Create fence device for node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs stonith create fence-node2 fence_kubevirt \
   token="<paste-token-here>" \
@@ -323,7 +323,7 @@ sudo pcs stonith create fence-node2 fence_kubevirt \
 
 Add location constraints (fence devices on opposite nodes):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs constraint location fence-node1 avoids rhel-ha-node1
 sudo pcs constraint location fence-node2 avoids rhel-ha-node2
@@ -331,21 +331,21 @@ sudo pcs constraint location fence-node2 avoids rhel-ha-node2
 
 Enable STONITH:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs property set stonith-enabled=true
 ----
 
 Test fencing (this will reboot node2):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs stonith fence rhel-ha-node2
 ----
 
 Wait 30 seconds for node2 to reboot and rejoin:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 sudo pcs status
 ----
@@ -356,7 +356,7 @@ Press `Ctrl+C` when node2 shows online again.
 
 Create the VIP resource:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs resource create cluster-vip IPaddr2 \
   ip={pacemaker-vip} \
@@ -367,7 +367,7 @@ sudo pcs resource create cluster-vip IPaddr2 \
 
 Check the VIP status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status resources
 ----
@@ -376,7 +376,7 @@ The VIP should be running on one of the nodes.
 
 Verify the VIP is accessible:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {pacemaker-vip}
 ----
@@ -385,14 +385,14 @@ ping -c 3 {pacemaker-vip}
 
 From node1, put node1 into standby mode:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs node standby rhel-ha-node1
 ----
 
 Watch the VIP migrate to node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status
 ----
@@ -401,14 +401,14 @@ The `cluster-vip` resource should now be on `rhel-ha-node2`.
 
 Verify the VIP still responds:
 
-[source,bash]
+[source,role="execute"]
 ----
 ping -c 3 {pacemaker-vip}
 ----
 
 Bring node1 back online:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs node unstandby rhel-ha-node1
 ----
@@ -419,28 +419,28 @@ Simulate a network failure by stopping Corosync on node2.
 
 SSH into node2 from node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 ssh rhel-ha-node2
 ----
 
 Stop Corosync (simulating a hung node):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl stop corosync
 ----
 
 Exit back to node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
 
 On node1, watch the cluster status:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 sudo pcs status
 ----
@@ -456,7 +456,7 @@ This demonstrates automatic fencing when a node becomes unresponsive.
 
 Exit the SSH session:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -465,7 +465,7 @@ exit
 
 In retail environments, shared storage enables critical capabilities like shared POS transaction logs, replicated inventory databases, and synchronized configuration files. Let's configure a clustered filesystem that automatically fails over with the cluster.
 
-image::module1-storage-architecture.png[Pacemaker Shared Storage Architecture, align=center]
+image::module1-storage-architecture.png[Pacemaker Shared Storage Architecture, align=center,link=self,window=blank]
 
 === Why Shared Storage Matters
 
@@ -612,7 +612,7 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Check that the shared disk appears as `/dev/vdb`:
 
-[source,bash]
+[source,role="execute"]
 ----
 lsblk
 ----
@@ -629,14 +629,14 @@ vdb    252:16   0  10G  0 disk
 
 Install GFS2 utilities (pre-installed via cloud-init):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo dnf install -y gfs2-utils dlm
 ----
 
 Create GFS2 filesystem on the shared disk:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo mkfs.gfs2 -p lock_dlm -t ha-cluster:shared-data -j 2 /dev/vdb
 ----
@@ -648,7 +648,7 @@ Parameters explained:
 
 Create mount point:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo mkdir -p /mnt/shared
 ----
@@ -657,7 +657,7 @@ sudo mkdir -p /mnt/shared
 
 Create a Pacemaker resource for the GFS2 filesystem:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs resource create shared-fs Filesystem \
   device="/dev/vdb" \
@@ -672,7 +672,7 @@ The `clone` parameter allows both nodes to mount the filesystem simultaneously.
 
 Check the resource status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status resources
 ----
@@ -681,7 +681,7 @@ You should see `shared-fs-clone` started on both nodes.
 
 Verify the filesystem is mounted:
 
-[source,bash]
+[source,role="execute"]
 ----
 mount | grep /mnt/shared
 ----
@@ -697,7 +697,7 @@ Expected output:
 
 Create a test file on node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 echo "Transaction log $(date)" | sudo tee /mnt/shared/test-transaction.log
 cat /mnt/shared/test-transaction.log
@@ -705,14 +705,14 @@ cat /mnt/shared/test-transaction.log
 
 SSH into node2 from node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 ssh rhel-ha-node2
 ----
 
 Verify the file is immediately visible on node2 (concurrent access):
 
-[source,bash]
+[source,role="execute"]
 ----
 cat /mnt/shared/test-transaction.log
 ----
@@ -721,21 +721,21 @@ You should see the same content - both nodes can read/write simultaneously!
 
 Create another file from node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 echo "Sales data from node2 $(date)" | sudo tee /mnt/shared/sales-node2.log
 ----
 
 Exit back to node1:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
 
 Verify node1 sees the file from node2:
 
-[source,bash]
+[source,role="execute"]
 ----
 ls -l /mnt/shared/
 cat /mnt/shared/sales-node2.log
@@ -745,7 +745,7 @@ cat /mnt/shared/sales-node2.log
 
 Now test what happens when a node fails. Stop node2 entirely:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit  # Exit SSH from node1
 ----
@@ -766,7 +766,7 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Check that the shared filesystem is still accessible:
 
-[source,bash]
+[source,role="execute"]
 ----
 ls -l /mnt/shared/
 echo "Node2 is down, but storage still works $(date)" | sudo tee /mnt/shared/failover-test.log
@@ -776,7 +776,7 @@ The filesystem remains available on node1 despite node2 being offline!
 
 Check Pacemaker status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status
 ----
@@ -785,7 +785,7 @@ You'll see `shared-fs-clone` running only on node1 (node2 is offline).
 
 Start node2 again:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -804,7 +804,7 @@ virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace}
 
 Verify node2 automatically remounted the shared filesystem:
 
-[source,bash]
+[source,role="execute"]
 ----
 mount | grep /mnt/shared
 ls -l /mnt/shared/
@@ -815,7 +815,7 @@ All files created during node2's downtime are now accessible!
 
 Exit:
 
-[source,bash]
+[source,role="execute"]
 ----
 exit
 ----
@@ -883,7 +883,7 @@ You should see:
 *Problem:* VMs not starting
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 oc describe vm {rhel-node1} -n {student-namespace}
 oc get events -n {student-namespace} --sort-by='.lastTimestamp'
@@ -892,7 +892,7 @@ oc get events -n {student-namespace} --sort-by='.lastTimestamp'
 *Problem:* Cluster authentication fails
 
 *Solution:*
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl restart pcsd
 sudo passwd hacluster  # Set password to 'redhat'
@@ -901,7 +901,7 @@ sudo passwd hacluster  # Set password to 'redhat'
 *Problem:* STONITH fencing fails
 
 *Solution:* Verify ServiceAccount permissions:
-[source,bash]
+[source,role="execute"]
 ----
 oc auth can-i update vm --as=system:serviceaccount:{student-namespace}:pacemaker-fencing -n {student-namespace}
 ----
@@ -933,7 +933,7 @@ This optional exercise demonstrates a real-world scenario: deploying highly-avai
 
 === Scenario: Multi-Store POS Database Deployment
 
-image::module1-fleet-manager.png[Fleet Manager Multi-Store Deployment, align=center]
+image::module1-fleet-manager.png[Fleet Manager Multi-Store Deployment, align=center,link=self,window=blank]
 
 === Business Value
 
@@ -964,7 +964,7 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Install PostgreSQL on both nodes:
 
-[source,bash]
+[source,role="execute"]
 ----
 # On node1
 sudo dnf install -y postgresql-server postgresql-contrib
@@ -979,14 +979,14 @@ exit
 
 Initialize PostgreSQL:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres /usr/bin/postgresql-setup --initdb
 ----
 
 Edit PostgreSQL configuration for replication:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo tee -a /var/lib/pgsql/data/postgresql.conf > /dev/null <<EOF
 listen_addresses = '*'
@@ -999,7 +999,7 @@ EOF
 
 Configure authentication for replication:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo tee -a /var/lib/pgsql/data/pg_hba.conf > /dev/null <<EOF
 host replication replicator 10.101.0.21/32 md5
@@ -1009,7 +1009,7 @@ EOF
 
 Start PostgreSQL and create replication user:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
@@ -1024,7 +1024,7 @@ EOF
 
 Stop PostgreSQL on node2 and clone from primary:
 
-[source,bash]
+[source,role="execute"]
 ----
 ssh rhel-ha-node2
 
@@ -1038,14 +1038,14 @@ When prompted for password, enter: `redhat`
 
 Create standby signal file:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres touch /var/lib/pgsql/data/standby.signal
 ----
 
 Start PostgreSQL on standby:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl start postgresql
 sudo systemctl enable postgresql
@@ -1056,7 +1056,7 @@ exit
 
 On node1, check replication status:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres psql -c "SELECT * FROM pg_stat_replication;"
 ----
@@ -1065,7 +1065,7 @@ You should see node2 connected as a replication client.
 
 Test replication:
 
-[source,bash]
+[source,role="execute"]
 ----
 # Create test table on primary (node1)
 sudo -u postgres psql -d storedb <<EOF
@@ -1081,7 +1081,7 @@ EOF
 
 On node2, verify the data replicated:
 
-[source,bash]
+[source,role="execute"]
 ----
 ssh rhel-ha-node2
 sudo -u postgres psql -d storedb -c "SELECT * FROM test_replication;"
@@ -1094,7 +1094,7 @@ You should see the test row (replication working!).
 
 Stop PostgreSQL on both nodes (Pacemaker will manage it):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo systemctl stop postgresql
 sudo systemctl disable postgresql
@@ -1104,7 +1104,7 @@ ssh rhel-ha-node2 'sudo systemctl stop postgresql && sudo systemctl disable post
 
 Create Pacemaker resource for PostgreSQL:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs resource create postgresql-db systemd:postgresql \
   op start timeout=60s \
@@ -1114,7 +1114,7 @@ sudo pcs resource create postgresql-db systemd:postgresql \
 
 Create resource group (VIP + Database together):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs resource group add postgres-ha cluster-vip postgresql-db
 ----
@@ -1125,7 +1125,7 @@ This ensures the VIP and database always run on the same node.
 
 Verify the resource group is running:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs status
 ----
@@ -1134,14 +1134,14 @@ You should see `postgres-ha` group with both `cluster-vip` and `postgresql-db` o
 
 Connect to database via VIP:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
 
 Trigger failover by putting the active node into standby:
 
-[source,bash]
+[source,role="execute"]
 ----
 # If currently on node1
 sudo pcs node standby rhel-ha-node1
@@ -1149,7 +1149,7 @@ sudo pcs node standby rhel-ha-node1
 
 Watch the migration:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 sudo pcs status
 ----
@@ -1162,7 +1162,7 @@ The `postgres-ha` group should migrate to node2, including:
 
 Connect to database again (same VIP, now on node2):
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
@@ -1171,7 +1171,7 @@ Application sees no difference - same VIP, same connection string!
 
 Bring node1 back online:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs node unstandby rhel-ha-node1
 ----
@@ -1180,7 +1180,7 @@ sudo pcs node unstandby rhel-ha-node1
 
 Create a realistic store database schema:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb <<'EOF'
 -- Products table
@@ -1225,7 +1225,7 @@ Simulate a transaction happening during failover:
 
 Open a new terminal and run this loop (simulates POS system):
 
-[source,bash]
+[source,role="execute"]
 ----
 while true; do
   sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
@@ -1236,7 +1236,7 @@ done
 
 While that's running, in your main terminal trigger failover:
 
-[source,bash]
+[source,role="execute"]
 ----
 ssh rhel-ha-node2
 sudo systemctl stop corosync  # Simulate node2 crash
@@ -1245,7 +1245,7 @@ exit
 
 Watch the cluster:
 
-[source,bash]
+[source,role="execute"]
 ----
 watch -n 2 sudo pcs status
 ----
@@ -1259,7 +1259,7 @@ You'll see:
 
 After node2 rejoins, check transaction history:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
   "SELECT COUNT(*) as total_transactions, MAX(timestamp) as last_transaction FROM transactions;"
@@ -1269,7 +1269,7 @@ Some transactions may have been lost during the 10-30 second outage, but the sto
 
 === Real-World Considerations
 
-image::module1-failover-flow.png[Database Failover Flow with STONITH, align=center]
+image::module1-failover-flow.png[Database Failover Flow with STONITH, align=center,link=self,window=blank]
 
 **Why STONITH is critical for databases:**
 
@@ -1331,7 +1331,7 @@ spec:
 
 Remove PostgreSQL resources:
 
-[source,bash]
+[source,role="execute"]
 ----
 sudo pcs resource delete postgres-ha
 sudo pcs resource create cluster-vip IPaddr2 ip={pacemaker-vip} cidr_netmask=24 nic=eth1
