@@ -1,5 +1,5 @@
 {{- if .Values.students.enabled }}
-{{- if .Values.fleet.enabled }}
+{{- if .Values.fleetManagement.enabled }}
 {{- range $i := until (int $.Values.students.count) }}
 {{- $studentNum := add1 $i }}
 {{- $studentId := printf "%02d" $studentNum }}
