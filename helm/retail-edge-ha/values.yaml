@@ -380,7 +380,6 @@ showroomConfig:
   # Enable showroom-config ArgoCD app (disabled - ConfigMaps now in Helm templates)
   enabled: false
   syncWave: "4"
-    version: 0.4.9
 
 # RBAC Configuration
 # -----------------------------------------------------------------------------
