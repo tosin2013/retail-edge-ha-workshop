@@ -1,0 +1,32 @@
+{{- if .Values.students.enabled }}
+{{- range $i := until (int .Values.students.count) }}
+{{- $studentNum := add1 $i }}
+{{- $studentId := printf "%02d" $studentNum }}
+---
+# Student {{ $studentId }} - Workload Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-{{ $studentId }}
+  labels:
+    workshop: retail-edge-ha
+    student-id: "{{ $studentId }}"
+    argocd.argoproj.io/instance: retail-edge-ha
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Student {{ $studentId }}"
+    openshift.io/display-name: "Retail Edge HA - Student {{ $studentId }}"
+
+---
+# Student {{ $studentId }} - UDN Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: retail-edge-student-{{ $studentId }}-udn
+  labels:
+    workshop: retail-edge-ha
+    student-id: "{{ $studentId }}"
+    k8s.ovn.org/primary-user-defined-network: ""
+  annotations:
+    openshift.io/description: "UDN Namespace for Student {{ $studentId }}"
+{{- end }}
+{{- end }}

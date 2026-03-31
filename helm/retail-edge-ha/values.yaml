@@ -43,6 +43,15 @@ students:
   # Starting number for students (usually 1)
   startNumber: 1
 
+  # Resource quotas per student namespace
+  quotas:
+    enabled: true
+    cpu: "16"           # CPU cores (enough for 9 VMs)
+    memory: "32Gi"      # Memory (enough for 9 VMs)
+    pvcs: "10"          # Persistent Volume Claims
+    storage: "200Gi"    # Total storage
+    pods: "20"          # Maximum pods
+
 # ArgoCD Configuration
 # -----------------------------------------------------------------------------
 argocd:
@@ -136,8 +145,8 @@ fleetManagement:
 # Infrastructure Configuration
 # -----------------------------------------------------------------------------
 infrastructure:
-  # Enable infrastructure components
-  enabled: true
+  # Enable infrastructure components (disabled - namespaces/quotas now in Helm templates)
+  enabled: false
 
   # Infrastructure namespace
   namespace: retail-edge-infrastructure
@@ -364,13 +373,20 @@ showroom:
   chart:
     repository: https://rhpds.github.io/showroom-deployer
     name: showroom
+
+# Showroom Configuration (ConfigMaps)
+# -----------------------------------------------------------------------------
+showroomConfig:
+  # Enable showroom-config ArgoCD app (disabled - ConfigMaps now in Helm templates)
+  enabled: false
+  syncWave: "4"
     version: 0.4.9
 
 # RBAC Configuration
 # -----------------------------------------------------------------------------
 rbac:
-  # Enable RBAC provisioning
-  enabled: true
+  # Enable RBAC provisioning (disabled - RBAC now in Helm templates)
+  enabled: false
 
   # Sync wave
   syncWave: "1"
@@ -430,3 +446,21 @@ monitoring:
       - vm-performance
       - student-activity
       - resource-utilization
+
+# Post-Deployment Validation
+# -----------------------------------------------------------------------------
+validation:
+  # Enable post-deployment validation job
+  # Runs as ArgoCD PostSync hook to validate workshop deployment
+  enabled: false
+
+  # Container image with oc CLI, git, and jq
+  # Must include: oc, git, jq, bash
+  image: "registry.redhat.io/openshift4/ose-cli:latest"
+
+  # Git repository containing validation scripts
+  # This should be your workshop repository URL
+  gitRepo: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
+
+  # Git branch or tag to use
+  gitRef: "main"

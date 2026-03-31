@@ -1,4 +1,4 @@
-{{- if .Values.showroom.enabled }}
+{{- if .Values.showroomConfig.enabled }}
 ---
 # =============================================================================
 # Showroom Configuration Child Application

@@ -1,0 +1,29 @@
+{{- if .Values.students.enabled }}
+{{- if .Values.fleet.enabled }}
+{{- range $i := until (int $.Values.students.count) }}
+{{- $studentNum := add1 $i }}
+{{- $studentId := printf "%02d" $studentNum }}
+---
+# Student {{ $studentId }} - RHACM Viewer Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: student-{{ $studentId }}-rhacm-view
+  namespace: open-cluster-management
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: rbac
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+subjects:
+- kind: User
+  name: student-{{ $studentId }}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: open-cluster-management:view
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}
+{{- end }}
+{{- end }}

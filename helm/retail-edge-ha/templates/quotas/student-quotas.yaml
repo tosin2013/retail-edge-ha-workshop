@@ -1,0 +1,21 @@
+{{- if .Values.students.enabled }}
+{{- if .Values.students.quotas.enabled }}
+{{- range $i := until (int .Values.students.count) }}
+{{- $studentNum := add1 $i }}
+{{- $studentId := printf "%02d" $studentNum }}
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: student-quota
+  namespace: retail-edge-student-{{ $studentId }}
+spec:
+  hard:
+    requests.cpu: {{ $.Values.students.quotas.cpu | quote }}
+    requests.memory: {{ $.Values.students.quotas.memory | quote }}
+    persistentvolumeclaims: {{ $.Values.students.quotas.pvcs | quote }}
+    requests.storage: {{ $.Values.students.quotas.storage | quote }}
+    pods: {{ $.Values.students.quotas.pods | quote }}
+{{- end }}
+{{- end }}
+{{- end }}

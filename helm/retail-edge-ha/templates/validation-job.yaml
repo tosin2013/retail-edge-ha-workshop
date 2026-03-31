@@ -1,0 +1,202 @@
+{{- if .Values.validation.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+  namespace: {{ .Values.infrastructure.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    {{- include "retail-edge-ha.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    {{- include "retail-edge-ha.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["namespaces", "pods", "services", "routes", "configmaps", "resourcequotas"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets"]
+  verbs: ["get", "list"]
+- apiGroups: ["route.openshift.io"]
+  resources: ["routes"]
+  verbs: ["get", "list"]
+- apiGroups: ["argoproj.io"]
+  resources: ["applications"]
+  verbs: ["get", "list"]
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachines", "virtualmachineinstances"]
+  verbs: ["get", "list"]
+- apiGroups: ["cdi.kubevirt.io"]
+  resources: ["datavolumes"]
+  verbs: ["get", "list"]
+- apiGroups: ["k8s.ovn.org"]
+  resources: ["userdefinednetworks"]
+  verbs: ["get", "list"]
+- apiGroups: ["operators.coreos.com"]
+  resources: ["clusterserviceversions", "subscriptions"]
+  verbs: ["get", "list"]
+- apiGroups: ["cluster.open-cluster-management.io"]
+  resources: ["managedclusters"]
+  verbs: ["get", "list"]
+- apiGroups: ["operator.open-cluster-management.io"]
+  resources: ["multiclusterhubs"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create", "update", "patch"]
+  resourceNames: ["workshop-validation-results"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    {{- include "retail-edge-ha.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+subjects:
+- kind: ServiceAccount
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+  namespace: {{ .Values.infrastructure.namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "retail-edge-ha.fullname" . }}-validation
+  namespace: {{ .Values.infrastructure.namespace }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+  labels:
+    {{- include "retail-edge-ha.labels" . | nindent 4 }}
+    app.kubernetes.io/component: validation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: retail-edge-ha-validation
+    spec:
+      serviceAccountName: {{ include "retail-edge-ha.fullname" . }}-validation
+      restartPolicy: Never
+      containers:
+      - name: validator
+        image: {{ .Values.validation.image }}
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+
+          echo "=========================================="
+          echo "Retail Edge HA Workshop Validation"
+          echo "=========================================="
+          echo "Students: {{ .Values.students.count }}"
+          echo "Timestamp: $(date)"
+          echo ""
+
+          # Clone workshop repository
+          echo "Cloning workshop repository..."
+          git clone -b {{ .Values.validation.gitRef | default "main" }} {{ .Values.validation.gitRepo }} /workspace
+          cd /workspace
+
+          # Run validation script
+          echo "Running validation..."
+          ./scripts/validate-workshop-deployment.sh \
+            --students {{ .Values.students.count }} \
+            --format both \
+            --output /tmp/validation.json
+
+          VALIDATION_EXIT_CODE=$?
+          echo "Validation exit code: $VALIDATION_EXIT_CODE"
+
+          # Parse JSON results
+          if [[ -f /tmp/validation.json ]]; then
+            VALIDATION_STATUS=$(jq -r '.validation_status' /tmp/validation.json)
+            VALIDATION_TIMESTAMP=$(jq -r '.validation_timestamp' /tmp/validation.json)
+            VALIDATION_TOTAL=$(jq -r '.summary.total_checks' /tmp/validation.json)
+            VALIDATION_PASSED=$(jq -r '.summary.passed' /tmp/validation.json)
+            VALIDATION_WARNINGS=$(jq -r '.summary.warnings' /tmp/validation.json)
+            VALIDATION_FAILED=$(jq -r '.summary.failed' /tmp/validation.json)
+            VALIDATION_MESSAGE=$(jq -r '.status_message' /tmp/validation.json)
+            ARGOCD_APPS=$(jq -r '.components.argocd_applications.status' /tmp/validation.json)
+            ARGOCD_SYNCED=$(jq -r '.components.argocd_applications.synced' /tmp/validation.json)
+            STUDENT_NS=$(jq -r '.components.namespaces.student_namespaces' /tmp/validation.json)
+            SHOWROOM_NS=$(jq -r '.components.namespaces.showroom_namespaces' /tmp/validation.json)
+            VMS_TOTAL=$(jq -r '.components.virtualmachines.total' /tmp/validation.json)
+            DV_READY=$(jq -r '.components.virtualmachines.datavolumes_succeeded' /tmp/validation.json)
+            SHOWROOM_URL=$(jq -r '.components.showroom.sample_url' /tmp/validation.json)
+          else
+            VALIDATION_STATUS="FAILED"
+            VALIDATION_MESSAGE="Validation script did not produce JSON output"
+            VALIDATION_TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          fi
+
+          # Create ConfigMap for RHDP userinfo integration
+          echo ""
+          echo "Creating validation results ConfigMap..."
+
+          cat <<EOF | oc apply -f -
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: workshop-validation-results
+            namespace: {{ .Values.infrastructure.namespace }}
+            labels:
+              demo.redhat.com/userinfo: ""
+              app.kubernetes.io/name: retail-edge-ha
+              app.kubernetes.io/component: validation
+          data:
+            validation_status: "$VALIDATION_STATUS"
+            validation_timestamp: "$VALIDATION_TIMESTAMP"
+            validation_total_checks: "${VALIDATION_TOTAL:-0}"
+            validation_passed: "${VALIDATION_PASSED:-0}"
+            validation_warnings: "${VALIDATION_WARNINGS:-0}"
+            validation_failed: "${VALIDATION_FAILED:-0}"
+            validation_status_message: "$VALIDATION_MESSAGE"
+            validation_argocd_apps: "${ARGOCD_APPS:-0}"
+            validation_argocd_synced: "${ARGOCD_SYNCED:-0}"
+            validation_student_namespaces: "${STUDENT_NS:-0}"
+            validation_showroom_namespaces: "${SHOWROOM_NS:-0}"
+            validation_vms_total: "${VMS_TOTAL:-0}"
+            validation_datavolumes_ready: "${DV_READY:-0}"
+            validation_showroom_sample_url: "$SHOWROOM_URL"
+            workshop_name: "retail-edge-ha"
+            workshop_students: "{{ .Values.students.count }}"
+          EOF
+
+          echo ""
+          echo "=========================================="
+          echo "Validation Status: $VALIDATION_STATUS"
+          echo "=========================================="
+          echo ""
+          echo "$VALIDATION_MESSAGE"
+          echo ""
+
+          # Exit with validation exit code
+          exit $VALIDATION_EXIT_CODE
+        volumeMounts:
+        - name: results
+          mountPath: /tmp
+      volumes:
+      - name: results
+        emptyDir: {}
+{{- end }}

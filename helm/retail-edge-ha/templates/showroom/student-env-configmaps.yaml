@@ -1,0 +1,45 @@
+{{- if .Values.students.enabled }}
+{{- if .Values.showroom.enabled }}
+{{- range $i := until (int $.Values.students.count) }}
+{{- $studentNum := add1 $i }}
+{{- $studentId := printf "%02d" $studentNum }}
+---
+# Student {{ $studentId }} Environment Variables
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: student-env
+  namespace: showroom-student-{{ $studentId }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: showroom
+    student-id: "{{ $studentId }}"
+data:
+  # Student identity
+  STUDENT_ID: "{{ $studentId }}"
+  STUDENT_NAMESPACE: "retail-edge-student-{{ $studentId }}"
+  STUDENT_UDN_NAMESPACE: "retail-edge-student-{{ $studentId }}-udn"
+  STUDENT_USER: "student-{{ $studentId }}"
+
+  # Cluster information
+  CLUSTER_DOMAIN: {{ $.Values.global.clusterDomain | quote }}
+  CLUSTER_API: {{ $.Values.global.clusterApiUrl | quote }}
+
+  # Fleet management (RHACM + Edge Manager)
+  RHACM_CONSOLE_URL: "https://multicloud-console.{{ $.Values.global.clusterDomain }}"
+  FLEET_MANAGER_URL: "https://multicloud-console.{{ $.Values.global.clusterDomain }}"
+
+  # VM credentials
+  VM_USER: "cloud-user"
+  VM_PASSWORD: "redhat"
+
+  # Module 1 - Pacemaker HA
+  RHEL_NODE1: "rhel-ha-node1"
+  RHEL_NODE2: "rhel-ha-node2"
+  PACEMAKER_NET: "pacemaker-net"
+  PACEMAKER_IP1: "10.101.0.20"
+  PACEMAKER_IP2: "10.101.0.21"
+  PACEMAKER_VIP: "10.101.0.100"
+{{- end }}
+{{- end }}
+{{- end }}
