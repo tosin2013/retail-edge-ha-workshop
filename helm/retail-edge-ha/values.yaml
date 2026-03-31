@@ -101,7 +101,7 @@ operators:
 # -----------------------------------------------------------------------------
 fleetManagement:
   # Enable RHACM and Edge Manager for fleet management capabilities
-  enabled: true
+  enabled: false
 
   # Sync wave (-2 = before CNV operator, establishes fleet management first)
   syncWave: "-2"
