@@ -377,8 +377,8 @@ showroom:
 # Showroom Configuration (ConfigMaps)
 # -----------------------------------------------------------------------------
 showroomConfig:
-  # Enable showroom-config ArgoCD app (disabled - ConfigMaps now in Helm templates)
-  enabled: false
+  # Enable showroom-config ArgoCD app
+  enabled: true
   syncWave: "4"
 
 # RBAC Configuration
