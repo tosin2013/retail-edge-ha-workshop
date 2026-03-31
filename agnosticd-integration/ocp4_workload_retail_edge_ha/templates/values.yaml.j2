@@ -3,25 +3,36 @@
 
 # Student configuration
 students:
+  enabled: true
   count: {{ num_users | default(5) }}
 
+# Infrastructure configuration
+infrastructure:
+  enabled: true
+
 # Cluster configuration (auto-discovered)
-globalClusterDomain: {{ ocp4_workload_retail_edge_ha_cluster_domain }}
-globalClusterApiUrl: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
+global:
+  clusterDomain: {{ ocp4_workload_retail_edge_ha_cluster_domain }}
+  clusterApiUrl: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
 
 # VirtualMachine configuration
 virtualMachines:
+  enabled: true
   storageClass: {{ workshop_storage_class.metadata.name }}
   autoStart: {{ ocp4_workload_retail_edge_ha_auto_start_vms | default(false) | lower }}
+
+  # Module-specific configuration
+  module1:
+    enabled: {{ ocp4_workload_retail_edge_ha_enable_module1 | default(true) | lower }}
+
+  module2:
+    enabled: {{ ocp4_workload_retail_edge_ha_enable_module2 | default(true) | lower }}
+
+  module3:
+    enabled: {{ ocp4_workload_retail_edge_ha_enable_module3 | default(false) | lower }}
 
 # Showroom configuration
 showroom:
   enabled: {{ ocp4_workload_retail_edge_ha_enable_showroom | default(true) | lower }}
   gitUrl: {{ ocp4_workload_retail_edge_ha_repo_url }}
   gitBranch: {{ ocp4_workload_retail_edge_ha_repo_version }}
-
-# Module selection (allows selective deployment)
-modules:
-  module1_pacemaker: {{ ocp4_workload_retail_edge_ha_enable_module1 | default(true) | lower }}
-  module2_microshift: {{ ocp4_workload_retail_edge_ha_enable_module2 | default(true) | lower }}
-  module3_twonode: {{ ocp4_workload_retail_edge_ha_enable_module3 | default(false) | lower }}
