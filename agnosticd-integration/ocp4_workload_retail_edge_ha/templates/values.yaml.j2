@@ -10,6 +10,10 @@ students:
 infrastructure:
   enabled: true
 
+# Fleet configuration
+fleet:
+  enabled: {{ ocp4_workload_retail_edge_ha_enable_fleet | default(false) | lower }}
+
 # Cluster configuration (auto-discovered)
 global:
   clusterDomain: {{ ocp4_workload_retail_edge_ha_cluster_domain }}

@@ -17,12 +17,17 @@ ocp4_workload_retail_edge_ha_release_name: "retail-edge-ha"
 ocp4_workload_retail_edge_ha_auto_start_vms: false
 ocp4_workload_retail_edge_ha_enable_showroom: true
 
+# Operator installation
+ocp4_workload_retail_edge_ha_auto_install_virtualization: true
+ocp4_workload_retail_edge_ha_cnv_channel: "stable"
+
 # Module selection
-# Module 3 (Two-Node OpenShift) disabled by default due to high resource consumption
-# Each module 3 deployment requires: 3 VMs (2×4CPU/16GB + 1×1CPU/2GB) per student
+# All modules enabled by default for full workshop experience
+# Module 3: Two-Node OpenShift requires 3 VMs (2×4CPU/16GB + 1×1CPU/2GB) per student
+# Total per student with all modules: 17 CPU, 50 GiB RAM, 7 VMs
 ocp4_workload_retail_edge_ha_enable_module1: true
 ocp4_workload_retail_edge_ha_enable_module2: true
-ocp4_workload_retail_edge_ha_enable_module3: false
+ocp4_workload_retail_edge_ha_enable_module3: true
 
 # Cluster information (auto-discovered in pre_workload.yml)
 # These are set dynamically and don't need to be overridden

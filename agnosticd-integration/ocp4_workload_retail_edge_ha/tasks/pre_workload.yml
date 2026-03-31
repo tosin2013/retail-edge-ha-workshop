@@ -56,14 +56,35 @@
     kind: ClusterServiceVersion
     namespace: openshift-cnv
   register: r_cnv_operator
+  failed_when: false
 
-- name: Verify Virtualization operator is installed
-  ansible.builtin.assert:
-    that:
-      - r_cnv_operator.resources | length > 0
-      - r_cnv_operator.resources[0].status.phase == "Succeeded"
-    fail_msg: "OpenShift Virtualization operator must be installed and ready"
-    success_msg: "OpenShift Virtualization operator found and ready"
+- name: Set CNV installation status fact
+  ansible.builtin.set_fact:
+    cnv_installed: "{{ r_cnv_operator.resources | length > 0 and r_cnv_operator.resources[0].status.phase == 'Succeeded' }}"
+
+- name: Install OpenShift Virtualization if not present and auto-install enabled
+  ansible.builtin.include_tasks: install_virtualization.yml
+  when:
+    - not cnv_installed
+    - ocp4_workload_retail_edge_ha_auto_install_virtualization | bool
+
+- name: Verify Virtualization operator is installed (manual prerequisite)
+  ansible.builtin.fail:
+    msg: |
+      OpenShift Virtualization operator is not installed.
+
+      To install it automatically, set: ocp4_workload_retail_edge_ha_auto_install_virtualization=true
+
+      Or install manually:
+        oc create -f https://raw.githubusercontent.com/openshift-cnv/hyperconverged-cluster-operator/main/deploy/deploy.yaml
+  when:
+    - not cnv_installed
+    - not ocp4_workload_retail_edge_ha_auto_install_virtualization | bool
+
+- name: Confirm Virtualization operator is ready
+  ansible.builtin.debug:
+    msg: "OpenShift Virtualization operator found and ready"
+  when: cnv_installed
 
 - name: Get available storage classes
   kubernetes.core.k8s_info:

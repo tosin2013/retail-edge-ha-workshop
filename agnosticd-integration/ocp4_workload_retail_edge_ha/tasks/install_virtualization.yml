@@ -1,0 +1,100 @@
+---
+# Install OpenShift Virtualization operator if not present
+# This task file is included from pre_workload.yml when auto_install is enabled
+
+- name: Create openshift-cnv namespace
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: openshift-cnv
+    state: present
+
+- name: Create OperatorGroup for OpenShift Virtualization
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1
+      kind: OperatorGroup
+      metadata:
+        name: kubevirt-hyperconverged-group
+        namespace: openshift-cnv
+      spec:
+        targetNamespaces:
+          - openshift-cnv
+
+- name: Subscribe to OpenShift Virtualization operator
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: hco-operatorhub
+        namespace: openshift-cnv
+      spec:
+        source: redhat-operators
+        sourceNamespace: openshift-marketplace
+        name: kubevirt-hyperconverged
+        channel: "{{ ocp4_workload_retail_edge_ha_cnv_channel }}"
+        installPlanApproval: Automatic
+
+- name: Wait for CNV operator to be installed
+  kubernetes.core.k8s_info:
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    namespace: openshift-cnv
+  register: r_cnv_csv
+  retries: 30
+  delay: 10
+  until:
+    - r_cnv_csv.resources | length > 0
+    - r_cnv_csv.resources | selectattr('status.phase', 'equalto', 'Succeeded') | list | length > 0
+
+- name: Get installed CSV name
+  ansible.builtin.set_fact:
+    cnv_csv_name: "{{ r_cnv_csv.resources | selectattr('status.phase', 'equalto', 'Succeeded') | map(attribute='metadata.name') | first }}"
+
+- name: Wait for HyperConverged CRD to be available
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: hyperconvergeds.hco.kubevirt.io
+  register: r_hco_crd
+  retries: 30
+  delay: 10
+  until:
+    - r_hco_crd.resources | length > 0
+    - r_hco_crd.resources[0].status is defined
+    - r_hco_crd.resources[0].status.conditions is defined
+    - r_hco_crd.resources[0].status.conditions | selectattr('type', 'equalto', 'Established') | selectattr('status', 'equalto', 'True') | list | length > 0
+
+- name: Create HyperConverged instance
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: hco.kubevirt.io/v1beta1
+      kind: HyperConverged
+      metadata:
+        name: kubevirt-hyperconverged
+        namespace: openshift-cnv
+      spec:
+        bareMetalPlatform: true
+
+- name: Wait for HyperConverged to be ready
+  kubernetes.core.k8s_info:
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: kubevirt-hyperconverged
+    namespace: openshift-cnv
+  register: r_hco
+  retries: 60
+  delay: 10
+  until:
+    - r_hco.resources | length > 0
+    - r_hco.resources[0].status is defined
+    - r_hco.resources[0].status.conditions is defined
+    - r_hco.resources[0].status.conditions | selectattr('type', 'equalto', 'Available') | selectattr('status', 'equalto', 'True') | list | length > 0
+
+- name: OpenShift Virtualization installation complete
+  ansible.builtin.debug:
+    msg: "OpenShift Virtualization operator installed and ready ({{ cnv_csv_name }})"

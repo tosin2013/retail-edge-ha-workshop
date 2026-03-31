@@ -23,7 +23,7 @@ Deploys the complete Retail Edge HA Workshop to an existing OpenShift 4.21+ clus
   --config openshift-workloads \
   --account sandbox1234 \
   -e ocp4_workload=ocp4_workload_retail_edge_ha \
-  -e num_users=5
+  -e num_users=2
 ```
 
 **Documentation:** See [ocp4_workload_retail_edge_ha/readme.adoc](ocp4_workload_retail_edge_ha/readme.adoc)
@@ -89,24 +89,27 @@ This approach preserves the existing Helm + ArgoCD architecture while integratin
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `num_users` | Number of students | `5` |
+| `num_users` | Number of students | `2` |
 | `ocp4_workload_retail_edge_ha_enable_module1` | Enable Pacemaker module | `true` |
 | `ocp4_workload_retail_edge_ha_enable_module2` | Enable MicroShift module | `true` |
-| `ocp4_workload_retail_edge_ha_enable_module3` | Enable Two-Node OCP module | `false` |
+| `ocp4_workload_retail_edge_ha_enable_module3` | Enable Two-Node OCP module | `true` |
 | `ocp4_workload_retail_edge_ha_auto_start_vms` | Auto-start VMs | `false` |
 | `ocp4_workload_retail_edge_ha_enable_showroom` | Deploy Showroom | `true` |
+| `ocp4_workload_retail_edge_ha_auto_install_virtualization` | Auto-install OpenShift Virtualization operator if missing | `true` |
 
 See [ocp4_workload_retail_edge_ha/readme.adoc](ocp4_workload_retail_edge_ha/readme.adoc) for complete variable reference.
 
 ## Resource Requirements
 
-Per student (all modules):
-- **CPU**: 18 cores
-- **Memory**: 36 GiB
+Per student (all modules enabled):
+- **CPU**: 17 cores (2+2 for Module 1, 2+2 for Module 2, 4+4+1 for Module 3)
+- **Memory**: 50 GiB (4+4 for Module 1, 4+4 for Module 2, 16+16+2 for Module 3)
 - **Storage**: 200 GiB
+- **VMs**: 7 (2 for Module 1, 2 for Module 2, 3 for Module 3)
 - **Namespaces**: 2 (workload + UDN)
 
-For 50 students: ~900 CPU cores, 1.8 TiB RAM, 10 TiB storage
+Default configuration (2 students): 34 CPU cores, 100 GiB RAM, 14 VMs
+Maximum scale (50 students): ~850 CPU cores, 2.5 TiB RAM, 350 VMs
 
 ## Links
 
