@@ -6,9 +6,9 @@ students:
   enabled: true
   count: {{ num_users | default(5) }}
 
-# Infrastructure configuration
+# Infrastructure configuration (disabled - using direct Helm templates now)
 infrastructure:
-  enabled: true
+  enabled: false
 
 # Fleet Management configuration
 fleetManagement:
