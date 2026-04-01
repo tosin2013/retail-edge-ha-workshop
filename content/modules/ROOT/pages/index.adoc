@@ -85,17 +85,77 @@ This workshop assumes you have:
 
 Throughout this workshop, you'll use:
 
-* `oc` - OpenShift CLI
-* `virtctl` - KubeVirt VM management
-* `pcs` - Pacemaker cluster management
-* `keepalived` - VRRP daemon
-* `etcdctl` - etcd cluster inspection
+* `oc` - OpenShift CLI (available in terminal)
+* `virtctl` - KubeVirt VM management (available in terminal)
+* `pcs` - Pacemaker cluster management (installed in VMs)
+* `keepalived` - VRRP daemon (installed in VMs)
+* `etcdctl` - etcd cluster inspection (installed in VMs)
+
+[IMPORTANT]
+====
+**Verify Your Terminal Access**
+
+Before starting the workshop, test your terminal has the required CLI tools:
+
+[source,role="execute"]
+----
+oc version && virtctl version
+----
+
+**Expected output:** Version information for both tools.
+
+**If tools are missing**, you have two options:
+
+*Option A - Install in terminal session:*
+[source,role="execute"]
+----
+# Download OpenShift CLI
+curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
+tar xzf openshift-client-linux.tar.gz && chmod +x oc kubectl
+export PATH=$PATH:$(pwd)
+
+# Verify
+oc version
+----
+
+*Option B - Use OpenShift Web Console:*
+
+Click the "OpenShift Console" tab above and navigate to:
+Virtualization → VirtualMachines → Select your namespace
+====
 
 == Workshop Architecture
 
 image::workshop-architecture.png[Workshop Architecture, align=center,link=self,window=blank]
 
 Each module runs in isolated VirtualMachines connected via User Defined Networks (UDNs) that provide Layer 2 connectivity for multicast protocols (Corosync, VRRP).
+
+== Verify Your Environment
+
+Before starting the workshop, verify you can access your student resources:
+
+[source,role="execute"]
+----
+# Verify namespace access
+oc get namespace {student-namespace}
+
+# Check VM resources
+oc get vms -n {student-namespace}
+
+# Verify virtctl is available
+virtctl version
+----
+
+**Expected Results:**
+
+* Your namespace exists and is accessible
+* VMs are listed (may be in "Stopped" state - you'll start them in Module 1)
+* virtctl shows version information
+
+[TIP]
+====
+If any command fails, refer to the "Tools You'll Use" section above for installation instructions or use the OpenShift Console tab.
+====
 
 == Getting Help
 
