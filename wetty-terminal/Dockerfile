@@ -1,35 +1,32 @@
-FROM docker.io/wettyoss/wetty:latest
+FROM registry.access.redhat.com/ubi9/ubi:latest
 
-USER root
-
-# Install dependencies
-RUN apk add --no-cache \
-    curl \
+# Install Node.js and tools
+RUN dnf install -y \
+    nodejs \
+    npm \
+    wget \
+    tar \
+    gzip \
     bash \
     bash-completion \
     jq \
-    git
+    git \
+    && dnf clean all
 
-# Install glibc for oc/kubectl binaries (Alpine uses musl, but oc/kubectl need glibc)
-RUN curl -L https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub && \
-    curl -L https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-2.35-r1.apk -o /tmp/glibc.apk && \
-    curl -L https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-bin-2.35-r1.apk -o /tmp/glibc-bin.apk && \
-    apk add --no-cache /tmp/glibc.apk /tmp/glibc-bin.apk && \
-    rm /tmp/glibc.apk /tmp/glibc-bin.apk
+# Install WeTTY
+RUN npm install -g wetty@2.8.1
 
-# Download and install CLI tools
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
-    tar xzf /tmp/oc.tar.gz -C /usr/local/bin/ oc kubectl && \
-    rm -f /tmp/oc.tar.gz /tmp/README.md && \
-    curl -L https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-linux-amd64 -o /usr/local/bin/virtctl && \
-    chmod +x /usr/local/bin/oc /usr/local/bin/kubectl /usr/local/bin/virtctl && \
-    ls -la /usr/local/bin/ | grep -E '(oc|kubectl|virtctl)'
+# Install CLI tools
+RUN wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz && \
+    tar xzf openshift-client-linux.tar.gz && \
+    mv oc kubectl /usr/local/bin/ && \
+    rm openshift-client-linux.tar.gz && \
+    wget -q https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-linux-amd64 && \
+    chmod +x virtctl-v1.4.0-linux-amd64 && \
+    mv virtctl-v1.4.0-linux-amd64 /usr/local/bin/virtctl
 
 # Configure shell environment
-# Note: Skipping bash completion for oc/kubectl due to glibc compatibility issues in Alpine
-# The binaries work fine at runtime, just can't generate completion during build
-RUN echo 'export PATH=/usr/local/bin:$PATH' >> /root/.bashrc && \
-    echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
+RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
     echo 'alias k=kubectl' >> /root/.bashrc && \
     echo 'alias vh=virtctl' >> /root/.bashrc
 
@@ -52,7 +49,10 @@ RUN echo 'cat << "EOF"' >> /root/.bashrc && \
     echo '  virtctl start <vm-name> -n ${STUDENT_NAMESPACE}' >> /root/.bashrc && \
     echo 'EOF' >> /root/.bashrc
 
-USER node
+EXPOSE 8080
 
-# Default to bash shell (WeTTY will spawn this)
+# Use default shell (bash)
 ENV SHELL=/bin/bash
+
+# Start WeTTY in non-SSH mode (direct shell access)
+CMD ["wetty", "--port", "8080", "--base", "/wetty/", "--command", "/bin/bash"]
