@@ -5,6 +5,45 @@
 {{- $namespace := printf "%s-%s" $.Values.showroom.multiUser.namespacePrefix $studentId }}
 {{- $studentNamespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
 ---
+# ServiceAccount for patch job
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: terminal-patcher
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+---
+# Role to allow patching deployments
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: terminal-patcher
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "patch"]
+---
+# Bind role to ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: terminal-patcher
+  namespace: {{ $namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: terminal-patcher
+subjects:
+- kind: ServiceAccount
+  name: terminal-patcher
+  namespace: {{ $namespace }}
+---
 # Patch Showroom terminal deployment to add SSH environment variables
 apiVersion: batch/v1
 kind: Job
@@ -15,13 +54,13 @@ metadata:
     app.kubernetes.io/part-of: retail-edge-ha-workshop
     student-id: "{{ $studentId }}"
   annotations:
-    argocd.argoproj.io/hook: PostSync
-    argocd.argoproj.io/hook-delete-policy: Before HookCreation
+    argocd.argoproj.io/sync-wave: "5"  # After Showroom (wave 3) and ShowroomConfig (wave 4)
 spec:
   backoffLimit: 10
+  ttlSecondsAfterFinished: 600  # Clean up job after 10 minutes
   template:
     spec:
-      serviceAccountName: default
+      serviceAccountName: terminal-patcher
       restartPolicy: Never
       containers:
       - name: patch-terminal
