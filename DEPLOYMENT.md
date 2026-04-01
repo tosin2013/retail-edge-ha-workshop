@@ -762,6 +762,69 @@ oc run curl-test --rm -it --image=curlimages/curl -- sh
 oc describe route showroom-proxy -n showroom-student-01
 ```
 
+### Issue: Showroom Terminal Asks for Username
+
+**Symptoms:**
+- Terminal displays login prompt asking for username/password
+- Students cannot access shell to run commands
+- Terminal shows "Login:" prompt instead of shell
+
+**Root Cause:**
+WeTTY (`docker.io/wettyoss/wetty:latest`) is an SSH client that requires authentication credentials (SSHUSER, SSHHOST, SSHPASS). When these are not configured, it displays an interactive login prompt.
+
+**Solution:**
+Switch to ttyd-based terminal which provides direct shell access without authentication.
+
+**Fix Steps:**
+```bash
+# 1. Update values.yaml (line 361)
+# Change: image: docker.io/wettyoss/wetty:latest
+# To:     image: docker.io/tsl0922/ttyd:latest
+
+# 2. Commit and push
+git add helm/retail-edge-ha/values.yaml
+git commit -m "Fix terminal - switch from WeTTY to ttyd"
+git push origin main
+
+# 3. Trigger ArgoCD sync
+oc annotate application.argoproj.io retail-edge-ha -n openshift-gitops \
+  argocd.argoproj.io/refresh=normal --overwrite
+
+# 4. Force sync Showroom applications
+for app in retail-edge-ha-showroom-01 retail-edge-ha-showroom-02; do
+  oc patch application.argoproj.io $app -n openshift-gitops --type merge \
+    -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"syncStrategy":{"hook":{}}}}}'
+done
+
+# 5. Wait for terminal pods to rollout
+oc get pods -n showroom-student-01 -w
+```
+
+**Verify Fix:**
+```bash
+# Check terminal image
+oc get pods -n showroom-student-01 -l app=showroom-terminal \
+  -o jsonpath='{.items[0].spec.containers[0].image}'
+
+# Expected: docker.io/tsl0922/ttyd:latest
+
+# Test in browser - should see immediate shell prompt (no login)
+```
+
+**Important Note - CLI Tools:**
+The ttyd image does NOT include `oc` or `virtctl` pre-installed. Solutions:
+
+**Option A:** Students install tools in terminal session:
+```bash
+curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
+tar xzf openshift-client-linux.tar.gz && chmod +x oc kubectl
+export PATH=$PATH:$(pwd)
+```
+
+**Option B:** Add init container to Showroom deployment (requires Helm chart customization)
+
+**Option C:** Document using OpenShift web console for VM management instead
+
 ---
 
 ## Common Deployment Mistakes to Avoid

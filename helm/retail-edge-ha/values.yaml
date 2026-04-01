@@ -357,8 +357,8 @@ showroom:
 
   # Terminal configuration
   terminal:
-    type: showroom  # ttyd pod-based terminal (vs wetty SSH)
-    image: docker.io/wettyoss/wetty:latest  # Note: ttyd-ocp is private, wetty doesn't include CLI tools
+    type: showroom  # ttyd pod-based terminal (no authentication required)
+    image: docker.io/tsl0922/ttyd:latest  # Official ttyd - public image, no auth prompt
 
   # Deployment
   namespace: showroom  # Main Showroom namespace

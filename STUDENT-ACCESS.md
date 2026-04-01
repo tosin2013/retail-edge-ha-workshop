@@ -40,14 +40,32 @@ https://showroom-proxy-showroom-student-01.apps.cluster-cfz7p.dynamic.redhatwork
 
 ### Step 3: Verify Terminal Access
 
-Click inside the terminal pane and run:
+The terminal pane should show a **shell prompt immediately** (no login required).
+
+Click inside the terminal pane and run basic commands:
 
 ```bash
-oc whoami
-oc get projects | grep retail-edge-student
+# Basic shell commands should work
+whoami
+pwd
+ls
 ```
 
-You should see your student namespace listed.
+**⚠️ Important:** The terminal uses ttyd which provides a basic shell. The `oc` and `virtctl` CLI tools may not be pre-installed.
+
+**If CLI tools are needed**, ask your instructor or install them:
+```bash
+# Download and install oc CLI
+curl -LO https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz
+tar xzf openshift-client-linux.tar.gz && chmod +x oc kubectl
+export PATH=$PATH:$(pwd)
+
+# Verify installation
+oc version
+```
+
+**If you see a login prompt:**
+Contact your instructor - the terminal configuration needs to be fixed. You should NOT be asked for a username or password.
 
 ---
 
