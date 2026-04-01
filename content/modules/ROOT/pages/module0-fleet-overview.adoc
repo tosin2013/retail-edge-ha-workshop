@@ -14,7 +14,7 @@ In a real retail deployment:
 
 == The Big Picture: Retail Edge at Scale
 
-[ditaa, align=center]
+[source,text]
 ....
     Fleet Distribution Across United States
 
@@ -84,19 +84,7 @@ In production, you would manage this fleet using **RHACM** (formerly Advanced Cl
 
 === Hub-Spoke Architecture
 
-[mermaid]
-....
-graph TB
-    Hub["RHACM Hub Cluster<br/>(Regional Data Center)"]
-    Hub -- "Deploy policies,<br/>apps, updates" --> S1["Store 001<br/>Spoke Cluster"]
-    Hub -- "Deploy policies,<br/>apps, updates" --> S2["Store 002<br/>Spoke Cluster"]
-    Hub -- "Deploy policies,<br/>apps, updates" --> S3["Store 003<br/>Spoke Cluster"]
-    Hub -- "Deploy policies,<br/>apps, updates" --> SN["Store N<br/>Spoke Cluster"]
-    S1 -- "Metrics,<br/>alerts, status" --> Hub
-    S2 -- "Metrics,<br/>alerts, status" --> Hub
-    S3 -- "Metrics,<br/>alerts, status" --> Hub
-    SN -- "Metrics,<br/>alerts, status" --> Hub
-....
+image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
 
 Each store is a **spoke cluster** managed from the central **hub cluster**.
 
@@ -312,20 +300,7 @@ Remediation: Automated update scheduled for next maintenance window
 
 == Update Orchestration at Scale
 
-[mermaid]
-....
-gantt
-    title Progressive Rollout - RHCOS 4.21.6 Update
-    dateFormat YYYY-MM-DD
-    section Canary
-    Stage 1 (5% - 25 clusters)     :done, s1, 2026-03-25, 1d
-    section Progressive
-    Stage 2 (10% - 50 clusters)    :active, s2, 2026-03-26, 1d
-    Stage 3 (25% - 125 clusters)   :s3, 2026-03-27, 1d
-    Stage 4 (50% - 250 clusters)   :s4, 2026-03-28, 2d
-    section Full Rollout
-    Stage 5 (100% - 500 clusters)  :s5, 2026-03-30, 2d
-....
+image::fleet-update-gantt.png[Progressive Rollout Schedule, align=center]
 
 **Update Status Summary:**
 
@@ -436,23 +411,7 @@ All without sending a technician on-site!
 
 == Your Workshop Environment
 
-[mermaid]
-....
-graph LR
-    subgraph lab ["Your Workshop"]
-        M1L["Module 1<br/>2 VMs"]
-        M2L["Module 2<br/>2 VMs"]
-        M3L["Module 3<br/>3 VMs"]
-    end
-    subgraph prod ["Production Fleet"]
-        M1P["400 Pacemaker<br/>servers"]
-        M2P["1,000 MicroShift<br/>gateways"]
-        M3P["200 OpenShift<br/>nodes + arbiters"]
-    end
-    M1L -- "x200 stores" --> M1P
-    M2L -- "x500 stores" --> M2P
-    M3L -- "x100 stores" --> M3P
-....
+image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center]
 
 While you'll work hands-on with **2-3 VMs per module**, imagine these represent a much larger fleet:
 
@@ -858,33 +817,7 @@ Remember: The 2 VMs you configure represent **hundreds or thousands** of similar
 
 == Workshop Architecture Reminder
 
-[mermaid]
-....
-graph TB
-    subgraph ns ["retail-edge-student-XX"]
-        subgraph m1 ["Module 1: Pacemaker HA"]
-            N1["rhel-ha-node1<br/>10.101.0.20"]
-            N2["rhel-ha-node2<br/>10.101.0.21"]
-            VIP1(("VIP<br/>10.101.0.100"))
-            N1 --- VIP1
-            N2 --- VIP1
-        end
-        subgraph m2 ["Module 2: MicroShift VRRP"]
-            GWA["microshift-gw-a<br/>10.102.0.20"]
-            GWB["microshift-gw-b<br/>10.102.0.21"]
-            VIP2(("VIP<br/>10.102.0.100"))
-            GWA --- VIP2
-            GWB --- VIP2
-        end
-        subgraph m3 ["Module 3: Two-Node OpenShift"]
-            TM1["twonode-master1<br/>10.103.0.20"]
-            TM2["twonode-master2<br/>10.103.0.21"]
-            TA["twonode-arbiter<br/>10.103.0.22"]
-            TM1 --- TA
-            TM2 --- TA
-        end
-    end
-....
+image::module0-workshop-vms.png[Workshop VM Layout, align=center]
 
 NOTE: Each module's VMs are isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
 
