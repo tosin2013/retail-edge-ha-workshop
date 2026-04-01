@@ -2,13 +2,14 @@ FROM docker.io/wettyoss/wetty:latest
 
 USER root
 
-# Install dependencies
+# Install dependencies and glibc (required for oc/kubectl binaries)
 RUN apk add --no-cache \
     curl \
     bash \
     bash-completion \
     jq \
-    git
+    git \
+    libc6-compat
 
 # Download and install CLI tools
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
