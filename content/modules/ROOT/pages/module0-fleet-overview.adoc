@@ -84,7 +84,19 @@ In production, you would manage this fleet using **RHACM** (formerly Advanced Cl
 
 === Hub-Spoke Architecture
 
-image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center,link=self,window=blank]
+[mermaid]
+....
+graph TB
+    Hub["RHACM Hub Cluster<br/>(Regional Data Center)"]
+    Hub -- "Deploy policies,<br/>apps, updates" --> S1["Store 001<br/>Spoke Cluster"]
+    Hub -- "Deploy policies,<br/>apps, updates" --> S2["Store 002<br/>Spoke Cluster"]
+    Hub -- "Deploy policies,<br/>apps, updates" --> S3["Store 003<br/>Spoke Cluster"]
+    Hub -- "Deploy policies,<br/>apps, updates" --> SN["Store N<br/>Spoke Cluster"]
+    S1 -- "Metrics,<br/>alerts, status" --> Hub
+    S2 -- "Metrics,<br/>alerts, status" --> Hub
+    S3 -- "Metrics,<br/>alerts, status" --> Hub
+    SN -- "Metrics,<br/>alerts, status" --> Hub
+....
 
 Each store is a **spoke cluster** managed from the central **hub cluster**.
 
@@ -185,7 +197,7 @@ Aggregate metrics from all stores into a central dashboard:
 
 === Fleet Dashboard (Simulated)
 
-NOTE: This workshop uses simulated dashboards. In production, you'd access the real RHACM console at `https://multicloud-console.apps.<hub-cluster>/`.
+NOTE: The dashboard below is a simulated representation of a 500-store fleet. Your workshop environment has a **real RHACM 2.16 hub cluster** with simulated ManagedCluster resources representing your edge sites. You'll interact with these real RHACM APIs in the hands-on exercises later in this module. In production, the RHACM console is accessed via the OpenShift console's **All Clusters** perspective.
 
 .RHACM Inventory Dashboard
 [cols="1,1,1,1,1,1", options="header"]
@@ -250,15 +262,13 @@ NOTE: This workshop uses simulated dashboards. In production, you'd access the r
   ** Edge-Gateways (500 clusters)
   ** Regional-Hubs (3 clusters)
 
-Your workshop VMs would appear here as:
+Your workshop ManagedClusters appear as:
 
-* `retail-edge-student-01-rhel-ha` (Group: Pacemaker-HA-Nodes)
-* `retail-edge-student-01-microshift` (Group: MicroShift-Gateways)
-* `retail-edge-student-01-twonode` (Group: OpenShift-Two-Node)
+* `student-01-pacemaker` (Architecture: pacemaker-ha)
+* `student-01-microshift` (Architecture: microshift-vrrp)
+* `student-01-twonode` (Architecture: two-node-openshift)
 
 == Compliance and Security
-
-image::fleet-dashboard-compliance.png[Fleet Compliance Status, align=center,link=self,window=blank]
 
 **Compliance Dashboard** shows:
 
@@ -387,18 +397,20 @@ spec:
 
 == Remote Troubleshooting
 
-When a store reports issues, you can troubleshoot remotely via RHACM:
+When a store reports issues, you can troubleshoot remotely via RHACM.
+
+NOTE: The examples below show production-style commands using fictional store cluster names. These are illustrative -- do not run them in your lab terminal. You will practice real cluster inspection in the hands-on exercises below.
 
 **1. Check cluster status:**
 
-[source,role="execute"]
+[source,bash]
 ----
 oc get managedcluster store-0234-dallas-tx -o yaml
 ----
 
 **2. Access cluster directly:**
 
-[source,role="execute"]
+[source,bash]
 ----
 oc config use-context store-0234-dallas-tx
 oc get nodes
@@ -407,14 +419,14 @@ oc get pods -A
 
 **3. Run diagnostics:**
 
-[source,role="execute"]
+[source,bash]
 ----
 oc adm must-gather --dest-dir=/tmp/store-0234
 ----
 
 **4. SSH to edge server (if needed):**
 
-[source,role="execute"]
+[source,bash]
 ----
 # Via jumphost
 ssh -J jumphost.datacenter.example.com core@store-0234-node1
@@ -424,9 +436,25 @@ All without sending a technician on-site!
 
 == Your Workshop Environment
 
-image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center,link=self,window=blank]
+[mermaid]
+....
+graph LR
+    subgraph lab ["Your Workshop"]
+        M1L["Module 1<br/>2 VMs"]
+        M2L["Module 2<br/>2 VMs"]
+        M3L["Module 3<br/>3 VMs"]
+    end
+    subgraph prod ["Production Fleet"]
+        M1P["400 Pacemaker<br/>servers"]
+        M2P["1,000 MicroShift<br/>gateways"]
+        M3P["200 OpenShift<br/>nodes + arbiters"]
+    end
+    M1L -- "x200 stores" --> M1P
+    M2L -- "x500 stores" --> M2P
+    M3L -- "x100 stores" --> M3P
+....
 
-While you'll work hands-on with **2-9 VMs per module**, imagine these represent a much larger fleet:
+While you'll work hands-on with **2-3 VMs per module**, imagine these represent a much larger fleet:
 
 [cols="1,3,3"]
 |===
@@ -601,15 +629,15 @@ As you work through the modules, keep these fleet management principles in mind:
 
 == Hands-On Lab: Exploring Your Fleet Manager
 
-In this workshop, you have access to a **real RHACM hub cluster** managing your edge infrastructure. Let's explore the fleet management capabilities!
+Your workshop runs on a **real RHACM 2.16 hub cluster** with real RHACM APIs. The ManagedCluster resources representing your edge sites are simulated (no klusterlet agents are running), but the hub-side management -- labels, placement, inventory queries -- works exactly as it would in production.
 
 === Lab Setup
 
 Your workshop environment includes:
 
-* **RHACM 2.16 Hub Cluster** (already deployed)
-* **6 ManagedClusters** representing your edge sites (3 per student)
-* **Fleet Manager Console** integrated into OpenShift
+* **RHACM 2.16 Hub Cluster** (already deployed and running)
+* **6 ManagedClusters** representing your edge sites (3 per student, simulated)
+* **Fleet Manager Console** integrated into the OpenShift web console
 
 Each student manages a simulated retail store with 3 edge deployments:
 
@@ -632,18 +660,9 @@ Each student manages a simulated retail store with 3 edge deployments:
 
 === Exercise 1: Access the Fleet Manager Console
 
-The RHACM console is integrated into the OpenShift web console.
+In RHACM 2.16, the fleet manager console is integrated directly into the OpenShift web console as a dynamic plugin. There is no separate multicloud-console URL -- you access everything through the standard OpenShift console.
 
-**Step 1:** Access the OpenShift Console
-
-Open your terminal and get the console URL:
-
-[source,bash,role=execute]
-----
-echo $RHACM_CONSOLE_URL
-----
-
-Or use the direct link:
+**Step 1:** Get the OpenShift Console URL
 
 [source,bash,role=execute]
 ----
@@ -658,10 +677,10 @@ oc whoami --show-console
 
 **Step 3:** Navigate to Fleet Manager
 
-. Click **All Clusters** in the top navigation bar (or use the cluster switcher)
-. Go to **Infrastructure** → **Clusters** in the left navigation
+. Click **All Clusters** in the top navigation bar (or use the cluster switcher dropdown at the top left)
+. Go to **Infrastructure** -> **Clusters** in the left navigation
 
-You should see the RHACM dashboard with your managed clusters!
+You should see the RHACM dashboard listing your managed clusters.
 
 === Exercise 2: View Your Fleet Inventory
 
@@ -674,11 +693,25 @@ Now let's explore your edge fleet using the CLI.
 oc get managedclusters
 ----
 
-You should see:
+You should see output similar to:
 
-* `local-cluster` - The hub cluster itself
+[source,text]
+----
+NAME                    HUB ACCEPTED   MANAGED CLUSTER URLS   JOINED   AVAILABLE   AGE
+local-cluster           true           https://api.clust...   True     True        26h
+student-01-microshift   true                                           Unknown     6h
+student-01-pacemaker    true                                           Unknown     6h
+student-01-twonode      true                                           Unknown     6h
+student-02-microshift   true                                           Unknown     6h
+student-02-pacemaker    true                                           Unknown     6h
+student-02-twonode      true                                           Unknown     6h
+----
+
+* `local-cluster` - The hub cluster itself (status: `True` / `True`)
 * Your 3 edge sites (pacemaker, microshift, twonode)
 * Other students' edge sites (if in a multi-user session)
+
+TIP: The student clusters show `AVAILABLE: Unknown` because they are **simulated edge sites** -- placeholder ManagedCluster resources representing stores that would have real klusterlet agents in production. The RHACM hub has accepted them (`HUB ACCEPTED: true`), but no agent is reporting back. This is expected in the workshop environment. In production, each store's agent would register and report `True`.
 
 **Step 2:** View Your Fleet with Details
 
@@ -789,7 +822,7 @@ If you have access to the OpenShift web console, explore these features:
 
 2. **Search Feature**
    * Search for resources across all clusters
-   * Try searching: `kind:ManagedCluster label:student-id={STUDENT_ID}`
+   * Try searching: `kind:ManagedCluster label:student-id=$STUDENT_ID` (replace `$STUDENT_ID` with your number, e.g. `01`)
 
 3. **Overview Dashboard**
    * View fleet-wide statistics
@@ -825,9 +858,35 @@ Remember: The 2 VMs you configure represent **hundreds or thousands** of similar
 
 == Workshop Architecture Reminder
 
-image::module0-workshop-vms.png[Workshop VM Layout, align=center,link=self,window=blank]
+[mermaid]
+....
+graph TB
+    subgraph ns ["retail-edge-student-XX"]
+        subgraph m1 ["Module 1: Pacemaker HA"]
+            N1["rhel-ha-node1<br/>10.101.0.20"]
+            N2["rhel-ha-node2<br/>10.101.0.21"]
+            VIP1(("VIP<br/>10.101.0.100"))
+            N1 --- VIP1
+            N2 --- VIP1
+        end
+        subgraph m2 ["Module 2: MicroShift VRRP"]
+            GWA["microshift-gw-a<br/>10.102.0.20"]
+            GWB["microshift-gw-b<br/>10.102.0.21"]
+            VIP2(("VIP<br/>10.102.0.100"))
+            GWA --- VIP2
+            GWB --- VIP2
+        end
+        subgraph m3 ["Module 3: Two-Node OpenShift"]
+            TM1["twonode-master1<br/>10.103.0.20"]
+            TM2["twonode-master2<br/>10.103.0.21"]
+            TA["twonode-arbiter<br/>10.103.0.22"]
+            TM1 --- TA
+            TM2 --- TA
+        end
+    end
+....
 
-NOTE: Each set of VMs is isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
+NOTE: Each module's VMs are isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
 
 == Ready to Begin?
 

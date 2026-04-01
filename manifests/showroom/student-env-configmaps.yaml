@@ -33,9 +33,9 @@ data:
   CLUSTER_DOMAIN: "apps.cluster-cfz7p.dynamic.redhatworkshops.io"
   CLUSTER_API: "https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443"
 
-  # Fleet management (RHACM + Edge Manager)
-  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
-  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  # Fleet management (RHACM integrated into OCP console as dynamic plugin)
+  RHACM_CONSOLE_URL: "https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
 
   # VM credentials
   VM_USER: "cloud-user"
@@ -71,9 +71,9 @@ data:
   CLUSTER_DOMAIN: "apps.cluster-cfz7p.dynamic.redhatworkshops.io"
   CLUSTER_API: "https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443"
 
-  # Fleet management (RHACM + Edge Manager)
-  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
-  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  # Fleet management (RHACM integrated into OCP console as dynamic plugin)
+  RHACM_CONSOLE_URL: "https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
 
   # VM credentials
   VM_USER: "cloud-user"
