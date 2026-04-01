@@ -81,17 +81,40 @@ spec:
             sleep 2
           done
 
-          # Patch terminal deployment to add SSH environment variables
-          oc set env deployment/showroom-terminal -n {{ $namespace }} \
-            SSHHOST="jumpbox.{{ $studentNamespace }}.svc.cluster.local" \
-            SSHPORT="22" \
-            SSHUSER="{{ $.Values.jumpbox.username }}" \
-            SSHPASS="{{ $.Values.jumpbox.password }}" \
-            STUDENT_ID="{{ $studentId }}" \
-            STUDENT_NAMESPACE="{{ $studentNamespace }}" \
-            STUDENT_USER="{{ $.Values.students.userbase }}-{{ $studentId }}"
+          # Patch terminal deployment to configure WeTTY to connect to jumpbox
+          # WeTTY requires --ssh-host, --ssh-port, --ssh-user as command-line arguments
+          oc patch deployment showroom-terminal -n {{ $namespace }} --type=json -p='[
+            {
+              "op": "replace",
+              "path": "/spec/template/spec/containers/0/args",
+              "value": [
+                "--base=/wetty/",
+                "--port=8080",
+                "--ssh-host=jumpbox.{{ $studentNamespace }}.svc.cluster.local",
+                "--ssh-port=22",
+                "--ssh-user={{ $.Values.jumpbox.username }}",
+                "--ssh-pass={{ $.Values.jumpbox.password }}"
+              ]
+            },
+            {
+              "op": "add",
+              "path": "/spec/template/spec/containers/0/env/-",
+              "value": {
+                "name": "STUDENT_ID",
+                "value": "{{ $studentId }}"
+              }
+            },
+            {
+              "op": "add",
+              "path": "/spec/template/spec/containers/0/env/-",
+              "value": {
+                "name": "STUDENT_NAMESPACE",
+                "value": "{{ $studentNamespace }}"
+              }
+            }
+          ]'
 
-          echo "Terminal deployment patched successfully"
+          echo "Terminal deployment patched with WeTTY SSH args successfully"
 {{- end }}
 {{- end }}
 {{- end }}
