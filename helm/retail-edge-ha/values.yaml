@@ -357,8 +357,8 @@ showroom:
 
   # Terminal configuration
   terminal:
-    type: showroom  # ttyd pod-based terminal with oc/virtctl pre-installed
-    image: quay.io/openshiftlabs/showroom-terminal:latest  # ttyd-based with OpenShift CLI tools
+    type: showroom  # ttyd pod-based terminal (vs wetty SSH)
+    image: docker.io/wettyoss/wetty:latest  # Note: ttyd-ocp is private, wetty doesn't include CLI tools
 
   # Deployment
   namespace: showroom  # Main Showroom namespace
