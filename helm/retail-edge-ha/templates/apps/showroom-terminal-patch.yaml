@@ -1,0 +1,58 @@
+{{- if .Values.showroom.enabled }}
+{{- if .Values.jumpbox.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s" $.Values.showroom.multiUser.namespacePrefix $studentId }}
+{{- $studentNamespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
+# Patch Showroom terminal deployment to add SSH environment variables
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-showroom-terminal-{{ $studentId }}
+  namespace: {{ $namespace }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: Before HookCreation
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      serviceAccountName: default
+      restartPolicy: Never
+      containers:
+      - name: patch-terminal
+        image: registry.redhat.io/openshift4/ose-cli:latest
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -ex
+
+          # Wait for terminal deployment to exist
+          for i in {1..30}; do
+            if oc get deployment showroom-terminal -n {{ $namespace }} 2>/dev/null; then
+              echo "Terminal deployment found"
+              break
+            fi
+            echo "Waiting for terminal deployment... ($i/30)"
+            sleep 2
+          done
+
+          # Patch terminal deployment to add SSH environment variables
+          oc set env deployment/showroom-terminal -n {{ $namespace }} \
+            SSHHOST="jumpbox.{{ $studentNamespace }}.svc.cluster.local" \
+            SSHPORT="22" \
+            SSHUSER="{{ $.Values.jumpbox.username }}" \
+            SSHPASS="{{ $.Values.jumpbox.password }}" \
+            STUDENT_ID="{{ $studentId }}" \
+            STUDENT_NAMESPACE="{{ $studentNamespace }}" \
+            STUDENT_USER="{{ $.Values.students.userbase }}-{{ $studentId }}"
+
+          echo "Terminal deployment patched successfully"
+{{- end }}
+{{- end }}
+{{- end }}
