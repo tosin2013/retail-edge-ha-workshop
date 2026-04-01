@@ -14,7 +14,7 @@ RUN dnf install -y \
     && dnf clean all
 
 # Install WeTTY
-RUN npm install -g wetty@2.8.1
+RUN npm install -g wetty
 
 # Install CLI tools
 RUN wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz && \
