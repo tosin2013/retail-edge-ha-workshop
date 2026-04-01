@@ -2,14 +2,19 @@ FROM docker.io/wettyoss/wetty:latest
 
 USER root
 
-# Install dependencies and glibc (required for oc/kubectl binaries)
+# Install dependencies
 RUN apk add --no-cache \
     curl \
     bash \
     bash-completion \
     jq \
-    git \
-    libc6-compat
+    git
+
+# Install glibc for oc/kubectl binaries (Alpine uses musl, but oc/kubectl need glibc)
+RUN curl -L https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub -o /etc/apk/keys/sgerrand.rsa.pub && \
+    curl -L https://github.com/sgerrand/alpine-pkg-glibc/releases/download/2.35-r1/glibc-2.35-r1.apk -o /tmp/glibc.apk && \
+    apk add --no-cache /tmp/glibc.apk && \
+    rm /tmp/glibc.apk
 
 # Download and install CLI tools
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
