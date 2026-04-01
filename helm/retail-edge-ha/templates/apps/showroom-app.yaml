@@ -45,16 +45,21 @@ spec:
       - name: terminal.image
         value: {{ $.Values.showroom.terminal.image }}
 {{- if $.Values.jumpbox.enabled }}
-      # WeTTY SSH configuration - connect to jumpbox pod
-      - name: terminal.envVars.SSHHOST
+      # WeTTY SSH configuration - auto-connect to jumpbox pod
+      - name: terminal.wetty.autoSshToBastion
+        value: "true"
+      - name: terminal.wetty.sshHost
         value: "jumpbox.{{ $studentNamespace }}.svc.cluster.local"
-      - name: terminal.envVars.SSHPORT
+      - name: terminal.wetty.sshPort
         value: "22"
-      - name: terminal.envVars.SSHUSER
+      - name: terminal.wetty.sshAuth
+        value: "password"
+      - name: terminal.wetty.sshUser
         value: {{ $.Values.jumpbox.username | quote }}
-      - name: terminal.envVars.SSHPASS
+      - name: terminal.wetty.sshPass
         value: {{ $.Values.jumpbox.password | quote }}
 {{- end }}
+      # Student environment variables (passed to shell inside jumpbox)
       - name: terminal.envVars.STUDENT_ID
         value: "{{ $studentId }}"
       - name: terminal.envVars.STUDENT_NAMESPACE
