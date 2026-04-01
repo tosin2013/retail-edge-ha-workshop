@@ -80,8 +80,8 @@ students:
   count: 5  # Number of students (1-50)
 
 # Cluster configuration (auto-discovered if left blank)
-globalClusterDomain: "apps.cluster-ntq88.dynamic.redhatworkshops.io"  # Your cluster apps domain
-globalClusterApiUrl: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"  # Your API URL
+globalClusterDomain: "apps.cluster-cfz7p.dynamic.redhatworkshops.io"  # Your cluster apps domain
+globalClusterApiUrl: "https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443"  # Your API URL
 
 # Storage configuration
 virtualMachines:
@@ -153,8 +153,8 @@ done
 
 Example output:
 ```
-Student 01: https://showroom-showroom-student-01.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 02: https://showroom-showroom-student-02.apps.cluster-ntq88.dynamic.redhatworkshops.io
+Student 01: https://showroom-showroom-student-01.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 02: https://showroom-showroom-student-02.apps.cluster-cfz7p.dynamic.redhatworkshops.io
 ...
 ```
 

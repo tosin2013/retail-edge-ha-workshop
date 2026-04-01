@@ -73,7 +73,7 @@ for i in 01 02 03 04 05; do
     --set content.repoUrl=https://github.com/tosin2013/retail-edge-ha-workshop.git \
     --set content.repoRef=main \
     --set content.antoraPlaybook=site.yml \
-    --set deployer.domain=apps.cluster-ntq88.dynamic.redhatworkshops.io \
+    --set deployer.domain=apps.cluster-cfz7p.dynamic.redhatworkshops.io \
     --set deployer.ingress.name=showroom-student-$i \
     --set terminal.image=docker.io/wettyoss/wetty:latest \
     | oc apply -f -
@@ -144,8 +144,8 @@ STUDENT_UDN_NAMESPACE   # retail-edge-student-XX-udn
 STUDENT_USER            # student-XX
 
 # Cluster info
-CLUSTER_DOMAIN          # apps.cluster-ntq88.dynamic.redhatworkshops.io
-CLUSTER_API             # https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+CLUSTER_DOMAIN          # apps.cluster-cfz7p.dynamic.redhatworkshops.io
+CLUSTER_API             # https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
 # VM credentials
 VM_USER                 # cloud-user

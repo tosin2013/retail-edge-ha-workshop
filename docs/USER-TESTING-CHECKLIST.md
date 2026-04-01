@@ -20,11 +20,11 @@
 **Test these URLs in a web browser:**
 
 ```
-Student 01: https://showroom-proxy-showroom-student-01.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 02: https://showroom-proxy-showroom-student-02.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 03: https://showroom-proxy-showroom-student-03.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 04: https://showroom-proxy-showroom-student-04.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 05: https://showroom-proxy-showroom-student-05.apps.cluster-ntq88.dynamic.redhatworkshops.io
+Student 01: https://showroom-proxy-showroom-student-01.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 02: https://showroom-proxy-showroom-student-02.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 03: https://showroom-proxy-showroom-student-03.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 04: https://showroom-proxy-showroom-student-04.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 05: https://showroom-proxy-showroom-student-05.apps.cluster-cfz7p.dynamic.redhatworkshops.io
 ```
 
 ---

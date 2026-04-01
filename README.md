@@ -235,8 +235,8 @@ done
 
 **Example output:**
 ```
-Student 01: https://showroom-showroom-student-01.apps.cluster-ntq88.dynamic.redhatworkshops.io
-Student 02: https://showroom-showroom-student-02.apps.cluster-ntq88.dynamic.redhatworkshops.io
+Student 01: https://showroom-showroom-student-01.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+Student 02: https://showroom-showroom-student-02.apps.cluster-cfz7p.dynamic.redhatworkshops.io
 ...
 ```
 
@@ -296,8 +296,8 @@ students:
 
 # OpenShift cluster settings
 global:
-  clusterDomain: apps.cluster-ntq88.dynamic.redhatworkshops.io
-  clusterApiUrl: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+  clusterDomain: apps.cluster-cfz7p.dynamic.redhatworkshops.io
+  clusterApiUrl: https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
 # Enable/disable modules
 virtualMachines:

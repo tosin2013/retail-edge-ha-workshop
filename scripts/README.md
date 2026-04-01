@@ -286,8 +286,8 @@ STUDENT_UDN_NAMESPACE=retail-edge-student-01-udn
 STUDENT_USER=student-01
 
 # Cluster info
-CLUSTER_DOMAIN=apps.cluster-ntq88.dynamic.redhatworkshops.io
-CLUSTER_API=https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+CLUSTER_DOMAIN=apps.cluster-cfz7p.dynamic.redhatworkshops.io
+CLUSTER_API=https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
 # VM credentials
 VM_USER=cloud-user

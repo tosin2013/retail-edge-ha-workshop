@@ -194,7 +194,7 @@ sudo journalctl -u pacemaker
 ```bash
 # Test fence agent manually
 sudo fence_kubevirt \
-  --ip=https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443 \
+  --ip=https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443 \
   --namespace=retail-edge-student-01 \
   --plug=rhel-ha-node2 \
   --action=status

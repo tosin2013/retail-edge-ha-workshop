@@ -30,12 +30,12 @@ data:
   STUDENT_USER: "student-01"
 
   # Cluster information
-  CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
-  CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
+  CLUSTER_DOMAIN: "apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  CLUSTER_API: "https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443"
 
   # Fleet management (RHACM + Edge Manager)
-  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
-  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
 
   # VM credentials
   VM_USER: "cloud-user"
@@ -68,12 +68,12 @@ data:
   STUDENT_USER: "student-02"
 
   # Cluster information
-  CLUSTER_DOMAIN: "apps.cluster-ntq88.dynamic.redhatworkshops.io"
-  CLUSTER_API: "https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443"
+  CLUSTER_DOMAIN: "apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  CLUSTER_API: "https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443"
 
   # Fleet management (RHACM + Edge Manager)
-  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
-  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io"
+  RHACM_CONSOLE_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
+  FLEET_MANAGER_URL: "https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io"
 
   # VM credentials
   VM_USER: "cloud-user"

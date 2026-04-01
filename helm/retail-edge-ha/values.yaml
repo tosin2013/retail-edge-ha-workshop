@@ -14,16 +14,16 @@
 # -----------------------------------------------------------------------------
 global:
   # OpenShift cluster domain (update for your cluster)
-  clusterDomain: apps.cluster-ntq88.dynamic.redhatworkshops.io
+  clusterDomain: apps.cluster-cfz7p.dynamic.redhatworkshops.io
 
   # OpenShift API server URL
-  clusterApiUrl: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+  clusterApiUrl: https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
   # Workshop unique identifier
   workshopName: retail-edge-ha
 
   # Deployment GUID (unique identifier for this deployment)
-  guid: "ntq88"
+  guid: "cfz7p"
 
 # Student Configuration
 # -----------------------------------------------------------------------------

@@ -173,7 +173,7 @@ Students access RHACM console via environment variables in their Showroom termin
 ```bash
 # In student terminal
 echo $RHACM_CONSOLE_URL
-# Output: https://multicloud-console.apps.cluster-ntq88.dynamic.redhatworkshops.io
+# Output: https://multicloud-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io
 
 # View their managed clusters
 oc get managedclusters -l student-id=01
@@ -191,7 +191,7 @@ Students explore:
 
 ## Resource Consumption
 
-**Expected resource usage** (RHACM hub on cluster-ntq88):
+**Expected resource usage** (RHACM hub on cluster-cfz7p):
 
 | Component | Memory | CPU | Storage |
 |-----------|--------|-----|---------|

@@ -492,7 +492,7 @@ ArgoCD Parent Application (retail-edge-ha-workshop)
 
                 <h3>1. Login to OpenShift</h3>
                 <pre><code>oc login --token=&lt;your-token&gt; \
-  --server=https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443</code></pre>
+  --server=https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443</code></pre>
 
                 <h3>2. Deploy Workshop via ArgoCD</h3>
                 <pre><code>oc apply -f - &lt;&lt;EOF
@@ -550,8 +550,8 @@ students:
 
 # OpenShift cluster settings
 global:
-  clusterDomain: apps.cluster-ntq88.dynamic.redhatworkshops.io
-  clusterApiUrl: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+  clusterDomain: apps.cluster-cfz7p.dynamic.redhatworkshops.io
+  clusterApiUrl: https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
 # Enable/disable modules
 virtualMachines:

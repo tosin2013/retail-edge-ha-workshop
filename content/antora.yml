@@ -14,8 +14,8 @@ asciidoc:
     student-user: student-01
 
     # Cluster information
-    cluster-domain: apps.cluster-ntq88.dynamic.redhatworkshops.io
-    cluster-api: https://api.cluster-ntq88.dynamic.redhatworkshops.io:6443
+    cluster-domain: apps.cluster-cfz7p.dynamic.redhatworkshops.io
+    cluster-api: https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
 
     # VM credentials
     vm-user: cloud-user
