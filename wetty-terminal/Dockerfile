@@ -59,4 +59,4 @@ EXPOSE 8080
 ENV SHELL=/bin/bash
 
 # Start WeTTY in non-SSH mode (direct shell access)
-CMD ["wetty", "--port", "8080", "--base", "/wetty/", "--command", "/bin/bash"]
+CMD wetty --port 8080 --base /wetty/ --command /bin/bash
