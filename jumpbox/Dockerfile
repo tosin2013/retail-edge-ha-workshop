@@ -1,9 +1,12 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
-# Install SSH server and essential tools
+# Enable EPEL repository for Dropbear
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && \
+    dnf clean all
+
+# Install Dropbear SSH server and essential tools
 RUN dnf install -y \
-    openssh-server \
-    openssh-clients \
+    dropbear \
     wget \
     tar \
     gzip \
@@ -30,17 +33,8 @@ RUN wget -q https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtct
 RUN useradd -m -s /bin/bash student && \
     echo "student:redhat" | chpasswd
 
-# Configure SSH server for containerized environment
-# Remove Red Hat config that re-enables PAM and GSSAPI
-RUN ssh-keygen -A && \
-    rm -f /etc/ssh/sshd_config.d/50-redhat.conf && \
-    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/' /etc/ssh/sshd_config && \
-    sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config && \
-    echo "# Container-friendly settings (no PAM, no privilege separation)" >> /etc/ssh/sshd_config && \
-    echo "UsePAM no" >> /etc/ssh/sshd_config && \
-    echo "StrictModes no" >> /etc/ssh/sshd_config
+# Create Dropbear directory (will auto-generate host keys on first run)
+RUN mkdir -p /etc/dropbear
 
 # Configure helpful student environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/student/.bashrc && \
@@ -78,5 +72,9 @@ RUN echo '#!/bin/bash' > /etc/profile.d/welcome.sh && \
 
 EXPOSE 22
 
-# Start SSH daemon in foreground
-CMD ["/usr/sbin/sshd", "-D", "-e"]
+# Start Dropbear in foreground with password auth enabled
+# -R: Create /etc/dropbear if missing and auto-generate host keys
+# -F: Don't fork (stay in foreground for containers)
+# -E: Log to stderr (container-friendly logging)
+# -p 22: Listen on port 22
+CMD ["/usr/sbin/dropbear", "-RFE", "-p", "22"]
