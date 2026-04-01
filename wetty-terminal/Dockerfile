@@ -2,22 +2,23 @@ FROM docker.io/wettyoss/wetty:latest
 
 USER root
 
-# Install OpenShift CLI tools
+# Install dependencies
 RUN apk add --no-cache \
     curl \
     bash \
     bash-completion \
     jq \
-    git && \
-    # Download oc/kubectl
-    curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz | tar xz -C /usr/local/bin/ && \
-    # Download virtctl
+    git
+
+# Download and install CLI tools
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz | tar xz -C /usr/local/bin/ && \
     curl -L https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-linux-amd64 -o /usr/local/bin/virtctl && \
-    chmod +x /usr/local/bin/virtctl && \
-    # Setup bash completion directory and files
-    mkdir -p /etc/bash_completion.d && \
-    oc completion bash > /etc/bash_completion.d/oc && \
-    kubectl completion bash > /etc/bash_completion.d/kubectl
+    chmod +x /usr/local/bin/virtctl
+
+# Setup bash completion
+RUN mkdir -p /etc/bash_completion.d && \
+    /usr/local/bin/oc completion bash > /etc/bash_completion.d/oc && \
+    /usr/local/bin/kubectl completion bash > /etc/bash_completion.d/kubectl
 
 # Configure shell environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
