@@ -6,12 +6,41 @@ Complete GitOps deployment guide for the Retail Edge High-Availability Workshop.
 
 ### Prerequisites
 
-- OpenShift 4.12+ with:
+- OpenShift 4.21+ with:
   - OpenShift Virtualization operator installed
   - OpenShift GitOps (ArgoCD) operator installed
   - Storage class configured (e.g., `ocs-external-storagecluster-ceph-rbd`)
+  - Red Hat Advanced Cluster Management 2.16+ (optional, for fleet management)
 - Cluster admin access
 - `oc` CLI installed
+- Git repository forked (if making custom modifications)
+
+### Pre-Deployment Checklist
+
+Before deploying the workshop, verify these critical settings:
+
+**✅ values.yaml Configuration**
+- [ ] `global.clusterDomain` matches your cluster's ingress domain
+- [ ] `global.clusterApiUrl` matches your cluster's API server URL
+- [ ] `students.count` is set to desired number of students (1-50)
+- [ ] `virtualMachines.autoStart` is `true` (VMs should start automatically)
+- [ ] `showroom.chart.version` is set to a valid version (e.g., "0.4.9")
+- [ ] `showroom.enabled` is `true` (lab guides required for students)
+- [ ] Storage class name matches your cluster's available storage
+
+**✅ Operators Ready**
+```bash
+# Verify operators are installed and ready
+oc get csv -n openshift-cnv | grep kubevirt-hyperconverged
+oc get csv -n openshift-gitops | grep openshift-gitops-operator
+oc get csv -n open-cluster-management | grep advanced-cluster-management  # Optional
+```
+
+**✅ Storage Available**
+```bash
+# Verify default storage class exists
+oc get storageclass | grep "(default)"
+```
 
 ### One-Command Deployment
 
@@ -534,3 +563,234 @@ done
 **Version:** 1.0.0
 **Last Updated:** March 2025
 **Maintainer:** Tosin Akinosho (@tosin2013)
+
+---
+
+## Post-Deployment Verification
+
+After deploying the workshop, run these checks to ensure everything is ready for students:
+
+### 1. Verify ArgoCD Applications
+
+```bash
+# Check parent application
+oc get application.argoproj.io retail-edge-ha -n openshift-gitops
+
+# Expected: SYNC STATUS = Synced, HEALTH STATUS = Healthy
+
+# Check child applications
+oc get application.argoproj.io -n openshift-gitops | grep retail-edge
+
+# Expected: All applications should show Synced/Healthy
+```
+
+### 2. Verify Showroom Lab Guides
+
+```bash
+# Check Showroom pods
+oc get pods -A | grep showroom
+
+# Expected: showroom, showroom-content, showroom-proxy, showroom-terminal pods Running
+
+# Check Showroom routes
+oc get routes -A | grep showroom
+
+# Get student lab guide URLs
+for i in 01 02; do
+  echo "Student $i: https://$(oc get route showroom-proxy -n showroom-student-$i -o jsonpath='{.spec.host}')"
+done
+```
+
+### 3. Verify VirtualMachines
+
+```bash
+# Check VM status for student 01
+oc get vms -n retail-edge-student-01
+
+# Expected: STATUS = Running or WaitingForVolumeBinding (if DataVolumes still importing)
+# NOT Expected: Stopped (indicates autoStart issue)
+
+# Check DataVolume import progress
+oc get datavolume -n retail-edge-student-01
+
+# Expected: PHASE = Succeeded (after 2-5 minutes)
+# In Progress: ImportInProgress or PendingPopulation
+```
+
+### 4. Student Readiness Check
+
+Run the automated student readiness check:
+
+```bash
+./scripts/validate-workshop-deployment.sh --students 2 --format both
+```
+
+**Expected Results:**
+- ✅ Infrastructure checks: 8/8 passed
+- ✅ Showroom accessible: HTTP 200
+- ✅ VMs: Running state
+- ✅ DataVolumes: Succeeded state
+
+If validation fails, see **Troubleshooting** section below.
+
+---
+
+## Troubleshooting
+
+### Issue: ArgoCD Application Shows "OutOfSync" or "Failed"
+
+**Symptoms:**
+- `oc get application.argoproj.io retail-edge-ha -n openshift-gitops` shows OutOfSync or Failed
+
+**Common Causes:**
+1. **Missing Showroom chart version** - Check `showroom.chart.version` in values.yaml
+2. **Invalid cluster domain** - Verify `global.clusterDomain` matches `oc get ingresses.config/cluster -o jsonpath='{.spec.domain}'`
+3. **Network connectivity** - ArgoCD can't reach GitHub repository
+
+**Fix:**
+```bash
+# Check Application status
+oc get application.argoproj.io retail-edge-ha -n openshift-gitops -o jsonpath='{.status.operationState.message}'
+
+# Force refresh and sync
+oc annotate application.argoproj.io retail-edge-ha -n openshift-gitops argocd.argoproj.io/refresh=normal --overwrite
+
+# If still failing, check child applications
+oc get application.argoproj.io -n openshift-gitops | grep retail-edge
+oc describe application.argoproj.io retail-edge-ha-showroom-01 -n openshift-gitops
+```
+
+### Issue: Showroom Not Deployed
+
+**Symptoms:**
+- No Showroom pods running
+- No routes created
+- Students can't access lab guides
+
+**Common Causes:**
+1. `showroom.enabled: false` in values.yaml
+2. Missing or invalid `showroom.chart.version`
+3. Showroom ArgoCD Application sync failed
+
+**Fix:**
+```bash
+# Verify Showroom is enabled
+grep "showroom:" -A 5 helm/retail-edge-ha/values.yaml | grep enabled
+
+# Check Showroom chart version
+helm search repo showroom-deployer/showroom --versions | head -10
+
+# Update values.yaml with correct version (e.g., 0.4.9)
+# Then refresh ArgoCD Application
+```
+
+### Issue: All VMs are Stopped
+
+**Symptoms:**
+- `oc get vms -n retail-edge-student-01` shows STATUS = Stopped
+- Students can't access VMs
+- DataVolumes show PendingPopulation indefinitely
+
+**Common Causes:**
+1. `virtualMachines.autoStart: false` in values.yaml
+2. VM manifests have `running: false`
+3. VMs were created before autoStart was enabled
+
+**Fix:**
+```bash
+# Check values.yaml setting
+grep "autoStart:" helm/retail-edge-ha/values.yaml
+
+# If false, update to true and push changes
+
+# For existing stopped VMs, start manually:
+for ns in retail-edge-student-01 retail-edge-student-02; do
+  for vm in rhel-ha-node1 rhel-ha-node2; do
+    oc patch vm $vm -n $ns --type merge -p '{"spec":{"running":true}}'
+  done
+done
+```
+
+### Issue: DataVolumes Stuck in PendingPopulation
+
+**Symptoms:**
+- DataVolumes never transition to ImportInProgress or Succeeded
+- VMs stay in WaitingForVolumeBinding
+
+**Common Causes:**
+1. Storage class uses WaitForFirstConsumer binding mode (expected behavior)
+2. VMs are stopped (not consuming volumes)
+3. Storage provisioner issues
+
+**Fix:**
+```bash
+# Verify VMs are running (required for WaitForFirstConsumer storage)
+oc get vms -A | grep retail-edge
+
+# If VMs are Running, wait 2-5 minutes for import
+# Check import progress
+watch oc get datavolume -A
+
+# If still stuck after 10 minutes, check CDI pods
+oc get pods -n openshift-cnv | grep cdi-
+
+# Check import logs
+oc logs -n openshift-cnv -l app=containerized-data-importer
+```
+
+### Issue: Student Routes Not Accessible
+
+**Symptoms:**
+- Routes exist but return 404 or connection refused
+- Students can't access lab guides
+
+**Common Causes:**
+1. Pods not ready yet
+2. Ingress controller issues
+3. Network policy blocking access
+
+**Fix:**
+```bash
+# Check pod status
+oc get pods -n showroom-student-01
+
+# Test route from within cluster
+oc run curl-test --rm -it --image=curlimages/curl -- sh
+# Inside pod: curl -I http://showroom-proxy.showroom-student-01.svc:8080
+
+# Check route configuration
+oc describe route showroom-proxy -n showroom-student-01
+```
+
+---
+
+## Common Deployment Mistakes to Avoid
+
+1. **❌ Don't deploy without verifying values.yaml** - Always check cluster domain, API URL, and chart versions
+2. **❌ Don't assume operators are ready** - Wait for CSVs to reach Succeeded phase before deploying
+3. **❌ Don't skip Showroom** - Students need lab guides! Set `showroom.enabled: true`
+4. **❌ Don't use `running: false` in production** - Set `virtualMachines.autoStart: true`
+5. **❌ Don't forget to test one student environment first** - Validate before scaling to all students
+
+---
+
+## Success Criteria
+
+Your workshop is ready for students when:
+
+✅ ArgoCD Application is Synced and Healthy  
+✅ All Showroom routes return HTTP 200  
+✅ All VMs are in Running state  
+✅ All DataVolumes are in Succeeded phase  
+✅ Student readiness validation passes with 0 failures  
+
+**Estimated deployment time:** 15-20 minutes (including DataVolume imports)
+
+---
+
+## Need Help?
+
+- **Workshop Repository:** https://github.com/tosin2013/retail-edge-ha-workshop
+- **Validation Report:** Run `./scripts/validate-workshop-deployment.sh --help`
+- **ArgoCD UI:** `oc get route openshift-gitops-server -n openshift-gitops -o jsonpath='{.spec.host}'`
+
