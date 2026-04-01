@@ -76,6 +76,5 @@ EXPOSE 22
 # -R: Create /etc/dropbear if missing and auto-generate host keys
 # -F: Don't fork (stay in foreground for containers)
 # -E: Log to stderr (container-friendly logging)
-# -v: Verbose mode for debugging
 # -p 22: Listen on port 22
-CMD ["/usr/sbin/dropbear", "-RFEv", "-p", "22"]
+CMD ["/usr/sbin/dropbear", "-RFE", "-p", "22"]
