@@ -762,6 +762,66 @@ oc run curl-test --rm -it --image=curlimages/curl -- sh
 oc describe route showroom-proxy -n showroom-student-01
 ```
 
+### Issue: Showroom Terminal Asks for Username
+
+**Symptoms:**
+- Terminal displays login prompt asking for username/password
+- Students cannot access shell to run commands
+- Terminal shows "Login:" prompt instead of shell
+
+**Common Causes:**
+1. WeTTY-based terminal requires SSH authentication
+2. Missing SSHUSER configuration in terminal pod
+3. Wrong terminal image configured (wetty vs ttyd)
+
+**Fix:**
+```bash
+# 1. Check current terminal image
+oc get pods -n showroom-student-01 -l app=showroom-terminal \
+  -o jsonpath='{.items[0].spec.containers[0].image}'
+
+# If shows docker.io/wettyoss/wetty:latest - that's the problem!
+
+# 2. Update values.yaml to use ttyd-based terminal
+cat <<EOF > /tmp/terminal-fix.yaml
+showroom:
+  terminal:
+    type: showroom
+    image: quay.io/openshiftlabs/showroom-terminal:latest
+EOF
+
+# 3. Update values.yaml in your repository
+# Change line 361 in helm/retail-edge-ha/values.yaml:
+#   image: quay.io/openshiftlabs/showroom-terminal:latest
+
+# 4. Commit and push changes
+git add helm/retail-edge-ha/values.yaml
+git commit -m "Fix terminal authentication - switch from WeTTY to ttyd"
+git push origin main
+
+# 5. Force ArgoCD to sync
+oc annotate application.argoproj.io retail-edge-ha -n openshift-gitops \
+  argocd.argoproj.io/refresh=normal --overwrite
+
+# Wait for sync to complete (check terminal pods rolling out)
+oc get pods -n showroom-student-01 -w
+```
+
+**Verify fix:**
+```bash
+# Check new terminal pod image
+oc get pods -n showroom-student-01 -l app=showroom-terminal \
+  -o jsonpath='{.items[0].spec.containers[0].image}'
+
+# Expected: quay.io/openshiftlabs/showroom-terminal:latest
+
+# Test terminal access in browser
+# Should see shell prompt immediately (no login prompt)
+```
+
+**Root Cause:**
+WeTTY (`docker.io/wettyoss/wetty:latest`) is an SSH client that requires credentials. The ttyd-based image (`quay.io/openshiftlabs/showroom-terminal:latest`) provides direct shell access without authentication.
+
 ---
 
 ## Common Deployment Mistakes to Avoid

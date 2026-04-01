@@ -40,14 +40,28 @@ https://showroom-proxy-showroom-student-01.apps.cluster-cfz7p.dynamic.redhatwork
 
 ### Step 3: Verify Terminal Access
 
+The terminal pane should show a **shell prompt immediately** (no login required).
+
 Click inside the terminal pane and run:
 
 ```bash
+# Verify you're authenticated
 oc whoami
+
+# Check your workshop namespaces
 oc get projects | grep retail-edge-student
+
+# Verify virtctl is available
+virtctl version
 ```
 
-You should see your student namespace listed.
+**Expected output:**
+- `oc whoami` shows your service account or username
+- Two namespaces listed: `retail-edge-student-XX` and `retail-edge-student-XX-udn`
+- `virtctl version` shows KubeVirt client version
+
+**⚠️ If you see a login prompt:**
+Contact your instructor - the terminal configuration needs to be fixed. You should NOT be asked for a username or password.
 
 ---
 
