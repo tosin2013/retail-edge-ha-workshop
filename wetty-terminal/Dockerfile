@@ -14,7 +14,8 @@ RUN apk add --no-cache \
     # Download virtctl
     curl -L https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-linux-amd64 -o /usr/local/bin/virtctl && \
     chmod +x /usr/local/bin/virtctl && \
-    # Setup bash completion
+    # Setup bash completion directory and files
+    mkdir -p /etc/bash_completion.d && \
     oc completion bash > /etc/bash_completion.d/oc && \
     kubectl completion bash > /etc/bash_completion.d/kubectl
 
