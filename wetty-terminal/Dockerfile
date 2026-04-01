@@ -1,6 +1,6 @@
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
-# Install Node.js and tools
+# Install Node.js, build tools, and utilities
 RUN dnf install -y \
     nodejs \
     npm \
@@ -11,6 +11,10 @@ RUN dnf install -y \
     bash-completion \
     jq \
     git \
+    gcc \
+    gcc-c++ \
+    make \
+    python3 \
     && dnf clean all
 
 # Install WeTTY
