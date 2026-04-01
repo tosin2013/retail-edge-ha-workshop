@@ -13,4 +13,4 @@ cd "$HOME"
 # The Showroom chart passes --base=/wetty/ --port=8080 as container args,
 # but this entrypoint ignores them; ttyd serves the terminal directly
 # without SSH and with no authentication prompt.
-exec ttyd -p 8080 -b /wetty/ bash --login
+exec ttyd -W -p 8080 -b /wetty/ bash --login
