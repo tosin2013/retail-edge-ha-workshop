@@ -7,8 +7,10 @@ if ! getent passwd "$USER_ID" &>/dev/null; then
     echo "student:x:${USER_ID}:0:student:/home/student:/bin/bash" >> /etc/passwd 2>/dev/null || true
 fi
 
-# Start sshd on port 2222 (localhost-only) for WeTTY to connect to
-/usr/sbin/sshd -p 2222 \
+# Start sshd on port 2222 (localhost-only) for WeTTY to connect to.
+# Uses a container-safe copy of sshd_config that is group-readable.
+/usr/sbin/sshd -f /etc/ssh/sshd_config.container \
+    -p 2222 \
     -o PidFile=/tmp/sshd.pid \
     -o StrictModes=no \
     -o ListenAddress=127.0.0.1 \

@@ -54,15 +54,17 @@ RUN ssh-keygen -t ed25519 -f /etc/wetty-key -N "" && \
     chmod 600 /home/student/.ssh/authorized_keys && \
     chown -R student:student /home/student/.ssh
 
-# Make sshd files writable for OpenShift arbitrary UID (member of group 0)
-# Only grant write to sshd host keys and runtime dirs, NOT ssh client config
-# (ssh client is strict about permissions on its config files)
-RUN chgrp -R 0 /run/sshd /home/student /etc/wetty-key /etc/wetty-key.pub && \
+# Copy sshd_config to a writable location (OpenShift runs as random UID in group 0;
+# /etc/ssh/sshd_config is root-owned and not group-readable by default)
+RUN cp /etc/ssh/sshd_config /etc/ssh/sshd_config.container && \
+    chgrp 0 /etc/ssh/sshd_config.container && \
+    chmod g+r /etc/ssh/sshd_config.container && \
+    chmod g+r /etc/ssh/ssh_host_*_key && \
+    chgrp 0 /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub && \
+    chgrp -R 0 /run/sshd /home/student /etc/wetty-key /etc/wetty-key.pub && \
     chmod -R g+rwX /run/sshd /home/student && \
     chmod g+r /etc/wetty-key && \
-    chmod g+rwX /etc/passwd && \
-    chmod g+r /etc/ssh/ssh_host_*_key && \
-    chgrp 0 /etc/ssh/ssh_host_*_key /etc/ssh/ssh_host_*_key.pub
+    chmod g+rwX /etc/passwd
 
 # Configure shell environment for student user
 RUN cp /root/.bashrc /home/student/.bashrc 2>/dev/null || true && \
