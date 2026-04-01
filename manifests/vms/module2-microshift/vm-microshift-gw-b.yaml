@@ -1,11 +1,5 @@
-# =============================================================================
 # VirtualMachine - Module 2: MicroShift Gateway B
-# =============================================================================
-# Generated for 5 students
-# Static IP: 10.102.0.21 (on microshift-net)
-# VRRP: Priority 90 (BACKUP)
-# =============================================================================
-
+# Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
 
 ---
 # Student 01 - MicroShift Gateway B
@@ -22,7 +16,7 @@ metadata:
     app.kubernetes.io/name: microshift-gw-b
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: true
+  running: false
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -36,7 +30,7 @@ spec:
         resources:
           requests:
             storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
   template:
@@ -98,7 +92,7 @@ metadata:
     app.kubernetes.io/name: microshift-gw-b
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: true
+  running: false
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -112,7 +106,7 @@ spec:
         resources:
           requests:
             storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
   template:
@@ -150,234 +144,6 @@ spec:
       - name: microshift-net
         multus:
           networkName: retail-edge-student-02-udn/microshift-net
-      volumes:
-      - dataVolume:
-          name: microshift-gw-b-disk
-        name: rootdisk
-      - cloudInitNoCloud:
-          secretRef:
-            name: cloudinit-microshift-gw-b
-        name: cloudinitdisk
-
----
-# Student 03 - MicroShift Gateway B
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: microshift-gw-b
-  namespace: retail-edge-student-03
-  labels:
-    app: microshift
-    module: module2
-    node: gw-b
-    student-id: "03"
-    app.kubernetes.io/name: microshift-gw-b
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: microshift-gw-b-disk
-    spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-      storage:
-        resources:
-          requests:
-            storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: microshift-gw-b
-        module: module2
-    spec:
-      domain:
-        cpu:
-          cores: 2
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: cloudinitdisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: microshift-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        resources:
-          requests:
-            memory: 4Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: microshift-net
-        multus:
-          networkName: retail-edge-student-03-udn/microshift-net
-      volumes:
-      - dataVolume:
-          name: microshift-gw-b-disk
-        name: rootdisk
-      - cloudInitNoCloud:
-          secretRef:
-            name: cloudinit-microshift-gw-b
-        name: cloudinitdisk
-
----
-# Student 04 - MicroShift Gateway B
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: microshift-gw-b
-  namespace: retail-edge-student-04
-  labels:
-    app: microshift
-    module: module2
-    node: gw-b
-    student-id: "04"
-    app.kubernetes.io/name: microshift-gw-b
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: microshift-gw-b-disk
-    spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-      storage:
-        resources:
-          requests:
-            storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: microshift-gw-b
-        module: module2
-    spec:
-      domain:
-        cpu:
-          cores: 2
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: cloudinitdisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: microshift-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        resources:
-          requests:
-            memory: 4Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: microshift-net
-        multus:
-          networkName: retail-edge-student-04-udn/microshift-net
-      volumes:
-      - dataVolume:
-          name: microshift-gw-b-disk
-        name: rootdisk
-      - cloudInitNoCloud:
-          secretRef:
-            name: cloudinit-microshift-gw-b
-        name: cloudinitdisk
-
----
-# Student 05 - MicroShift Gateway B
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: microshift-gw-b
-  namespace: retail-edge-student-05
-  labels:
-    app: microshift
-    module: module2
-    node: gw-b
-    student-id: "05"
-    app.kubernetes.io/name: microshift-gw-b
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: microshift-gw-b-disk
-    spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
-      storage:
-        resources:
-          requests:
-            storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: microshift-gw-b
-        module: module2
-    spec:
-      domain:
-        cpu:
-          cores: 2
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: cloudinitdisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: microshift-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        resources:
-          requests:
-            memory: 4Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: microshift-net
-        multus:
-          networkName: retail-edge-student-05-udn/microshift-net
       volumes:
       - dataVolume:
           name: microshift-gw-b-disk

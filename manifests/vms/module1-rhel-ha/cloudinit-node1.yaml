@@ -1,10 +1,5 @@
-# =============================================================================
-# Cloud-init Configuration - RHEL HA Node 1
-# =============================================================================
-# Generated for ${STUDENT_COUNT} students
-# Static IP: 10.101.0.20 on eth1 (pacemaker-net)
-# =============================================================================
-
+# Cloud-init - RHEL HA Node 1
+# Generated for 2 students | IP: 10.101.0.20
 
 ---
 # Student 01 - Node 1 Cloud-init
@@ -46,105 +41,6 @@ kind: Secret
 metadata:
   name: rhel-ha-node1-cloudinit
   namespace: retail-edge-student-02
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd:
-      expire: false
-    ssh_pwauth: true
-    packages:
-      - pacemaker
-      - pcs
-      - fence-agents-kubevirt
-      - corosync
-      - fence-agents-all
-    runcmd:
-      - systemctl enable --now pcsd
-      - echo "redhat" | passwd --stdin hacluster
-      - hostnamectl set-hostname rhel-ha-node1
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
-      - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
-
----
-# Student 03 - Node 1 Cloud-init
-apiVersion: v1
-kind: Secret
-metadata:
-  name: rhel-ha-node1-cloudinit
-  namespace: retail-edge-student-03
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd:
-      expire: false
-    ssh_pwauth: true
-    packages:
-      - pacemaker
-      - pcs
-      - fence-agents-kubevirt
-      - corosync
-      - fence-agents-all
-    runcmd:
-      - systemctl enable --now pcsd
-      - echo "redhat" | passwd --stdin hacluster
-      - hostnamectl set-hostname rhel-ha-node1
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
-      - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
-
----
-# Student 04 - Node 1 Cloud-init
-apiVersion: v1
-kind: Secret
-metadata:
-  name: rhel-ha-node1-cloudinit
-  namespace: retail-edge-student-04
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd:
-      expire: false
-    ssh_pwauth: true
-    packages:
-      - pacemaker
-      - pcs
-      - fence-agents-kubevirt
-      - corosync
-      - fence-agents-all
-    runcmd:
-      - systemctl enable --now pcsd
-      - echo "redhat" | passwd --stdin hacluster
-      - hostnamectl set-hostname rhel-ha-node1
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
-      - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
-
----
-# Student 05 - Node 1 Cloud-init
-apiVersion: v1
-kind: Secret
-metadata:
-  name: rhel-ha-node1-cloudinit
-  namespace: retail-edge-student-05
 type: Opaque
 stringData:
   userdata: |

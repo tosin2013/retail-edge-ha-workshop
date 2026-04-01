@@ -1,11 +1,5 @@
-# =============================================================================
-# VirtualMachine - Module 3: Two-Node OpenShift Master 2
-# =============================================================================
-# Generated for 5 students
-# Static IP: 10.103.0.21 (on twonode-net)
-# Role: Control Plane + Worker (etcd member)
-# =============================================================================
-
+# VirtualMachine - Module 3: Two-Node OpenShift twonode-master2
+# Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
 
 ---
 # Student 01 - Two-Node Master 2
@@ -23,7 +17,7 @@ metadata:
     app.kubernetes.io/name: twonode-master2
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: true
+  running: false
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -38,7 +32,7 @@ spec:
         resources:
           requests:
             storage: 120Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
   template:
@@ -105,7 +99,7 @@ metadata:
     app.kubernetes.io/name: twonode-master2
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: true
+  running: false
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -120,7 +114,7 @@ spec:
         resources:
           requests:
             storage: 120Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
+        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
   template:
@@ -163,252 +157,6 @@ spec:
       - name: twonode-net
         multus:
           networkName: retail-edge-student-02-udn/twonode-net
-      volumes:
-      - dataVolume:
-          name: twonode-master2-disk
-        name: rootdisk
-      - secret:
-          secretName: ignition-twonode-master2
-        name: ignitiondisk
-
----
-# Student 03 - Two-Node Master 2
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: twonode-master2
-  namespace: retail-edge-student-03
-  labels:
-    app: twonode-ocp
-    module: module3
-    node: master2
-    role: control-plane
-    student-id: "03"
-    app.kubernetes.io/name: twonode-master2
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: twonode-master2-disk
-    spec:
-      source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
-      storage:
-        resources:
-          requests:
-            storage: 120Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: twonode-master2
-        module: module3
-        role: control-plane
-    spec:
-      domain:
-        cpu:
-          cores: 4
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: twonode-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        firmware:
-          bootloader:
-            efi:
-              secureBoot: false
-        resources:
-          requests:
-            memory: 16Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: twonode-net
-        multus:
-          networkName: retail-edge-student-03-udn/twonode-net
-      volumes:
-      - dataVolume:
-          name: twonode-master2-disk
-        name: rootdisk
-      - secret:
-          secretName: ignition-twonode-master2
-        name: ignitiondisk
-
----
-# Student 04 - Two-Node Master 2
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: twonode-master2
-  namespace: retail-edge-student-04
-  labels:
-    app: twonode-ocp
-    module: module3
-    node: master2
-    role: control-plane
-    student-id: "04"
-    app.kubernetes.io/name: twonode-master2
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: twonode-master2-disk
-    spec:
-      source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
-      storage:
-        resources:
-          requests:
-            storage: 120Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: twonode-master2
-        module: module3
-        role: control-plane
-    spec:
-      domain:
-        cpu:
-          cores: 4
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: twonode-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        firmware:
-          bootloader:
-            efi:
-              secureBoot: false
-        resources:
-          requests:
-            memory: 16Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: twonode-net
-        multus:
-          networkName: retail-edge-student-04-udn/twonode-net
-      volumes:
-      - dataVolume:
-          name: twonode-master2-disk
-        name: rootdisk
-      - secret:
-          secretName: ignition-twonode-master2
-        name: ignitiondisk
-
----
-# Student 05 - Two-Node Master 2
-apiVersion: kubevirt.io/v1
-kind: VirtualMachine
-metadata:
-  name: twonode-master2
-  namespace: retail-edge-student-05
-  labels:
-    app: twonode-ocp
-    module: module3
-    node: master2
-    role: control-plane
-    student-id: "05"
-    app.kubernetes.io/name: twonode-master2
-    app.kubernetes.io/part-of: retail-edge-ha
-spec:
-  running: true
-  dataVolumeTemplates:
-  - apiVersion: cdi.kubevirt.io/v1beta1
-    kind: DataVolume
-    metadata:
-      name: twonode-master2-disk
-    spec:
-      source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
-      storage:
-        resources:
-          requests:
-            storage: 120Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd
-        accessModes:
-          - ReadWriteOnce
-  template:
-    metadata:
-      labels:
-        kubevirt.io/domain: twonode-master2
-        module: module3
-        role: control-plane
-    spec:
-      domain:
-        cpu:
-          cores: 4
-          sockets: 1
-          threads: 1
-        devices:
-          disks:
-          - disk:
-              bus: virtio
-            name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
-          interfaces:
-          - name: default
-            masquerade: {}
-          - name: twonode-net
-            bridge: {}
-          networkInterfaceMultiqueue: true
-          rng: {}
-        firmware:
-          bootloader:
-            efi:
-              secureBoot: false
-        resources:
-          requests:
-            memory: 16Gi
-      networks:
-      - name: default
-        pod: {}
-      - name: twonode-net
-        multus:
-          networkName: retail-edge-student-05-udn/twonode-net
       volumes:
       - dataVolume:
           name: twonode-master2-disk

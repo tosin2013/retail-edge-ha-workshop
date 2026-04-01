@@ -1,11 +1,7 @@
-# =============================================================================
-# Cloud-init Configuration - Module 2: MicroShift Gateway A
-# =============================================================================
-# Static IP: 10.102.0.20 (on microshift-net eth1)
-# VRRP: Priority 100 (MASTER), VIP: 10.102.0.100
-# =============================================================================
+# Cloud-init - Module 2: MicroShift gw-a
+# Generated for 2 students
 
-
+---
 ---
 # Student 01 - Cloud-init for MicroShift Gateway A
 apiVersion: v1
@@ -129,6 +125,7 @@ stringData:
       - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
 
 ---
+---
 # Student 02 - Cloud-init for MicroShift Gateway A
 apiVersion: v1
 kind: Secret
@@ -144,6 +141,7 @@ stringData:
     chpasswd: { expire: False }
     ssh_pwauth: True
 
+    # Package installation
     packages:
       - microshift
       - microshift-selinux
@@ -152,6 +150,7 @@ stringData:
       - openshift-clients
       - firewalld
 
+    # Write Keepalived configuration
     write_files:
       - path: /etc/keepalived/keepalived.conf
         owner: root:root
@@ -187,15 +186,22 @@ stringData:
           }
 
     runcmd:
+      # Set hostname
       - hostnamectl set-hostname microshift-gw-a
+
+      # Configure static IP on eth1 (microshift-net)
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
       - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
+
+      # Add hosts entries
       - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
       - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
       - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+
+      # Configure firewall for MicroShift
       - systemctl enable --now firewalld
       - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
       - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
@@ -205,7 +211,11 @@ stringData:
       - firewall-cmd --permanent --zone=public --add-port=5353/udp
       - firewall-cmd --permanent --add-protocol=vrrp
       - firewall-cmd --reload
+
+      # Enable and start MicroShift
       - systemctl enable --now microshift
+
+      # Wait for MicroShift to start (up to 5 minutes)
       - |
         for i in {1..60}; do
           if curl -k -s https://localhost:6443/readyz &>/dev/null; then
@@ -215,320 +225,21 @@ stringData:
           echo "Waiting for MicroShift... ($i/60)"
           sleep 5
         done
+
+      # Copy kubeconfig for cloud-user
       - mkdir -p /home/cloud-user/.kube
       - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
       - chown -R cloud-user:cloud-user /home/cloud-user/.kube
       - chmod 600 /home/cloud-user/.kube/config
+
+      # Enable and start Keepalived (after MicroShift is ready)
       - systemctl enable --now keepalived
+
+      # Create test deployment script
       - |
         cat > /home/cloud-user/test-deployment.sh << 'EOF'
         #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        EOF
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
-
----
-# Student 03 - Cloud-init for MicroShift Gateway A
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudinit-microshift-gw-a
-  namespace: retail-edge-student-03
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd: { expire: False }
-    ssh_pwauth: True
-
-    packages:
-      - microshift
-      - microshift-selinux
-      - microshift-networking
-      - keepalived
-      - openshift-clients
-      - firewalld
-
-    write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
-
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
-
-    runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-      - systemctl enable --now microshift
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... ($i/60)"
-          sleep 5
-        done
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-      - systemctl enable --now keepalived
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'EOF'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        EOF
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
-
----
-# Student 04 - Cloud-init for MicroShift Gateway A
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudinit-microshift-gw-a
-  namespace: retail-edge-student-04
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd: { expire: False }
-    ssh_pwauth: True
-
-    packages:
-      - microshift
-      - microshift-selinux
-      - microshift-networking
-      - keepalived
-      - openshift-clients
-      - firewalld
-
-    write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
-
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
-
-    runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-      - systemctl enable --now microshift
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... ($i/60)"
-          sleep 5
-        done
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-      - systemctl enable --now keepalived
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'EOF'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        EOF
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
-
----
-# Student 05 - Cloud-init for MicroShift Gateway A
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cloudinit-microshift-gw-a
-  namespace: retail-edge-student-05
-type: Opaque
-stringData:
-  userdata: |
-    #cloud-config
-    user: cloud-user
-    password: redhat
-    chpasswd: { expire: False }
-    ssh_pwauth: True
-
-    packages:
-      - microshift
-      - microshift-selinux
-      - microshift-networking
-      - keepalived
-      - openshift-clients
-      - firewalld
-
-    write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
-
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
-
-    runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-      - systemctl enable --now microshift
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... ($i/60)"
-          sleep 5
-        done
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-      - systemctl enable --now keepalived
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'EOF'
-        #!/bin/bash
+        # Test deployment to verify VIP functionality
         oc create deployment nginx --image=nginx --replicas=2
         oc expose deployment nginx --port=80 --type=NodePort
         echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"

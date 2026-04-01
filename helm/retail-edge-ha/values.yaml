@@ -49,7 +49,7 @@ students:
     cpu: "16"           # CPU cores (enough for 9 VMs)
     memory: "32Gi"      # Memory (enough for 9 VMs)
     pvcs: "10"          # Persistent Volume Claims
-    storage: "200Gi"    # Total storage
+    storage: "500Gi"    # Total storage (must cover DVs + CDI prime/scratch PVCs during import)
     pods: "20"          # Maximum pods
 
 # ArgoCD Configuration
@@ -226,7 +226,7 @@ virtualMachines:
   autoStart: true
 
   # Storage class for VM disks
-  storageClass: "ocs-external-storagecluster-ceph-rbd"
+  storageClass: "ocs-external-storagecluster-ceph-rbd-immediate"
 
   # Default VM credentials
   defaultUser: "cloud-user"
@@ -427,7 +427,7 @@ resourceQuotas:
     persistentvolumeclaims: "10"
 
     # Total storage requests
-    requests.storage: "200Gi"
+    requests.storage: "500Gi"
 
 # Monitoring and Observability
 # -----------------------------------------------------------------------------
