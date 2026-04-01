@@ -222,8 +222,8 @@ virtualMachines:
   # Sync wave
   syncWave: "2"
 
-  # Auto-start VMs after creation (false = students start manually)
-  autoStart: false
+  # Auto-start VMs after creation (true = VMs start automatically when deployed)
+  autoStart: true
 
   # Storage class for VM disks
   storageClass: "ocs-external-storagecluster-ceph-rbd"
@@ -373,6 +373,7 @@ showroom:
   chart:
     repository: https://rhpds.github.io/showroom-deployer
     name: showroom
+    version: "2.0.0"  # Showroom deployer chart version
 
 # Showroom Configuration (ConfigMaps)
 # -----------------------------------------------------------------------------
