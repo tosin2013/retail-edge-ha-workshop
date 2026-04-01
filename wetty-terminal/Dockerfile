@@ -11,14 +11,17 @@ RUN apk add --no-cache \
     git
 
 # Download and install CLI tools
-RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz | tar xz -C /usr/local/bin/ && \
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/openshift-client-linux.tar.gz -o /tmp/oc.tar.gz && \
+    tar xzf /tmp/oc.tar.gz -C /usr/local/bin/ oc kubectl && \
+    rm -f /tmp/oc.tar.gz /tmp/README.md && \
     curl -L https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtctl-v1.4.0-linux-amd64 -o /usr/local/bin/virtctl && \
-    chmod +x /usr/local/bin/virtctl
+    chmod +x /usr/local/bin/oc /usr/local/bin/kubectl /usr/local/bin/virtctl && \
+    ls -la /usr/local/bin/ | grep -E '(oc|kubectl|virtctl)'
 
 # Setup bash completion
 RUN mkdir -p /etc/bash_completion.d && \
-    /usr/local/bin/oc completion bash > /etc/bash_completion.d/oc && \
-    /usr/local/bin/kubectl completion bash > /etc/bash_completion.d/kubectl
+    oc completion bash > /etc/bash_completion.d/oc && \
+    kubectl completion bash > /etc/bash_completion.d/kubectl
 
 # Configure shell environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
