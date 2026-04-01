@@ -1,0 +1,70 @@
+{{- if .Values.showroom.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $showroomNamespace := printf "%s-%s" $.Values.showroom.multiUser.namespacePrefix $studentId }}
+{{- $studentNamespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
+# Grant terminal pod admin access to student namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: terminal-admin
+  namespace: {{ $studentNamespace }}
+  labels:
+    app.kubernetes.io/name: terminal
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.showroom.syncWave | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ $showroomNamespace }}
+---
+# Grant terminal pod view access to UDN namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: terminal-udn-access
+  namespace: {{ $studentNamespace }}-udn
+  labels:
+    app.kubernetes.io/name: terminal
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.showroom.syncWave | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ $showroomNamespace }}
+---
+# Grant terminal pod image-puller access to builds namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: terminal-image-puller-{{ $studentId }}
+  namespace: retail-edge-workshop-builds
+  labels:
+    app.kubernetes.io/name: terminal
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.showroom.syncWave | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:image-puller
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: {{ $showroomNamespace }}
+{{- end }}
+{{- end }}

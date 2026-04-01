@@ -41,25 +41,11 @@ spec:
       - name: deployer.ingress.name
         value: showroom-student-{{ $studentId }}
 
-      # Terminal configuration
+      # Terminal configuration - custom image with oc/kubectl/virtctl pre-installed
       - name: terminal.image
-        value: {{ $.Values.showroom.terminal.image }}
-{{- if $.Values.jumpbox.enabled }}
-      # WeTTY SSH configuration - auto-connect to jumpbox pod
-      - name: terminal.wetty.autoSshToBastion
-        value: "true"
-      - name: terminal.wetty.sshHost
-        value: "jumpbox.{{ $studentNamespace }}.svc.cluster.local"
-      - name: terminal.wetty.sshPort
-        value: "22"
-      - name: terminal.wetty.sshAuth
-        value: "password"
-      - name: terminal.wetty.sshUser
-        value: {{ $.Values.jumpbox.username | quote }}
-      - name: terminal.wetty.sshPass
-        value: {{ $.Values.jumpbox.password | quote }}
-{{- end }}
-      # Student environment variables (passed to shell inside jumpbox)
+        value: image-registry.openshift-image-registry.svc:5000/retail-edge-workshop-builds/workshop-wetty-terminal:latest
+
+      # Student environment variables
       - name: terminal.envVars.STUDENT_ID
         value: "{{ $studentId }}"
       - name: terminal.envVars.STUDENT_NAMESPACE

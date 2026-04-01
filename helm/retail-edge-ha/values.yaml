@@ -470,7 +470,8 @@ validation:
 jumpbox:
   # Enable jumpbox pod deployment
   # Provides SSH-accessible bastion pod per student with oc/virtctl pre-installed
-  enabled: true
+  # DEPRECATED: Now using custom WeTTY image with CLI tools embedded (Option 3)
+  enabled: false
 
   # Build configuration (uses OpenShift BuildConfig + internal registry)
   buildNamespace: retail-edge-workshop-builds
