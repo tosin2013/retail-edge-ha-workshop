@@ -31,13 +31,16 @@ RUN useradd -m -s /bin/bash student && \
     echo "student:redhat" | chpasswd
 
 # Configure SSH server for containerized environment
+# Remove Red Hat config that re-enables PAM and GSSAPI
 RUN ssh-keygen -A && \
+    rm -f /etc/ssh/sshd_config.d/50-redhat.conf && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/' /etc/ssh/sshd_config && \
     sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config && \
-    echo "# Container-friendly settings" >> /etc/ssh/sshd_config && \
-    echo "UsePAM no" >> /etc/ssh/sshd_config
+    echo "# Container-friendly settings (no PAM, no privilege separation)" >> /etc/ssh/sshd_config && \
+    echo "UsePAM no" >> /etc/ssh/sshd_config && \
+    echo "StrictModes no" >> /etc/ssh/sshd_config
 
 # Configure helpful student environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/student/.bashrc && \
