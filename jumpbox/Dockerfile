@@ -8,7 +8,6 @@ RUN dnf install -y \
     tar \
     gzip \
     vim \
-    tmux \
     bash-completion \
     jq \
     git \
