@@ -171,7 +171,7 @@ Your feedback helps us improve this workshop for future participants.
 
 If you're done exploring, clean up your namespace:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 # Stop all VMs
 oc get vm -n {student-namespace} -o name | xargs -I {} virtctl stop {} -n {student-namespace}

@@ -108,7 +108,7 @@ Your VMs have been pre-created and are ready to start.
 
 Check your MicroShift VMs:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc get vm -n {student-namespace} | grep microshift
 ----
@@ -119,12 +119,12 @@ NOTE: VMs are pre-created in stopped state for instant startup (~30 seconds inst
 
 === Start Both Gateways
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {microshift-gw-a} -n {student-namespace}
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {microshift-gw-b} -n {student-namespace}
 ----
@@ -133,7 +133,7 @@ virtctl start {microshift-gw-b} -n {student-namespace}
 
 Watch VMs boot and MicroShift start (takes 3-4 minutes total):
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc get vmi -n {student-namespace} -w
 ----
@@ -146,7 +146,7 @@ TIP: The VMs boot in ~30 seconds, but MicroShift takes an additional 3-4 minutes
 
 SSH into Gateway A:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
@@ -205,7 +205,7 @@ exit
 
 SSH back into Gateway A:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
@@ -249,7 +249,7 @@ VRRP_Instance(MICROSHIFT_VIP) Entering MASTER STATE
 
 Check if the VIP is assigned to Gateway A:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -265,14 +265,14 @@ The `secondary` keyword indicates this is the virtual IP.
 
 Test VIP connectivity:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ping -c 3 {microshift-vip}
 ----
 
 Access MicroShift API via the VIP:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 curl -k https://{microshift-vip}:6443/readyz
 ----
@@ -290,14 +290,14 @@ exit
 
 SSH into Gateway B:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 ----
 
 Check the VIP (should NOT be present):
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -336,21 +336,21 @@ exit
 
 Stop Gateway A to trigger VIP migration:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {microshift-gw-a} -n {student-namespace}
 ----
 
 Wait 10 seconds for VRRP failover, then SSH into Gateway B:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 ----
 
 Check if the VIP has migrated:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -378,7 +378,7 @@ VRRP_Instance(MICROSHIFT_VIP) Transition to MASTER STATE
 
 Verify the VIP responds:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ping -c 3 {microshift-vip}
 curl -k https://{microshift-vip}:6443/readyz
@@ -395,21 +395,21 @@ exit
 
 Start Gateway A again:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {microshift-gw-a} -n {student-namespace}
 ----
 
 Wait 60 seconds for MicroShift and Keepalived to start, then SSH in:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
 
 Check if the VIP has migrated back (higher priority wins):
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ip addr show eth1 | grep {microshift-vip}
 ----
@@ -434,7 +434,7 @@ exit
 
 SSH into the active gateway (check which has the VIP):
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
@@ -464,7 +464,7 @@ Note the port (e.g., `80:31234/TCP`).
 
 Test access via the VIP:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 curl http://{microshift-vip}:<nodeport>
 ----
@@ -475,7 +475,7 @@ You should see the nginx welcome page.
 
 Open a second terminal and run continuous requests:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 while true; do
   curl -s -o /dev/null -w "Status: %{http_code}\n" http://{microshift-vip}:<nodeport>
@@ -485,7 +485,7 @@ done
 
 In the first terminal, stop Gateway A:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {microshift-gw-a} -n {student-namespace}
 ----
@@ -502,7 +502,7 @@ Press `Ctrl+C` to stop the loop.
 
 SSH into Gateway B (now MASTER):
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 ----
@@ -589,14 +589,14 @@ Let's demonstrate this limitation with a StatefulSet.
 
 Start Gateway A (if not already running):
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {microshift-gw-a} -n {student-namespace}
 ----
 
 Wait 60 seconds for MicroShift to be ready, then SSH in:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
 ----
@@ -713,7 +713,7 @@ Now, stop Gateway A to trigger VIP migration:
 exit  # Exit SSH from Gateway A
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {microshift-gw-a} -n {student-namespace}
 ----
@@ -722,7 +722,7 @@ Wait 10 seconds for VRRP to migrate the VIP to Gateway B.
 
 SSH into Gateway B:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
 ----
@@ -769,7 +769,7 @@ The PVC is bound to a volume on **Gateway A's local storage**! Gateway B cannot 
 
 Try to access the database via the VIP:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 curl -v telnet://{microshift-vip}:5432 --max-time 5
 ----
@@ -846,7 +846,7 @@ Start Gateway A again:
 exit
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {microshift-gw-a} -n {student-namespace}
 ----
@@ -897,7 +897,7 @@ virtctl start {microshift-gw-a} -n {student-namespace}
 
 Check the current VRRP state from outside the VMs:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 # Check which VM has the VIP
 oc get vmi -n {student-namespace} -o wide
@@ -907,7 +907,7 @@ Both VMs should be running.
 
 Verify Keepalived is active on both:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- sudo systemctl is-active keepalived
 virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace} -- sudo systemctl is-active keepalived
@@ -960,7 +960,7 @@ sudo systemctl restart microshift
 
 Stop both VMs:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {microshift-gw-a} -n {student-namespace}
 virtctl stop {microshift-gw-b} -n {student-namespace}

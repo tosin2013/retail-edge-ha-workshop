@@ -98,7 +98,7 @@ Your VMs have been pre-created and are ready to start in seconds.
 
 Check that your VMs have been pre-deployed:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc get vm -n {student-namespace}
 ----
@@ -116,12 +116,12 @@ NOTE: VMs are pre-created in stopped state. This means they're ready to start in
 
 === Start Both Nodes
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {rhel-node1} -n {student-namespace}
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {rhel-node2} -n {student-namespace}
 ----
@@ -130,7 +130,7 @@ virtctl start {rhel-node2} -n {student-namespace}
 
 Watch VMs boot (takes ~30 seconds):
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc get vmi -n {student-namespace} -w
 ----
@@ -141,7 +141,7 @@ Press `Ctrl+C` when both show `Running` and `True` under READY.
 
 SSH into node1 to check the network setup:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
@@ -181,7 +181,7 @@ exit
 
 SSH into node1:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
@@ -252,14 +252,14 @@ exit
 
 Back in the terminal, create the ServiceAccount:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc create sa pacemaker-fencing -n {student-namespace}
 ----
 
 Grant permissions to manage VMs:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc create role vm-manager \
   --verb=get,list,update,patch,delete \
@@ -267,7 +267,7 @@ oc create role vm-manager \
   -n {student-namespace}
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc create rolebinding vm-manager-binding \
   --role=vm-manager \
@@ -277,7 +277,7 @@ oc create rolebinding vm-manager-binding \
 
 Get the ServiceAccount token:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc create token pacemaker-fencing -n {student-namespace} --duration=8760h
 ----
@@ -288,14 +288,14 @@ oc create token pacemaker-fencing -n {student-namespace} --duration=8760h
 
 SSH back into node1:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
 Create fence device for node1:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo pcs stonith create fence-node1 fence_kubevirt \
   token="<paste-token-here>" \
@@ -309,7 +309,7 @@ sudo pcs stonith create fence-node1 fence_kubevirt \
 
 Create fence device for node2:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo pcs stonith create fence-node2 fence_kubevirt \
   token="<paste-token-here>" \
@@ -356,7 +356,7 @@ Press `Ctrl+C` when node2 shows online again.
 
 Create the VIP resource:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo pcs resource create cluster-vip IPaddr2 \
   ip={pacemaker-vip} \
@@ -376,7 +376,7 @@ The VIP should be running on one of the nodes.
 
 Verify the VIP is accessible:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ping -c 3 {pacemaker-vip}
 ----
@@ -401,7 +401,7 @@ The `cluster-vip` resource should now be on `rhel-ha-node2`.
 
 Verify the VIP still responds:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 ping -c 3 {pacemaker-vip}
 ----
@@ -480,7 +480,7 @@ image::module1-storage-architecture.png[Pacemaker Shared Storage Architecture, a
 
 First, exit any SSH session and create a shared PVC from your terminal:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 cat <<EOF | oc apply -f -
 apiVersion: v1
@@ -500,7 +500,7 @@ EOF
 
 Verify the PVC is bound:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc get pvc pacemaker-shared-storage -n {student-namespace}
 ----
@@ -513,7 +513,7 @@ NOTE: ReadWriteMany (RWX) access mode allows both VMs to mount the volume simult
 
 Stop both VMs to attach the storage:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {rhel-node1} -n {student-namespace}
 virtctl stop {rhel-node2} -n {student-namespace}
@@ -523,7 +523,7 @@ Wait for VMs to stop (check with `oc get vmi -n {student-namespace}`).
 
 Patch node1 to add the shared disk:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc patch vm rhel-ha-node1 -n {student-namespace} --type=merge -p '
 spec:
@@ -557,7 +557,7 @@ spec:
 
 Repeat for node2:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 oc patch vm rhel-ha-node2 -n {student-namespace} --type=merge -p '
 spec:
@@ -593,7 +593,7 @@ IMPORTANT: In production, you would use DataVolumes or edit VM manifests directl
 
 Start the VMs:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {rhel-node1} -n {student-namespace}
 virtctl start {rhel-node2} -n {student-namespace}
@@ -605,7 +605,7 @@ Wait for VMs to boot (~30 seconds).
 
 SSH into node1:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
@@ -752,14 +752,14 @@ exit  # Exit SSH from node1
 
 From your terminal:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {rhel-node2} -n {student-namespace}
 ----
 
 SSH back into node1:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
@@ -790,14 +790,14 @@ Start node2 again:
 exit
 ----
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl start {rhel-node2} -n {student-namespace}
 ----
 
 Wait 60 seconds for node2 to rejoin the cluster, then SSH into node2:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace}
 ----
@@ -864,7 +864,7 @@ In production retail deployments:
 
 Verify your Pacemaker cluster is fully functional:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -- sudo pcs status
 ----
@@ -883,7 +883,7 @@ You should see:
 *Problem:* VMs not starting
 
 *Solution:*
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 oc describe vm {rhel-node1} -n {student-namespace}
 oc get events -n {student-namespace} --sort-by='.lastTimestamp'
@@ -901,7 +901,7 @@ sudo passwd hacluster  # Set password to 'redhat'
 *Problem:* STONITH fencing fails
 
 *Solution:* Verify ServiceAccount permissions:
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 oc auth can-i update vm --as=system:serviceaccount:{student-namespace}:pacemaker-fencing -n {student-namespace}
 ----
@@ -919,7 +919,7 @@ oc auth can-i update vm --as=system:serviceaccount:{student-namespace}:pacemaker
 
 If you want to reset for another attempt:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl stop {rhel-node1} -n {student-namespace}
 virtctl stop {rhel-node2} -n {student-namespace}
@@ -957,7 +957,7 @@ You'll configure PostgreSQL with streaming replication and add it as a Pacemaker
 
 SSH into node1:
 
-[source,bash,role=execute]
+[source,bash,role=execute,subs="attributes+"]
 ----
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
@@ -1134,7 +1134,7 @@ You should see `postgres-ha` group with both `cluster-vip` and `postgresql-db` o
 
 Connect to database via VIP:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
@@ -1162,7 +1162,7 @@ The `postgres-ha` group should migrate to node2, including:
 
 Connect to database again (same VIP, now on node2):
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c "SELECT * FROM test_replication;"
 ----
@@ -1180,7 +1180,7 @@ sudo pcs node unstandby rhel-ha-node1
 
 Create a realistic store database schema:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb <<'EOF'
 -- Products table
@@ -1225,7 +1225,7 @@ Simulate a transaction happening during failover:
 
 Open a new terminal and run this loop (simulates POS system):
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 while true; do
   sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
@@ -1259,7 +1259,7 @@ You'll see:
 
 After node2 rejoins, check transaction history:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo -u postgres psql -h {pacemaker-vip} -d storedb -c \
   "SELECT COUNT(*) as total_transactions, MAX(timestamp) as last_transaction FROM transactions;"
@@ -1331,7 +1331,7 @@ spec:
 
 Remove PostgreSQL resources:
 
-[source,role="execute"]
+[source,role="execute",subs="attributes+"]
 ----
 sudo pcs resource delete postgres-ha
 sudo pcs resource create cluster-vip IPaddr2 ip={pacemaker-vip} cidr_netmask=24 nic=eth1
