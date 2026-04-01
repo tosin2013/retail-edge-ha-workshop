@@ -1,0 +1,36 @@
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: workshop-wetty-terminal
+  namespace: retail-edge-workshop-builds
+  labels:
+    app: workshop-wetty-terminal
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: workshop-wetty-terminal:latest
+  source:
+    type: Git
+    git:
+      uri: https://github.com/tosin2013/retail-edge-ha-workshop.git
+      ref: main
+    contextDir: wetty-terminal
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers:
+  - type: ConfigChange
+  - type: GitHub
+    github:
+      secret: workshop-wetty-terminal-webhook
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: workshop-wetty-terminal
+  namespace: retail-edge-workshop-builds
+  labels:
+    app: workshop-wetty-terminal
