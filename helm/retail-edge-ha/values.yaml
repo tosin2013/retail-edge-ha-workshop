@@ -373,7 +373,7 @@ showroom:
   chart:
     repository: https://rhpds.github.io/showroom-deployer
     name: showroom
-    version: "2.0.0"  # Showroom deployer chart version
+    version: "0.4.9"  # Showroom deployer chart version (latest stable)
 
 # Showroom Configuration (ConfigMaps)
 # -----------------------------------------------------------------------------
