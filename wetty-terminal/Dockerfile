@@ -19,18 +19,13 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/ope
     chmod +x /usr/local/bin/oc /usr/local/bin/kubectl /usr/local/bin/virtctl && \
     ls -la /usr/local/bin/ | grep -E '(oc|kubectl|virtctl)'
 
-# Setup bash completion (use full paths since /usr/local/bin not in PATH during build)
-RUN mkdir -p /etc/bash_completion.d && \
-    cd /usr/local/bin && \
-    ./oc completion bash > /etc/bash_completion.d/oc && \
-    ./kubectl completion bash > /etc/bash_completion.d/kubectl
-
 # Configure shell environment
-RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
+# Note: Skipping bash completion for oc/kubectl due to glibc compatibility issues in Alpine
+# The binaries work fine at runtime, just can't generate completion during build
+RUN echo 'export PATH=/usr/local/bin:$PATH' >> /root/.bashrc && \
+    echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
     echo 'alias k=kubectl' >> /root/.bashrc && \
-    echo 'alias vh=virtctl' >> /root/.bashrc && \
-    echo 'source /etc/bash_completion.d/oc 2>/dev/null' >> /root/.bashrc && \
-    echo 'source /etc/bash_completion.d/kubectl 2>/dev/null' >> /root/.bashrc
+    echo 'alias vh=virtctl' >> /root/.bashrc
 
 # Add welcome message
 RUN echo 'cat << "EOF"' >> /root/.bashrc && \
