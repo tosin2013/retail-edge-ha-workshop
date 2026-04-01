@@ -30,12 +30,14 @@ RUN wget -q https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtct
 RUN useradd -m -s /bin/bash student && \
     echo "student:redhat" | chpasswd
 
-# Configure SSH server
+# Configure SSH server for containerized environment
 RUN ssh-keygen -A && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin no/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
     sed -i 's/GSSAPIAuthentication yes/GSSAPIAuthentication no/' /etc/ssh/sshd_config && \
-    sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
+    sed -i 's/#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config && \
+    sed -i 's/UsePrivilegeSeparation.*/UsePrivilegeSeparation no/' /etc/ssh/sshd_config && \
+    echo "UsePrivilegeSeparation no" >> /etc/ssh/sshd_config
 
 # Configure helpful student environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/student/.bashrc && \

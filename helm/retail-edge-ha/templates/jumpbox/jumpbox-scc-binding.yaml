@@ -1,0 +1,25 @@
+{{- if .Values.jumpbox.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
+# Grant anyuid SCC to jumpbox (SSH daemon needs to run as root on port 22)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: jumpbox-anyuid-{{ $studentId }}
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ add (int $.Values.jumpbox.deploySyncWave) -1 | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:anyuid
+subjects:
+- kind: ServiceAccount
+  name: jumpbox-sa
+  namespace: {{ $namespace }}
+{{- end }}
+{{- end }}
