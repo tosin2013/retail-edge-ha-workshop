@@ -18,10 +18,11 @@ RUN curl -L https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/ope
     chmod +x /usr/local/bin/oc /usr/local/bin/kubectl /usr/local/bin/virtctl && \
     ls -la /usr/local/bin/ | grep -E '(oc|kubectl|virtctl)'
 
-# Setup bash completion
+# Setup bash completion (use full paths since /usr/local/bin not in PATH during build)
 RUN mkdir -p /etc/bash_completion.d && \
-    oc completion bash > /etc/bash_completion.d/oc && \
-    kubectl completion bash > /etc/bash_completion.d/kubectl
+    cd /usr/local/bin && \
+    ./oc completion bash > /etc/bash_completion.d/oc && \
+    ./kubectl completion bash > /etc/bash_completion.d/kubectl
 
 # Configure shell environment
 RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc && \
