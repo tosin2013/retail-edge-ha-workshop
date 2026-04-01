@@ -464,3 +464,35 @@ validation:
 
   # Git branch or tag to use
   gitRef: "main"
+
+# Jumpbox Configuration (Terminal Access with CLI Tools)
+# -----------------------------------------------------------------------------
+jumpbox:
+  # Enable jumpbox pod deployment
+  # Provides SSH-accessible bastion pod per student with oc/virtctl pre-installed
+  enabled: true
+
+  # Build configuration (uses OpenShift BuildConfig + internal registry)
+  buildNamespace: retail-edge-workshop-builds
+  sourceRepo: https://github.com/tosin2013/retail-edge-ha-workshop.git
+  sourceRef: main
+  contextDir: jumpbox
+
+  # ArgoCD sync waves
+  # buildSyncWave: Creates namespace, ImageStream, BuildConfig (starts image build)
+  # deploySyncWave: Deploys jumpbox pods (must be < showroom.syncWave)
+  buildSyncWave: "0"
+  deploySyncWave: "2"
+
+  # SSH credentials (WeTTY will auto-login with these)
+  username: student
+  password: redhat
+
+  # Resource limits per jumpbox pod
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"

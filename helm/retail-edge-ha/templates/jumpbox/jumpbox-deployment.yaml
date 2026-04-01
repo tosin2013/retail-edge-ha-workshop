@@ -1,0 +1,140 @@
+{{- if .Values.jumpbox.enabled }}
+{{- range $studentNum := until (int .Values.students.count) }}
+{{- $studentId := add $studentNum 1 | printf "%02d" }}
+{{- $namespace := printf "%s-%s-%s" $.Values.students.namespacePrefix $.Values.students.userbase $studentId }}
+---
+# ServiceAccount for jumpbox pod (gets cluster access)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jumpbox-sa
+  namespace: {{ $namespace }}
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ add (int $.Values.jumpbox.deploySyncWave) -1 | quote }}
+---
+# Grant jumpbox admin access to student namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jumpbox-admin
+  namespace: {{ $namespace }}
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ add (int $.Values.jumpbox.deploySyncWave) -1 | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: jumpbox-sa
+  namespace: {{ $namespace }}
+---
+# Grant jumpbox access to UDN namespace
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jumpbox-udn-access
+  namespace: {{ $namespace }}-udn
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ add (int $.Values.jumpbox.deploySyncWave) -1 | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: jumpbox-sa
+  namespace: {{ $namespace }}
+---
+# Jumpbox Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jumpbox
+  namespace: {{ $namespace }}
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.jumpbox.deploySyncWave | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jumpbox
+      student-id: "{{ $studentId }}"
+  template:
+    metadata:
+      labels:
+        app: jumpbox
+        student-id: "{{ $studentId }}"
+    spec:
+      serviceAccountName: jumpbox-sa
+      containers:
+      - name: jumpbox
+        # Use image from internal OpenShift registry
+        image: image-registry.openshift-image-registry.svc:5000/{{ $.Values.jumpbox.buildNamespace }}/workshop-jumpbox:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 22
+          name: ssh
+          protocol: TCP
+        env:
+        - name: STUDENT_ID
+          value: "{{ $studentId }}"
+        - name: STUDENT_NAMESPACE
+          value: "{{ $namespace }}"
+        - name: STUDENT_UDN_NAMESPACE
+          value: "{{ $namespace }}-udn"
+        - name: STUDENT_USER
+          value: "{{ $.Values.students.userbase }}-{{ $studentId }}"
+        resources:
+          requests:
+            memory: {{ $.Values.jumpbox.resources.requests.memory }}
+            cpu: {{ $.Values.jumpbox.resources.requests.cpu }}
+          limits:
+            memory: {{ $.Values.jumpbox.resources.limits.memory }}
+            cpu: {{ $.Values.jumpbox.resources.limits.cpu }}
+        livenessProbe:
+          tcpSocket:
+            port: 22
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 22
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+# Service for jumpbox SSH access
+apiVersion: v1
+kind: Service
+metadata:
+  name: jumpbox
+  namespace: {{ $namespace }}
+  labels:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $.Values.jumpbox.deploySyncWave | quote }}
+spec:
+  selector:
+    app: jumpbox
+    student-id: "{{ $studentId }}"
+  ports:
+  - port: 22
+    targetPort: 22
+    protocol: TCP
+    name: ssh
+  type: ClusterIP
+{{- end }}
+{{- end }}

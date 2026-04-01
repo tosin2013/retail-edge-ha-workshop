@@ -44,6 +44,17 @@ spec:
       # Terminal configuration
       - name: terminal.image
         value: {{ $.Values.showroom.terminal.image }}
+{{- if $.Values.jumpbox.enabled }}
+      # WeTTY SSH configuration - connect to jumpbox pod
+      - name: terminal.envVars.SSHHOST
+        value: "jumpbox.{{ $studentNamespace }}.svc.cluster.local"
+      - name: terminal.envVars.SSHPORT
+        value: "22"
+      - name: terminal.envVars.SSHUSER
+        value: {{ $.Values.jumpbox.username | quote }}
+      - name: terminal.envVars.SSHPASS
+        value: {{ $.Values.jumpbox.password | quote }}
+{{- end }}
       - name: terminal.envVars.STUDENT_ID
         value: "{{ $studentId }}"
       - name: terminal.envVars.STUDENT_NAMESPACE

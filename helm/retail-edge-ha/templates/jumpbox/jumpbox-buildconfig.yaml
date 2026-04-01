@@ -1,0 +1,81 @@
+{{- if .Values.jumpbox.enabled }}
+---
+# Namespace for jumpbox image builds
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.jumpbox.buildNamespace }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+# ImageStream for jumpbox image
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: workshop-jumpbox
+  namespace: {{ .Values.jumpbox.buildNamespace }}
+  labels:
+    app: jumpbox
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  lookupPolicy:
+    local: true
+---
+# BuildConfig - builds jumpbox image from Dockerfile
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: workshop-jumpbox
+  namespace: {{ .Values.jumpbox.buildNamespace }}
+  labels:
+    app: jumpbox
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ .Values.jumpbox.buildSyncWave | quote }}
+spec:
+  output:
+    to:
+      kind: ImageStreamTag
+      name: workshop-jumpbox:latest
+  source:
+    type: Git
+    git:
+      uri: {{ .Values.jumpbox.sourceRepo }}
+      ref: {{ .Values.jumpbox.sourceRef }}
+    contextDir: {{ .Values.jumpbox.contextDir }}
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Dockerfile
+  triggers:
+  - type: ConfigChange
+  - type: ImageChange
+---
+# ServiceAccount for jumpbox builds
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jumpbox-builder
+  namespace: {{ .Values.jumpbox.buildNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+---
+# Allow jumpbox-builder to build images
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jumpbox-builder-edit
+  namespace: {{ .Values.jumpbox.buildNamespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+subjects:
+- kind: ServiceAccount
+  name: jumpbox-builder
+  namespace: {{ .Values.jumpbox.buildNamespace }}
+{{- end }}
