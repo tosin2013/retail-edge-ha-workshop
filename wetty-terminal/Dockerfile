@@ -53,10 +53,15 @@ RUN echo 'cat << "EOF"' >> /root/.bashrc && \
     echo '  virtctl start <vm-name> -n ${STUDENT_NAMESPACE}' >> /root/.bashrc && \
     echo 'EOF' >> /root/.bashrc
 
+# Create entrypoint script
+RUN echo '#!/bin/bash' > /entrypoint.sh && \
+    echo 'exec wetty --port 8080 --base /wetty/ --command /bin/bash' >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
 EXPOSE 8080
 
 # Use default shell (bash)
 ENV SHELL=/bin/bash
 
-# Start WeTTY in non-SSH mode (direct shell access)
-CMD wetty --port 8080 --base /wetty/ --command /bin/bash
+# Start WeTTY
+ENTRYPOINT ["/entrypoint.sh"]
