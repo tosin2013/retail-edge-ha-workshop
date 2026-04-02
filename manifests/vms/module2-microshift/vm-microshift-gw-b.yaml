@@ -69,7 +69,7 @@ spec:
         pod: {}
       - name: microshift-net
         multus:
-          networkName: retail-edge-student-01-udn/microshift-net
+          networkName: microshift-net
       volumes:
       - dataVolume:
           name: microshift-gw-b-disk
@@ -146,7 +146,7 @@ spec:
         pod: {}
       - name: microshift-net
         multus:
-          networkName: retail-edge-student-02-udn/microshift-net
+          networkName: microshift-net
       volumes:
       - dataVolume:
           name: microshift-gw-b-disk

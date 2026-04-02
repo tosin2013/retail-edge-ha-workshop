@@ -183,7 +183,7 @@ spec:
         pod: {}
       - name: pacemaker-net
         multus:
-          networkName: ${NAMESPACE_PREFIX}-${sid}-udn/pacemaker-net
+          networkName: pacemaker-net
       volumes:
       - dataVolume:
           name: rhel-ha-node1-disk
@@ -273,7 +273,7 @@ spec:
         pod: {}
       - name: pacemaker-net
         multus:
-          networkName: ${NAMESPACE_PREFIX}-${sid}-udn/pacemaker-net
+          networkName: pacemaker-net
       volumes:
       - dataVolume:
           name: rhel-ha-node2-disk
@@ -486,7 +486,7 @@ spec:
         pod: {}
       - name: microshift-net
         multus:
-          networkName: ${NAMESPACE_PREFIX}-${sid}-udn/microshift-net
+          networkName: microshift-net
       volumes:
       - dataVolume:
           name: microshift-gw-a-disk
@@ -576,7 +576,7 @@ spec:
         pod: {}
       - name: microshift-net
         multus:
-          networkName: ${NAMESPACE_PREFIX}-${sid}-udn/microshift-net
+          networkName: microshift-net
       volumes:
       - dataVolume:
           name: microshift-gw-b-disk
@@ -932,7 +932,7 @@ spec:
         pod: {}
       - name: twonode-net
         multus:
-          networkName: ${NAMESPACE_PREFIX}-${sid}-udn/twonode-net
+          networkName: twonode-net
       volumes:
       - dataVolume:
           name: ${disk_name}

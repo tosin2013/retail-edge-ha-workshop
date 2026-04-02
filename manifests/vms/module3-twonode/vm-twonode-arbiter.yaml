@@ -74,7 +74,7 @@ spec:
         pod: {}
       - name: twonode-net
         multus:
-          networkName: retail-edge-student-01-udn/twonode-net
+          networkName: twonode-net
       volumes:
       - dataVolume:
           name: twonode-arbiter-disk
@@ -156,7 +156,7 @@ spec:
         pod: {}
       - name: twonode-net
         multus:
-          networkName: retail-edge-student-02-udn/twonode-net
+          networkName: twonode-net
       volumes:
       - dataVolume:
           name: twonode-arbiter-disk

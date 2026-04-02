@@ -14,7 +14,7 @@
 # IP Allocation per Student:
 #   - Student 01: 10.101.0.20-21
 #   - Student 02: 10.101.0.20-21 (isolated UDN, same IPs OK)
-#   - Student 03-50: 10.101.0.20-21 (each in their own UDN namespace)
+#   - Student 03-50: 10.101.0.20-21 (each in their own namespace)
 # =============================================================================
 
 ---
@@ -23,7 +23,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-01-udn
+  namespace: retail-edge-student-01
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -33,7 +33,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - "10.101.0.0/24"
 
@@ -43,7 +43,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-02-udn
+  namespace: retail-edge-student-02
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -53,7 +53,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - "10.101.0.0/24"
 
@@ -63,7 +63,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-03-udn
+  namespace: retail-edge-student-03
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -73,7 +73,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - "10.101.0.0/24"
 
@@ -83,7 +83,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-04-udn
+  namespace: retail-edge-student-04
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -93,7 +93,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - "10.101.0.0/24"
 
@@ -103,7 +103,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-05-udn
+  namespace: retail-edge-student-05
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -113,6 +113,6 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - "10.101.0.0/24"

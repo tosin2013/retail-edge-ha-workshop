@@ -69,7 +69,7 @@ spec:
         pod: {}
       - name: pacemaker-net
         multus:
-          networkName: retail-edge-student-01-udn/pacemaker-net
+          networkName: pacemaker-net
       volumes:
       - dataVolume:
           name: rhel-ha-node2-disk
@@ -146,7 +146,7 @@ spec:
         pod: {}
       - name: pacemaker-net
         multus:
-          networkName: retail-edge-student-02-udn/pacemaker-net
+          networkName: pacemaker-net
       volumes:
       - dataVolume:
           name: rhel-ha-node2-disk

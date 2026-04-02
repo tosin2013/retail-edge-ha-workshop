@@ -3,7 +3,7 @@
 # Generate User Defined Network (UDN) Manifests for All Students
 # =============================================================================
 # This script generates UDN manifests for a specified number of students.
-# Each student gets 3 UDNs (one per module) in their UDN namespace.
+# Each student gets 3 UDNs (one per module) in their VM namespace.
 #
 # Usage:
 #   ./scripts/generate-udn-manifests.sh [student-count]
@@ -42,7 +42,7 @@ echo "# ========================================================================
 # IP Allocation per Student:
 #   - Student 01: 10.101.0.20-21
 #   - Student 02: 10.101.0.20-21 (isolated UDN, same IPs OK)
-#   - Student 03-50: 10.101.0.20-21 (each in their own UDN namespace)
+#   - Student 03-50: 10.101.0.20-21 (each in their own namespace)
 #
 # Generated for ${STUDENT_COUNT} students
 # =============================================================================
@@ -58,7 +58,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: pacemaker-net
-  namespace: retail-edge-student-${student_id}-udn
+  namespace: retail-edge-student-${student_id}
   labels:
     workshop: retail-edge-ha
     module: module1
@@ -68,7 +68,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - cidr: 10.101.0.0/24
       gateway: 10.101.0.1
@@ -100,7 +100,7 @@ echo "# ========================================================================
 # IP Allocation per Student:
 #   - Student 01: 10.102.0.20-21 (nodes) + 10.102.0.100 (VIP)
 #   - Student 02: 10.102.0.20-21 + 10.102.0.100 (isolated, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own UDN namespace)
+#   - Student 03-50: Same pattern (each in their own namespace)
 #
 # Generated for ${STUDENT_COUNT} students
 # =============================================================================
@@ -116,7 +116,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-${student_id}-udn
+  namespace: retail-edge-student-${student_id}
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -126,7 +126,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - cidr: 10.102.0.0/24
       gateway: 10.102.0.1
@@ -159,7 +159,7 @@ echo "# ========================================================================
 # IP Allocation per Student:
 #   - Student 01: 10.103.0.20-22 (master1, master2, arbiter)
 #   - Student 02: 10.103.0.20-22 (isolated UDN, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own UDN namespace)
+#   - Student 03-50: Same pattern (each in their own namespace)
 #
 # Generated for ${STUDENT_COUNT} students
 # =============================================================================
@@ -175,7 +175,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-${student_id}-udn
+  namespace: retail-edge-student-${student_id}
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -185,7 +185,7 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
     - cidr: 10.103.0.0/24
       gateway: 10.103.0.1

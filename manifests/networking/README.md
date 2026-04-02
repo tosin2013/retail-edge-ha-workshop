@@ -125,15 +125,15 @@ VM B (10.101.0.21) on Node 2
 When UDNs are created, OVN-Kubernetes automatically generates **NetworkAttachmentDefinitions (NADs)** that VMs reference:
 
 ```yaml
-# VM network attachment
+# VM network attachment (UDN in same namespace as VM)
 spec:
   networks:
   - name: pacemaker-net
     multus:
-      networkName: retail-edge-student-01-udn/pacemaker-net
+      networkName: pacemaker-net
 ```
 
-The format is: `<udn-namespace>/<udn-name>`
+The UDN and NAD live in the same namespace as the VMs.
 
 ## Validation
 
