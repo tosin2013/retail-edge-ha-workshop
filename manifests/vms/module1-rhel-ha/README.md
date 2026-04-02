@@ -57,7 +57,7 @@ Cloud-init performs:
 
 ## Starting VMs
 
-VMs are created with `spec.running: false`. Students must start them manually:
+VMs are created with `spec.runStrategy: Manual`. Students must start them manually:
 
 ```bash
 # Start both VMs

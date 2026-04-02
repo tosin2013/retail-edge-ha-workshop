@@ -189,7 +189,7 @@ metadata:
     app.kubernetes.io/name: rhel-ha-node1
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: false
+  runStrategy: Manual
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -279,7 +279,7 @@ metadata:
     app.kubernetes.io/name: rhel-ha-node2
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: false
+  runStrategy: Manual
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -477,7 +477,7 @@ metadata:
     app.kubernetes.io/name: microshift-gw-a
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: false
+  runStrategy: Manual
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -567,7 +567,7 @@ metadata:
     app.kubernetes.io/name: microshift-gw-b
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: false
+  runStrategy: Manual
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
@@ -772,7 +772,7 @@ metadata:
     app.kubernetes.io/name: ${vm_name}
     app.kubernetes.io/part-of: retail-edge-ha
 spec:
-  running: false
+  runStrategy: Manual
   dataVolumeTemplates:
   - apiVersion: cdi.kubevirt.io/v1beta1
     kind: DataVolume
