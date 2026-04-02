@@ -300,19 +300,23 @@ Advanced Cluster Management is where your Two-Node OpenShift cluster (Module 3) 
 oc get managedclusters
 ----
 
-You should see at minimum:
+You should see output similar to:
 
 [source,text]
 ----
-NAME              HUB ACCEPTED   MANAGED CLUSTER URLS          JOINED   AVAILABLE   AGE
-local-cluster     true           https://api.cluster-...       True     True        ...
+NAME                 HUB ACCEPTED   MANAGED CLUSTER URLS                 JOINED   AVAILABLE   AGE
+local-cluster        true           https://api.cluster-...              True     True        ...
+student-01-twonode   true                                                         Unknown     ...
+student-02-twonode   true                                                         Unknown     ...
 ----
 
-The `local-cluster` is the hub cluster itself. When you deploy Module 3's Two-Node OpenShift, it will register here as an additional managed cluster.
+The `local-cluster` is the hub cluster itself. The `student-XX-twonode` entries are placeholders for Module 3's Two-Node OpenShift clusters -- they show **Unknown** availability until the VMs are deployed and the clusters are fully bootstrapped.
 
 **Step 2:** In the console, navigate to **Infrastructure** -> **Clusters**
 
-This shows the RHACM cluster inventory. Currently only the hub cluster (`local-cluster`) is listed. After Module 3, your Two-Node OpenShift cluster will appear here.
+image::acm-clusters-overview.png[ACM Clusters Overview, align=center]
+
+This shows the RHACM cluster inventory. You'll see the hub cluster (`local-cluster`) in a **Ready** state, along with the Module 3 Two-Node OpenShift cluster placeholders in **Pending Import** status. These will become fully joined once you deploy Module 3.
 
 **Step 3:** View cluster details
 
