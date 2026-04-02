@@ -1,0 +1,35 @@
+---
+# Allow Showroom terminal service accounts to extract the flightctl CLI
+# from the cli-artifacts pod in the Edge Manager namespace.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: flightctl-cli-access
+  namespace: redhat-edge-manager
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/exec"]
+  verbs: ["create"]
+---
+# Bind all showroom-student-* default service accounts
+# Uses a group pattern via individual bindings per student.
+# For workshops with more students, add additional subjects.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: flightctl-cli-access
+  namespace: redhat-edge-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: flightctl-cli-access
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-01
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-02

@@ -2,7 +2,7 @@
 
 == Introduction
 
-Welcome! In this hands-on workshop, you'll learn to deploy and manage three different high-availability architectures commonly used in retail edge computing environments.
+Welcome! In this hands-on workshop, you'll learn to deploy and manage three different high-availability architectures commonly used in retail edge computing environments. Your lab VMs are managed by **Red Hat Edge Manager** (Modules 1 and 2) and **Red Hat Advanced Cluster Management** (Module 3), giving you hands-on experience with production fleet management tools.
 
 == Workshop Overview
 
@@ -24,16 +24,16 @@ Over the next few hours, you'll work through five modules:
 |Module |Description
 
 |*Module 0*
-|Understand fleet management at scale with Red Hat Advanced Cluster Management (RHACM)
+|Explore fleet management with Red Hat Edge Manager and Red Hat Advanced Cluster Management (RHACM)
 
 |*Module 1*
-|Deploy a two-node Pacemaker/Corosync cluster with STONITH fencing + shared storage (GFS2)
+|Deploy a two-node Pacemaker/Corosync cluster with STONITH fencing + shared storage (GFS2). VMs managed by Edge Manager.
 
 |*Module 2*
-|Configure MicroShift with VRRP-based virtual IP failover + understand local storage limitations
+|Configure MicroShift with VRRP-based virtual IP failover + understand local storage limitations. VMs managed by Edge Manager.
 
 |*Module 3*
-|Install a two-node OpenShift cluster with remote etcd arbiter + learn etcd storage requirements
+|Install a two-node OpenShift cluster with remote etcd arbiter + learn etcd storage requirements. Cluster managed by RHACM.
 
 |*Module 4*
 |Perform chaos engineering tests to validate resilience
@@ -87,6 +87,7 @@ Throughout this workshop, you'll use:
 
 * `oc` - OpenShift CLI (available in terminal)
 * `virtctl` - KubeVirt VM management (available in terminal)
+* `flightctl` - Red Hat Edge Manager CLI (available in terminal)
 * `pcs` - Pacemaker cluster management (installed in VMs)
 * `keepalived` - VRRP daemon (installed in VMs)
 * `etcdctl` - etcd cluster inspection (installed in VMs)
@@ -142,15 +143,16 @@ oc get namespace {student-namespace}
 # Check VM resources
 oc get vms -n {student-namespace}
 
-# Verify virtctl is available
+# Verify CLIs are available
 virtctl version
+flightctl version
 ----
 
 **Expected Results:**
 
 * Your namespace exists and is accessible
-* VMs are listed (may be in "Stopped" state - you'll start them in Module 1)
-* virtctl shows version information
+* VMs are listed (may be in "Stopped" state -- you'll start them in Module 1)
+* virtctl and flightctl show version information
 
 [TIP]
 ====
