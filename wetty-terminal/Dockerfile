@@ -25,6 +25,10 @@ RUN wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/ope
     chmod +x virtctl-v1.4.0-linux-amd64 && \
     mv virtctl-v1.4.0-linux-amd64 /usr/local/bin/virtctl
 
+# Install flightctl CLI (Red Hat Edge Manager) - downloaded at first login
+COPY install-flightctl.sh /usr/local/bin/install-flightctl.sh
+RUN chmod +x /usr/local/bin/install-flightctl.sh
+
 # Create student home directory for OpenShift arbitrary UID
 RUN mkdir -p /home/student && \
     chmod g+rwX /home/student && \
@@ -42,9 +46,10 @@ RUN { \
     echo '╚══════════════════════════════════════════════════════════════════╝'; \
     echo ''; \
     echo 'Available tools:'; \
-    echo '  • oc       - OpenShift CLI'; \
-    echo '  • kubectl  - Kubernetes CLI (alias: k)'; \
-    echo '  • virtctl  - KubeVirt VM management (alias: vh)'; \
+    echo '  • oc        - OpenShift CLI'; \
+    echo '  • kubectl   - Kubernetes CLI (alias: k)'; \
+    echo '  • virtctl   - KubeVirt VM management (alias: vh)'; \
+    echo '  • flightctl - Red Hat Edge Manager CLI'; \
     echo ''; \
     echo 'Your namespace: ${STUDENT_NAMESPACE}'; \
     echo 'Student ID: ${STUDENT_ID}'; \
@@ -52,7 +57,9 @@ RUN { \
     echo 'Quick commands:'; \
     echo '  oc get vms -n ${STUDENT_NAMESPACE}'; \
     echo '  virtctl start <vm-name> -n ${STUDENT_NAMESPACE}'; \
+    echo '  flightctl get devices'; \
     echo 'BANNER'; \
+    echo '/usr/local/bin/install-flightctl.sh 2>/dev/null'; \
     } > /home/student/.bashrc && \
     chmod 644 /home/student/.bashrc && \
     chgrp 0 /home/student/.bashrc
