@@ -25,9 +25,9 @@ RUN wget -q https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable/ope
     chmod +x virtctl-v1.4.0-linux-amd64 && \
     mv virtctl-v1.4.0-linux-amd64 /usr/local/bin/virtctl
 
-# Install flightctl CLI (Red Hat Edge Manager) - downloaded at first login
-COPY install-flightctl.sh /usr/local/bin/install-flightctl.sh
-RUN chmod +x /usr/local/bin/install-flightctl.sh
+# Install flightctl CLI (Red Hat Edge Manager)
+COPY flightctl /usr/local/bin/flightctl
+RUN chmod +x /usr/local/bin/flightctl
 
 # Create student home directory for OpenShift arbitrary UID
 RUN mkdir -p /home/student && \
@@ -59,7 +59,6 @@ RUN { \
     echo '  virtctl start <vm-name> -n ${STUDENT_NAMESPACE}'; \
     echo '  flightctl get devices'; \
     echo 'BANNER'; \
-    echo '/usr/local/bin/install-flightctl.sh 2>/dev/null'; \
     } > /home/student/.bashrc && \
     chmod 644 /home/student/.bashrc && \
     chgrp 0 /home/student/.bashrc
