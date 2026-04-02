@@ -25,40 +25,7 @@ stringData:
       - openshift-clients
       - firewalld
       - flightctl-agent
-
     write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
-
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
       - path: /etc/flightctl/config.yaml
         owner: root:root
         permissions: '0600'
@@ -71,59 +38,50 @@ stringData:
             service:
               certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJiakNDQVJXZ0F3SUJBZ0lSQUpIcUt4WjExbnAwQmM1YW9uNEd5Vzh3Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemMxT0ZvWERUTTJNRE16TURFMApNemMxT0Zvd0Z6RVZNQk1HQTFVRUF4TU1abXhwWjJoMFkzUnNMV05oTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRW9tWkRHRmlQU0JZZSsrandKSUNjelpCVlExajVkaUxIK014WkJKSVk1SVI3OEpDeVQvNksKcFJIdXlkTnJtcXExdGZlVFhuUGZYaFZBaXdUd0RGVzNqS05DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4RwpBMVVkRXdFQi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFR0o1dVlXakQxbHJHZjRmRHZBaS9JUjJYalJNQW9HCkNDcUdTTTQ5QkFNQ0EwY0FNRVFDSUFTK2s5UzZUVm9qeFJ4aHJscG52VFFTWGh6bVVBUE1mSi9DdFJrc21yK08KQWlBdVRFdWk5cTBqbGZVT1ZjTE5mUVZDaGJMN1JwRmxuYTA4NHFqTzBxd2R0UT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJuakNDQVVTZ0F3SUJBZ0lSQUlVQ0VXa0dEUFM5cEpZeFpvay9peG93Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemd3TUZvWERUTTJNRE16TURFMApNemd3TUZvd0pURWpNQ0VHQTFVRUF4TWFabXhwWjJoMFkzUnNMV05zYVdWdWRDMXphV2R1WlhJdFkyRXdXVEFUCkJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRLZnpxS1VLenBzaU5OOFprOGR6ZjRNVnJPYnhsWUFaVW4KTXpsd2lEYzZYK0xDaDc2SFlsVXJxYjRncVNZMExjbkFqaFl4eWZEdWRNaVpUQ2RsREdIdm8yTXdZVEFPQmdOVgpIUThCQWY4RUJBTUNBcVF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVc1ZiTWFUL3NDUjlVClR0dE5YRmU3UG5uc1E5Z3dId1lEVlIwakJCZ3dGb0FVUVlubTVoYU1QV1dzWi9oOE84Q0w4aEhaZU5Fd0NnWUkKS29aSXpqMEVBd0lEU0FBd1JRSWhBSUlzcWcrQmlGaG5CV3RaZXBkN3o3NmtSa0RzT1FLK3dIdE03NUhCb0dtZApBaUFIclJDUC8zN1VwYzUyQ0FZNDMvTnRvNXF3eGhDQVJERXJTc3pYbHF4b0FBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
               server: https://agent-api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io/
-
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: gw-a
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "gw-a"
+      - path: /etc/systemd/system/edge-config-microshift.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Run microshift setup when fleet config arrives
+          ConditionPathExists=/etc/edge-config/setup-microshift.sh
+          ConditionPathExists=!/var/run/edge-config-microshift.done
+          After=network-online.target flightctl-agent.service
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          ExecStart=/bin/bash /etc/edge-config/setup-microshift.sh
+          RemainAfterExit=true
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/systemd/system/edge-config-microshift.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Watch for fleet config delivery
+          [Path]
+          PathExists=/etc/edge-config/setup-microshift.sh
+          [Install]
+          WantedBy=multi-user.target
     runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
       - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-
-      - systemctl enable --now microshift
-
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... ($i/60)"
-          sleep 5
-        done
-
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-
-      - systemctl enable --now keepalived
-
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        SCRIPT
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
       - systemctl enable --now flightctl-agent
+      - systemctl enable --now edge-config-microshift.path
 
 ---
 # Student 02 - Cloud-init for MicroShift Gateway A
@@ -149,40 +107,7 @@ stringData:
       - openshift-clients
       - firewalld
       - flightctl-agent
-
     write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
-
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
       - path: /etc/flightctl/config.yaml
         owner: root:root
         permissions: '0600'
@@ -195,56 +120,47 @@ stringData:
             service:
               certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJiakNDQVJXZ0F3SUJBZ0lSQUpIcUt4WjExbnAwQmM1YW9uNEd5Vzh3Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemMxT0ZvWERUTTJNRE16TURFMApNemMxT0Zvd0Z6RVZNQk1HQTFVRUF4TU1abXhwWjJoMFkzUnNMV05oTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRW9tWkRHRmlQU0JZZSsrandKSUNjelpCVlExajVkaUxIK014WkJKSVk1SVI3OEpDeVQvNksKcFJIdXlkTnJtcXExdGZlVFhuUGZYaFZBaXdUd0RGVzNqS05DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4RwpBMVVkRXdFQi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFR0o1dVlXakQxbHJHZjRmRHZBaS9JUjJYalJNQW9HCkNDcUdTTTQ5QkFNQ0EwY0FNRVFDSUFTK2s5UzZUVm9qeFJ4aHJscG52VFFTWGh6bVVBUE1mSi9DdFJrc21yK08KQWlBdVRFdWk5cTBqbGZVT1ZjTE5mUVZDaGJMN1JwRmxuYTA4NHFqTzBxd2R0UT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJuakNDQVVTZ0F3SUJBZ0lSQUlVQ0VXa0dEUFM5cEpZeFpvay9peG93Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemd3TUZvWERUTTJNRE16TURFMApNemd3TUZvd0pURWpNQ0VHQTFVRUF4TWFabXhwWjJoMFkzUnNMV05zYVdWdWRDMXphV2R1WlhJdFkyRXdXVEFUCkJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRLZnpxS1VLenBzaU5OOFprOGR6ZjRNVnJPYnhsWUFaVW4KTXpsd2lEYzZYK0xDaDc2SFlsVXJxYjRncVNZMExjbkFqaFl4eWZEdWRNaVpUQ2RsREdIdm8yTXdZVEFPQmdOVgpIUThCQWY4RUJBTUNBcVF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVc1ZiTWFUL3NDUjlVClR0dE5YRmU3UG5uc1E5Z3dId1lEVlIwakJCZ3dGb0FVUVlubTVoYU1QV1dzWi9oOE84Q0w4aEhaZU5Fd0NnWUkKS29aSXpqMEVBd0lEU0FBd1JRSWhBSUlzcWcrQmlGaG5CV3RaZXBkN3o3NmtSa0RzT1FLK3dIdE03NUhCb0dtZApBaUFIclJDUC8zN1VwYzUyQ0FZNDMvTnRvNXF3eGhDQVJERXJTc3pYbHF4b0FBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
               server: https://agent-api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io/
-
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: gw-a
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "gw-a"
+      - path: /etc/systemd/system/edge-config-microshift.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Run microshift setup when fleet config arrives
+          ConditionPathExists=/etc/edge-config/setup-microshift.sh
+          ConditionPathExists=!/var/run/edge-config-microshift.done
+          After=network-online.target flightctl-agent.service
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          ExecStart=/bin/bash /etc/edge-config/setup-microshift.sh
+          RemainAfterExit=true
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/systemd/system/edge-config-microshift.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Watch for fleet config delivery
+          [Path]
+          PathExists=/etc/edge-config/setup-microshift.sh
+          [Install]
+          WantedBy=multi-user.target
     runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
       - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-
-      - systemctl enable --now microshift
-
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... ($i/60)"
-          sleep 5
-        done
-
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-
-      - systemctl enable --now keepalived
-
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        SCRIPT
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
       - systemctl enable --now flightctl-agent
+      - systemctl enable --now edge-config-microshift.path

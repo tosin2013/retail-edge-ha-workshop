@@ -81,23 +81,81 @@ EOF
 }
 
 # Build the flightctl enrollment cloud-init fragments once (reused per VM)
+# When Edge Manager is enabled, cloud-init handles enrollment only. The actual
+# device configuration (hostname, /etc/hosts, services) is pushed by Fleet
+# Manager after enrollment. A systemd path unit triggers the setup script
+# when the flightctl agent delivers it.
 FLIGHTCTL_WRITE_FILES=""
 FLIGHTCTL_RUNCMD=""
 FLIGHTCTL_PACKAGES=""
 if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-  # Indent the enrollment config for cloud-init write_files (8-space indent for content inside userdata)
   ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
 
   FLIGHTCTL_PACKAGES="      - flightctl-agent"
 
-  FLIGHTCTL_WRITE_FILES="      - path: /etc/flightctl/config.yaml
+  FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
+fi
+
+# Helper: generate flightctl write_files block with enrollment config + device role + trigger service
+# Args: $1=role (node1|node2|gw-a|gw-b), $2=module (pacemaker|microshift)
+generate_flightctl_write_files() {
+  local role="$1" module="$2"
+  local service_name trigger_script
+  if [[ "$module" == "pacemaker" ]]; then
+    service_name="edge-config-pacemaker"
+    trigger_script="setup-pacemaker.sh"
+  else
+    service_name="edge-config-microshift"
+    trigger_script="setup-microshift.sh"
+  fi
+
+  ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
+
+  cat <<ENDOFWRITEFILES
+    write_files:
+      - path: /etc/flightctl/config.yaml
         owner: root:root
         permissions: '0600'
         content: |
-${ENROLLMENT_CONTENT}"
-
-  FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
-fi
+${ENROLLMENT_CONTENT}
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: ${module}
+          role: ${role}
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "${role}"
+      - path: /etc/systemd/system/${service_name}.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Run ${module} setup when fleet config arrives
+          ConditionPathExists=/etc/edge-config/${trigger_script}
+          ConditionPathExists=!/var/run/${service_name}.done
+          After=network-online.target flightctl-agent.service
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          ExecStart=/bin/bash /etc/edge-config/${trigger_script}
+          RemainAfterExit=true
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/systemd/system/${service_name}.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Watch for fleet config delivery
+          [Path]
+          PathExists=/etc/edge-config/${trigger_script}
+          [Install]
+          WantedBy=multi-user.target
+ENDOFWRITEFILES
+}
 
 # =============================================================================
 # MODULE 1: RHEL HA with Pacemaker
@@ -320,26 +378,18 @@ stringData:
 ${FLIGHTCTL_PACKAGES}
 ENDOFCLOUDINIT
 
-  # Add write_files section if flightctl is enabled
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    cat >> "$M1_INIT1" <<ENDOFWRITEFILES
-    write_files:
-${FLIGHTCTL_WRITE_FILES}
-ENDOFWRITEFILES
+    generate_flightctl_write_files "node1" "pacemaker" >> "$M1_INIT1"
   fi
 
   cat >> "$M1_INIT1" <<ENDOFRUNCMD
     runcmd:
-      - systemctl enable --now pcsd
-      - echo "redhat" | passwd --stdin hacluster
-      - hostnamectl set-hostname rhel-ha-node1
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-      - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
-      - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
 ${FLIGHTCTL_RUNCMD}
+      - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
 done
 echo "  cloudinit-node1.yaml"
@@ -379,24 +429,17 @@ ${FLIGHTCTL_PACKAGES}
 ENDOFCLOUDINIT
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    cat >> "$M1_INIT2" <<ENDOFWRITEFILES
-    write_files:
-${FLIGHTCTL_WRITE_FILES}
-ENDOFWRITEFILES
+    generate_flightctl_write_files "node2" "pacemaker" >> "$M1_INIT2"
   fi
 
   cat >> "$M1_INIT2" <<ENDOFRUNCMD
     runcmd:
-      - systemctl enable --now pcsd
-      - echo "redhat" | passwd --stdin hacluster
-      - hostnamectl set-hostname rhel-ha-node2
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.21/24
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-      - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
-      - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
 ${FLIGHTCTL_RUNCMD}
+      - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
 done
 echo "  cloudinit-node2.yaml"
@@ -622,95 +665,22 @@ stringData:
       - openshift-clients
       - firewalld
 ${FLIGHTCTL_PACKAGES}
+ENDOFCLOUDINIT
 
-    write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    generate_flightctl_write_files "gw-a" "microshift" >> "$M2_INIT_A"
+  fi
 
-          vrrp_instance MICROSHIFT_VIP {
-              state MASTER
-              interface eth1
-              virtual_router_id 1
-              priority 100
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
-${FLIGHTCTL_WRITE_FILES}
-
+  cat >> "$M2_INIT_A" <<ENDOFRUNCMD
     runcmd:
-      - hostnamectl set-hostname microshift-gw-a
-
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
       - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-
-      - systemctl enable --now microshift
-
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... (\$i/60)"
-          sleep 5
-        done
-
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-
-      - systemctl enable --now keepalived
-
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        SCRIPT
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
 ${FLIGHTCTL_RUNCMD}
-ENDOFCLOUDINIT
+      - systemctl enable --now edge-config-microshift.path
+ENDOFRUNCMD
 done
 echo "  cloudinit-gw-a.yaml"
 
@@ -747,95 +717,22 @@ stringData:
       - openshift-clients
       - firewalld
 ${FLIGHTCTL_PACKAGES}
+ENDOFCLOUDINIT
 
-    write_files:
-      - path: /etc/keepalived/keepalived.conf
-        owner: root:root
-        permissions: '0644'
-        content: |
-          vrrp_script check_microshift {
-              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
-              interval 3
-              weight -20
-              fall 2
-              rise 2
-          }
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    generate_flightctl_write_files "gw-b" "microshift" >> "$M2_INIT_B"
+  fi
 
-          vrrp_instance MICROSHIFT_VIP {
-              state BACKUP
-              interface eth1
-              virtual_router_id 1
-              priority 90
-              advert_int 1
-
-              authentication {
-                  auth_type PASS
-                  auth_pass microshift123
-              }
-
-              virtual_ipaddress {
-                  10.102.0.100/24 dev eth1
-              }
-
-              track_script {
-                  check_microshift
-              }
-          }
-${FLIGHTCTL_WRITE_FILES}
-
+  cat >> "$M2_INIT_B" <<ENDOFRUNCMD
     runcmd:
-      - hostnamectl set-hostname microshift-gw-b
-
       - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
       - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
       - nmcli con mod "Wired connection 2" ipv4.method manual
       - nmcli con mod "Wired connection 2" connection.autoconnect yes
       - nmcli con up "Wired connection 2"
-
-      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
-      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
-      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
-
-      - systemctl enable --now firewalld
-      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=80/tcp
-      - firewall-cmd --permanent --zone=public --add-port=443/tcp
-      - firewall-cmd --permanent --zone=public --add-port=5353/udp
-      - firewall-cmd --permanent --add-protocol=vrrp
-      - firewall-cmd --reload
-
-      - systemctl enable --now microshift
-
-      - |
-        for i in {1..60}; do
-          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-            echo "MicroShift is ready"
-            break
-          fi
-          echo "Waiting for MicroShift... (\$i/60)"
-          sleep 5
-        done
-
-      - mkdir -p /home/cloud-user/.kube
-      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
-      - chmod 600 /home/cloud-user/.kube/config
-
-      - systemctl enable --now keepalived
-
-      - |
-        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
-        #!/bin/bash
-        oc create deployment nginx --image=nginx --replicas=2
-        oc expose deployment nginx --port=80 --type=NodePort
-        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
-        SCRIPT
-      - chmod +x /home/cloud-user/test-deployment.sh
-      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
 ${FLIGHTCTL_RUNCMD}
-ENDOFCLOUDINIT
+      - systemctl enable --now edge-config-microshift.path
+ENDOFRUNCMD
 done
 echo "  cloudinit-gw-b.yaml"
 

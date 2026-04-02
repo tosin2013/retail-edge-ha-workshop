@@ -1,0 +1,7 @@
+apiVersion: flightctl.io/v1beta1
+kind: Repository
+metadata:
+  name: retail-edge-ha-workshop
+spec:
+  type: git
+  url: https://github.com/tosin2013/retail-edge-ha-workshop.git

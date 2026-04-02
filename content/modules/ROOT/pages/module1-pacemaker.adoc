@@ -140,22 +140,71 @@ oc get vmi -n {student-namespace} -w
 
 Press `Ctrl+C` when both show `Running` and `True` under READY.
 
-== Step 2: Verify Edge Manager Enrollment
+== Step 2: Observe Fleet Manager Configuration
 
-Your VMs automatically enrolled with Red Hat Edge Manager on boot. Verify they appear as managed devices:
+Your VMs automatically enrolled with **Red Hat Edge Manager** on boot. Edge Manager matched them to the `pacemaker-ha` fleet via the `module=pacemaker` label, and is now pushing configuration from the workshop Git repository.
+
+=== Watch Device Enrollment
+
+Wait about 30 seconds for the flightctl agent to enroll, then check:
+
+[source,bash,role=execute]
+----
+flightctl get enrollmentrequests
+----
+
+Approve any pending enrollment requests (in a production environment, auto-approval policies handle this):
+
+[source,bash,role=execute]
+----
+for req in $(flightctl get enrollmentrequests -o json 2>/dev/null | python3 -c "import sys,json; [print(d['metadata']['name']) for d in json.load(sys.stdin).get('items',[])]" 2>/dev/null); do
+  flightctl approve "$req" --labels module=pacemaker
+done
+----
+
+=== Verify Fleet Membership
 
 [source,bash,role=execute]
 ----
 flightctl get devices
 ----
 
-You should see your two Pacemaker nodes listed as devices. In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI.
+You should see your two Pacemaker nodes listed as devices with their fleet assignment:
 
-TIP: In production, hundreds of similar Pacemaker HA servers across retail stores would appear in this same devices list, organized into fleets by region or store type.
+[source,text]
+----
+NAME                    ALIAS   OWNER          SYSTEM   UPDATED   APPLICATIONS
+<device-id-node1>               pacemaker-ha
+<device-id-node2>               pacemaker-ha
+----
 
-== Step 3: Verify Network Configuration
+[source,bash,role=execute]
+----
+flightctl get fleets
+----
 
-SSH into node1 to check the network setup:
+The `pacemaker-ha` fleet should now show devices matched.
+
+TIP: In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI. In production, hundreds of similar Pacemaker HA servers across retail stores would appear here, organized into fleets by region or store type.
+
+=== Monitor Configuration Delivery
+
+Fleet Manager pulls configuration from the Git repository and pushes it to your devices. This includes hostname setup, `/etc/hosts` entries, the `hacluster` password, and `pcsd` service enablement.
+
+Watch for the configuration to be applied (this may take 1-2 minutes after enrollment):
+
+[source,bash,role=execute,subs="attributes+"]
+----
+virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -c "hostname; systemctl is-active pcsd 2>/dev/null || echo 'pcsd not yet active -- fleet config still being delivered'"
+----
+
+Password: `{vm-password}`
+
+Once Fleet Manager has delivered the configuration, the hostname will show `rhel-ha-node1` and `pcsd` will be `active`.
+
+== Step 3: Verify Network and Fleet Configuration
+
+SSH into node1 to verify that Fleet Manager configured everything correctly:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
@@ -164,7 +213,14 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Password: `{vm-password}`
 
-Check the IP addresses:
+Check the hostname (set by Fleet Manager):
+
+[source,role="execute"]
+----
+hostname
+----
+
+Check the IP addresses (set by cloud-init on boot):
 
 [source,role="execute"]
 ----
@@ -177,6 +233,20 @@ You should see:
 ----
 3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP>
     inet 10.101.0.20/24 brd 10.101.0.255 scope global eth1
+----
+
+Verify `/etc/hosts` entries (set by Fleet Manager):
+
+[source,role="execute"]
+----
+grep -E "rhel-ha-node[12]" /etc/hosts
+----
+
+Verify `pcsd` is running (enabled by Fleet Manager):
+
+[source,role="execute"]
+----
+systemctl is-active pcsd
 ----
 
 Verify connectivity to node2:
@@ -192,6 +262,8 @@ Exit the SSH session:
 ----
 exit
 ----
+
+NOTE: Everything you just verified was configured automatically by Fleet Manager -- hostname, `/etc/hosts`, `hacluster` password, and `pcsd` service. In production, this same fleet configuration would be applied to hundreds of Pacemaker nodes simultaneously.
 
 == Step 4: Configure Pacemaker Cluster
 

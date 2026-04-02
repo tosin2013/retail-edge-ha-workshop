@@ -31,6 +31,13 @@ spec:
     server: https://kubernetes.default.svc
     namespace: {{ .Values.infrastructure.namespace }}
 
+  ignoreDifferences:
+    - group: kubevirt.io
+      kind: VirtualMachine
+      jsonPointers:
+        - /spec/running
+        - /spec/runStrategy
+
   syncPolicy:
     {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}
 

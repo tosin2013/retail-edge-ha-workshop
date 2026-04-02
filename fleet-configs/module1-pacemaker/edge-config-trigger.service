@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Pacemaker HA setup when fleet config arrives
+ConditionPathExists=/etc/edge-config/setup-pacemaker.sh
+ConditionPathExists=!/var/run/edge-config-pacemaker.done
+After=network-online.target flightctl-agent.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /etc/edge-config/setup-pacemaker.sh
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target

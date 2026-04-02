@@ -1,0 +1,16 @@
+apiVersion: flightctl.io/v1beta1
+kind: Fleet
+metadata:
+  name: pacemaker-ha
+spec:
+  selector:
+    matchLabels:
+      module: pacemaker
+  template:
+    spec:
+      config:
+        - name: pacemaker-setup
+          gitRef:
+            repository: retail-edge-ha-workshop
+            targetRevision: main
+            path: fleet-configs/module1-pacemaker

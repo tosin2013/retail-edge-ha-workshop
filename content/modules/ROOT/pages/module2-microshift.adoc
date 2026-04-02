@@ -145,18 +145,56 @@ Press `Ctrl+C` when both show `Running`.
 
 TIP: The VMs boot in ~30 seconds, but MicroShift takes an additional 3-4 minutes to fully initialize.
 
-=== Verify Edge Manager Enrollment
+=== Observe Fleet Manager Configuration
 
-Your MicroShift VMs automatically enrolled with Red Hat Edge Manager on boot. Verify they appear as managed devices:
+Your MicroShift VMs automatically enrolled with **Red Hat Edge Manager** on boot. Edge Manager matched them to the `microshift-vrrp` fleet via the `module=microshift` label, and is now pushing configuration from the workshop Git repository -- including hostname, `/etc/hosts`, firewall rules, keepalived.conf, MicroShift enablement, and kubeconfig setup.
+
+[source,bash,role=execute]
+----
+flightctl get enrollmentrequests
+----
+
+Approve any pending enrollment requests:
+
+[source,bash,role=execute]
+----
+for req in $(flightctl get enrollmentrequests -o json 2>/dev/null | python3 -c "import sys,json; [print(d['metadata']['name']) for d in json.load(sys.stdin).get('items',[])]" 2>/dev/null); do
+  flightctl approve "$req" --labels module=microshift
+done
+----
+
+=== Verify Fleet Membership
 
 [source,bash,role=execute]
 ----
 flightctl get devices
 ----
 
-You should see your gateway VMs listed along with any Module 1 devices. In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI.
+You should see your MicroShift gateway VMs listed (along with any Module 1 devices from earlier). Check their fleet assignment:
 
-TIP: In production, MicroShift edge gateways across hundreds of retail stores would appear here. Edge Manager handles the RHEL device layer (OS updates, configuration), while MicroShift provides a lightweight Kubernetes runtime for containerized workloads on each device.
+[source,bash,role=execute]
+----
+flightctl get fleets
+----
+
+The `microshift-vrrp` fleet should now show matched devices.
+
+TIP: In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI. In production, MicroShift edge gateways across hundreds of retail stores would appear here. Edge Manager handles the RHEL device layer (OS updates, configuration), while MicroShift provides a lightweight Kubernetes runtime for containerized workloads.
+
+=== Wait for Configuration Delivery
+
+Fleet Manager configures everything on the gateways: hostname, network settings, firewall rules, MicroShift, keepalived, and kubeconfig. This takes 3-5 minutes after enrollment.
+
+Watch for MicroShift to become ready on Gateway A:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -c "for i in \$(seq 1 30); do systemctl is-active microshift &>/dev/null && echo 'MicroShift is active' && break || echo 'Waiting for Fleet Manager config... ('\$i'/30)'; sleep 10; done"
+----
+
+Password: `{vm-password}`
+
+NOTE: Everything below -- MicroShift, keepalived, firewall rules, kubeconfig -- was configured automatically by Fleet Manager. In production, this same fleet configuration would be applied to thousands of MicroShift gateways simultaneously.
 
 == Step 2: Verify MicroShift Installation
 
@@ -984,12 +1022,19 @@ Each MicroShift gateway is managed on **two levels**:
 |Pod scheduling, service networking, container lifecycle
 |===
 
-Verify your devices are still healthy in Edge Manager:
+Verify your devices are still healthy in Edge Manager and review the fleet:
 
 [source,bash,role=execute]
 ----
 flightctl get devices
 ----
+
+[source,bash,role=execute]
+----
+flightctl get fleets
+----
+
+Throughout this module, all the device-level configuration -- hostname, keepalived, firewall rules, MicroShift enablement -- was delivered by Fleet Manager from the workshop Git repository. The `microshift-vrrp` fleet ensures every gateway gets the same configuration automatically.
 
 In production, Edge Manager fleets allow you to:
 
@@ -997,6 +1042,7 @@ In production, Edge Manager fleets allow you to:
 * **Roll out MicroShift updates** -- upgrade the edge Kubernetes runtime across thousands of devices
 * **Monitor device health** -- detect offline gateways before store staff notice
 * **Enforce compliance** -- ensure all gateways run the approved OS image and configuration
+* **Git-driven configuration** -- all device configs live in Git; changes are automatically pushed to matching fleets
 
 == Key Takeaways
 

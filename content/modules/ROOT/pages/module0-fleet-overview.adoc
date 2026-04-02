@@ -265,29 +265,61 @@ Auto-selected organization: <uuid> redhat-edge-manager
 Login successful.
 ----
 
-**Step 3:** Check for devices (none enrolled yet)
+**Step 3:** Check the pre-configured fleets
 
-[source,bash,role=execute]
-----
-flightctl get devices
-----
+Your workshop has two fleets pre-configured -- one for each Edge Manager module:
 
 [source,bash,role=execute]
 ----
 flightctl get fleets
 ----
 
-Both commands return empty lists. This is expected -- your Module 1 and Module 2 VMs have not been started yet. When you start them in later modules, they will **automatically enroll** with Edge Manager and appear here.
+You should see:
 
-**Step 4:** In the OpenShift console, navigate to **Edge Management** -> **Devices**
+[source,text]
+----
+NAME              OWNER   SELECTOR             VALID
+pacemaker-ha              module=pacemaker     True
+microshift-vrrp           module=microshift    True
+----
+
+These fleets use **label selectors** to automatically group devices. When Module 1 VMs start, they enroll with the label `module=pacemaker` and join the `pacemaker-ha` fleet. Module 2 VMs enroll with `module=microshift` and join `microshift-vrrp`.
+
+**Step 4:** Check the Git repository integration
+
+[source,bash,role=execute]
+----
+flightctl get repositories
+----
+
+You should see:
+
+[source,text]
+----
+NAME                          TYPE   REPOSITORY URL                                                  ACCESSIBLE
+retail-edge-ha-workshop       git    https://github.com/tosin2013/retail-edge-ha-workshop.git        True
+----
+
+This repository is the **single source of truth** for device configuration. Fleet Manager pulls configuration files from the `fleet-configs/` directory and pushes them to enrolled devices.
+
+**Step 5:** Check for devices (none enrolled yet)
+
+[source,bash,role=execute]
+----
+flightctl get devices
+----
+
+The devices list is empty -- this is expected. Your Module 1 and Module 2 VMs have not been started yet. When you start them, they will **automatically enroll** with Edge Manager, join their fleet, and receive configuration from the Git repository.
+
+**Step 6:** In the OpenShift console, navigate to **Edge Management** -> **Devices**
 
 image::edge-manager-devices.png[Edge Manager Devices -- empty before VM start, align=center]
 
-**Step 5:** Navigate to **Edge Management** -> **Repositories**
+**Step 7:** Navigate to **Edge Management** -> **Repositories**
 
 image::edge-manager-repositories.png[Edge Manager Repositories, align=center]
 
-Repositories store OS images and configurations for fleet updates. In production, you'd configure a Git repository here to manage device configurations at scale.
+The repository connects Fleet Manager to your workshop's Git repo. Configuration files for each fleet are stored under `fleet-configs/` and automatically delivered to matching devices.
 
 === Exercise 3: Explore ACM Clusters (Module 3)
 

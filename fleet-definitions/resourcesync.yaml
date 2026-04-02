@@ -1,0 +1,8 @@
+apiVersion: flightctl.io/v1beta1
+kind: ResourceSync
+metadata:
+  name: retail-edge-ha-fleet-sync
+spec:
+  repository: retail-edge-ha-workshop
+  targetRevision: main
+  path: fleet-definitions
