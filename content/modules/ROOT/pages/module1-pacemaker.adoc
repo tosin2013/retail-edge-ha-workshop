@@ -4,6 +4,8 @@
 
 In this module, you'll deploy a two-node Pacemaker/Corosync cluster with STONITH (Shoot The Other Node In The Head) fencing. This architecture is ideal for stateful applications that require quick failover.
 
+NOTE: These VMs are **RHEL Device Edge** systems managed by **Red Hat Edge Manager** (flightctl). When you start the VMs, they automatically enroll with Edge Manager as managed devices. In production, hundreds of similar Pacemaker nodes across retail stores would be managed through Edge Manager fleets.
+
 == Architecture Comparison
 
 === Lab Environment (What You'll Build)
@@ -84,6 +86,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 By the end of this module, you will:
 
 * Start and access VirtualMachines using virtctl
+* Verify device enrollment in Red Hat Edge Manager
 * Configure a Pacemaker cluster with pcs
 * Set up fence_kubevirt for STONITH fencing
 * Create a Virtual IP resource
@@ -136,6 +139,19 @@ oc get vmi -n {student-namespace} -w
 ----
 
 Press `Ctrl+C` when both show `Running` and `True` under READY.
+
+== Step 2: Verify Edge Manager Enrollment
+
+Your VMs automatically enrolled with Red Hat Edge Manager on boot. Verify they appear as managed devices:
+
+[source,bash,role=execute]
+----
+flightctl get devices
+----
+
+You should see your two Pacemaker nodes listed as devices. In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI.
+
+TIP: In production, hundreds of similar Pacemaker HA servers across retail stores would appear in this same devices list, organized into fleets by region or store type.
 
 == Step 3: Verify Network Configuration
 

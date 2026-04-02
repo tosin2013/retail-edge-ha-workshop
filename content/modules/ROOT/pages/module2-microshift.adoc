@@ -4,6 +4,8 @@
 
 In this module, you'll deploy two MicroShift instances with Keepalived managing a Virtual IP using VRRP (Virtual Router Redundancy Protocol). This architecture provides high availability for edge gateways and load balancers.
 
+NOTE: These VMs are **RHEL Device Edge** systems managed by **Red Hat Edge Manager** (flightctl). The devices enroll automatically with Edge Manager on boot, while the MicroShift Kubernetes layer can also register with ACM as a managed cluster. This dual-plane approach is how production edge gateways are managed at scale.
+
 == Architecture Comparison
 
 === Lab Environment (What You'll Build)
@@ -94,6 +96,7 @@ image::module2-real-architecture.png[Real-World Edge Gateway Deployment, align=c
 By the end of this module, you will:
 
 * Deploy MicroShift on RHEL
+* Verify device enrollment in Red Hat Edge Manager
 * Configure Keepalived for VRRP
 * Test VIP failover scenarios
 * Monitor VRRP state transitions
@@ -141,6 +144,19 @@ oc get vmi -n {student-namespace} -w
 Press `Ctrl+C` when both show `Running`.
 
 TIP: The VMs boot in ~30 seconds, but MicroShift takes an additional 3-4 minutes to fully initialize.
+
+=== Verify Edge Manager Enrollment
+
+Your MicroShift VMs automatically enrolled with Red Hat Edge Manager on boot. Verify they appear as managed devices:
+
+[source,bash,role=execute]
+----
+flightctl get devices
+----
+
+You should see your gateway VMs listed along with any Module 1 devices. In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI.
+
+TIP: In production, MicroShift edge gateways across hundreds of retail stores would appear here. Edge Manager handles the RHEL device layer (OS updates, configuration), while MicroShift provides a lightweight Kubernetes runtime for containerized workloads on each device.
 
 == Step 2: Verify MicroShift Installation
 
@@ -947,6 +963,41 @@ sudo systemctl restart microshift
 ----
 ====
 
+== MicroShift Fleet Management
+
+Now that you've configured MicroShift HA, consider how this scales in production:
+
+=== Edge Manager + MicroShift
+
+Each MicroShift gateway is managed on **two levels**:
+
+[cols="1,2,2"]
+|===
+|Layer |Managed By |What It Does
+
+|**Device (RHEL OS)**
+|Red Hat Edge Manager (flightctl)
+|OS image updates, device configuration, health monitoring
+
+|**Kubernetes (MicroShift)**
+|MicroShift local control plane
+|Pod scheduling, service networking, container lifecycle
+|===
+
+Verify your devices are still healthy in Edge Manager:
+
+[source,bash,role=execute]
+----
+flightctl get devices
+----
+
+In production, Edge Manager fleets allow you to:
+
+* **Group gateways by region** -- push VRRP configuration updates to all West Coast stores at once
+* **Roll out MicroShift updates** -- upgrade the edge Kubernetes runtime across thousands of devices
+* **Monitor device health** -- detect offline gateways before store staff notice
+* **Enforce compliance** -- ensure all gateways run the approved OS image and configuration
+
 == Key Takeaways
 
 * VRRP provides lightweight, protocol-level HA for IP addresses
@@ -955,6 +1006,7 @@ sudo systemctl restart microshift
 * Failover is automatic and typically completes in 3-5 seconds
 * Preemption returns VIP to higher-priority node when it recovers
 * Layer 2 multicast (224.0.0.18) is required for VRRP
+* Red Hat Edge Manager provides fleet-level management for the RHEL device layer
 
 == Cleanup
 

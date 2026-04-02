@@ -1,0 +1,95 @@
+{{- if and .Values.fleetManagement.enabled .Values.fleetManagement.rhacm.edgeManager.enabled }}
+---
+# =============================================================================
+# Red Hat Edge Manager Child Application
+# =============================================================================
+# Deploys Red Hat Edge Manager 1.0 via the redhat-rhem Helm chart from
+# charts.openshift.io. Requires RHACM to be installed first.
+# Sync Wave: -1 (after fleet/RHACM, before CNV operator)
+# =============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.fleetManagement.rhacm.edgeManager.namespace }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: edge-manager
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ .Values.global.workshopName }}-edge-manager
+  namespace: {{ .Values.argocd.namespace }}
+  labels:
+    app.kubernetes.io/name: edge-manager
+    app.kubernetes.io/component: child-app
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  project: {{ .Values.argocd.project }}
+
+  source:
+    repoURL: {{ .Values.fleetManagement.rhacm.edgeManager.chart.repoURL }}
+    targetRevision: {{ .Values.fleetManagement.rhacm.edgeManager.chart.version }}
+    chart: {{ .Values.fleetManagement.rhacm.edgeManager.chart.chartName }}
+    helm:
+      valuesObject:
+        global:
+          enableOpenShiftExtensions: "auto"
+          {{- if .Values.fleetManagement.rhacm.edgeManager.acmIntegration }}
+          enableMulticlusterExtensions: "true"
+          {{- else }}
+          enableMulticlusterExtensions: "false"
+          {{- end }}
+          generateCertificates: "auto"
+          auth:
+            type: "openshift"
+            insecureSkipTlsVerify: true
+            openshift:
+              createAdminUser: true
+          exposeServicesMethod: "auto"
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ .Values.fleetManagement.rhacm.edgeManager.namespace }}
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 30s
+        factor: 2
+        maxDuration: 5m
+
+  ignoreDifferences:
+  - group: ""
+    kind: Secret
+    jsonPointers:
+    - /data
+  - group: route.openshift.io
+    kind: Route
+    jsonPointers:
+    - /spec/host
+    - /status
+
+  info:
+    - name: Component
+      value: Red Hat Edge Manager 1.0
+    - name: Wait Time
+      value: "5-10 minutes for Edge Manager deployment"
+    - name: Chart
+      value: {{ .Values.fleetManagement.rhacm.edgeManager.chart.chartName }}@{{ .Values.fleetManagement.rhacm.edgeManager.chart.version }}
+    - name: Features
+      value: "Device Fleet Management, flightctl CLI, ACM Console Integration"
+{{- end }}

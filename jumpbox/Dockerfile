@@ -29,6 +29,12 @@ RUN wget -q https://github.com/kubevirt/kubevirt/releases/download/v1.4.0/virtct
     chmod +x virtctl-v1.4.0-linux-amd64 && \
     mv virtctl-v1.4.0-linux-amd64 /usr/local/bin/virtctl
 
+# Install flightctl CLI (Red Hat Edge Manager)
+# Downloaded at container startup from the Edge Manager cli-artifacts route.
+# Falls back to extracting from the cli-artifacts pod if the route download fails.
+COPY install-flightctl.sh /usr/local/bin/install-flightctl.sh
+RUN chmod +x /usr/local/bin/install-flightctl.sh
+
 # Create student user with known password
 RUN useradd -m -s /bin/bash student && \
     echo "student:redhat" | chpasswd
@@ -43,6 +49,7 @@ RUN echo 'export PS1="\[\033[01;32m\]student@workshop\[\033[00m\]:\[\033[01;34m\
     echo 'source /etc/bash_completion.d/oc' >> /home/student/.bashrc && \
     echo 'source /etc/bash_completion.d/kubectl' >> /home/student/.bashrc && \
     echo 'export KUBECONFIG=/var/run/secrets/kubernetes.io/serviceaccount/.kubeconfig' >> /home/student/.bashrc && \
+    echo '/usr/local/bin/install-flightctl.sh 2>/dev/null' >> /home/student/.bashrc && \
     chown -R student:student /home/student
 
 # Create directory for kubeconfig
@@ -60,6 +67,7 @@ RUN echo '#!/bin/bash' > /etc/profile.d/welcome.sh && \
     echo '  • oc       - OpenShift CLI' >> /etc/profile.d/welcome.sh && \
     echo '  • kubectl  - Kubernetes CLI (alias: k)' >> /etc/profile.d/welcome.sh && \
     echo '  • virtctl  - KubeVirt VM management (alias: vh)' >> /etc/profile.d/welcome.sh && \
+    echo '  • flightctl - Red Hat Edge Manager CLI' >> /etc/profile.d/welcome.sh && \
     echo '' >> /etc/profile.d/welcome.sh && \
     echo 'Your namespace: ${STUDENT_NAMESPACE}' >> /etc/profile.d/welcome.sh && \
     echo 'Student ID: ${STUDENT_ID}' >> /etc/profile.d/welcome.sh && \

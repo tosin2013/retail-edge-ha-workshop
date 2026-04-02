@@ -37,5 +37,9 @@ asciidoc:
     twonode-arbiter: twonode-arbiter
     twonode-ip2: 10.103.0.21
     twonode-ip-arbiter: 10.103.0.22
+
+    # Edge Manager (flightctl)
+    edge-manager-api: api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io
+    edge-manager-namespace: redhat-edge-manager
   extensions:
   - '@asciidoctor/tabs'

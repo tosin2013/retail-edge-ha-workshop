@@ -1,5 +1,6 @@
 # VirtualMachine - Module 1: RHEL HA Node 1
 # Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
+# Base image: RHEL 9 DataSource
 
 ---
 # Student 01 - RHEL HA Node 1
@@ -23,9 +24,10 @@ spec:
     metadata:
       name: rhel-ha-node1-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: rhel9
+        namespace: openshift-virtualization-os-images
       storage:
         resources:
           requests:
@@ -99,9 +101,10 @@ spec:
     metadata:
       name: rhel-ha-node1-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: rhel9
+        namespace: openshift-virtualization-os-images
       storage:
         resources:
           requests:

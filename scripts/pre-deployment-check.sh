@@ -198,9 +198,52 @@ fi
 echo ""
 
 # =============================================================================
-# 8. RBAC Permissions
+# 8. RHACM / Edge Manager
 # =============================================================================
-echo "8. Checking permissions..."
+echo "8. Checking RHACM and Edge Manager readiness..."
+ACM_NS=$(oc get namespace open-cluster-management 2>/dev/null)
+if [ $? -eq 0 ]; then
+  check "open-cluster-management namespace exists"
+
+  ACM_CSV=$(oc get csv -n open-cluster-management 2>/dev/null | grep -i "advanced-cluster-management" | awk '{print $1}' | head -1)
+  if [ -n "$ACM_CSV" ]; then
+    ACM_STATUS=$(oc get csv -n open-cluster-management "$ACM_CSV" -o jsonpath='{.status.phase}' 2>/dev/null)
+    if [ "$ACM_STATUS" = "Succeeded" ]; then
+      check "RHACM operator ready (${ACM_CSV})"
+    else
+      warn "RHACM operator status: ${ACM_STATUS}"
+    fi
+  else
+    warn "RHACM operator not found - will be installed by workshop deployment"
+  fi
+
+  MCH_STATUS=$(oc get multiclusterhub -n open-cluster-management -o jsonpath='{.items[0].status.phase}' 2>/dev/null)
+  if [ "$MCH_STATUS" = "Running" ]; then
+    check "MultiClusterHub running"
+
+    EM_NS=$(oc get namespace redhat-edge-manager 2>/dev/null)
+    if [ $? -eq 0 ]; then
+      EM_PODS=$(oc get pods -n redhat-edge-manager --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+      if [ "$EM_PODS" -gt 0 ]; then
+        check "Edge Manager running ($EM_PODS pods in redhat-edge-manager)"
+      else
+        warn "Edge Manager namespace exists but no running pods"
+      fi
+    else
+      info "Edge Manager not yet deployed - workshop will deploy it via ArgoCD"
+    fi
+  else
+    info "MultiClusterHub not running yet (status: ${MCH_STATUS:-not found})"
+  fi
+else
+  warn "RHACM not installed - workshop deployment will install it"
+fi
+echo ""
+
+# =============================================================================
+# 9. RBAC Permissions
+# =============================================================================
+echo "9. Checking permissions..."
 oc auth can-i create namespace &>/dev/null
 check "Can create namespaces"
 
@@ -212,9 +255,9 @@ check "Can create VirtualMachines"
 echo ""
 
 # =============================================================================
-# 9. AgnosticD Setup
+# 10. AgnosticD Setup
 # =============================================================================
-echo "9. Checking AgnosticD v2 setup..."
+echo "10. Checking AgnosticD v2 setup..."
 if [ -d "/home/vpcuser/agnosticd-v2" ]; then
   check "AgnosticD v2 directory exists"
 

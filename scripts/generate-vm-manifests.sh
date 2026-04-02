@@ -11,6 +11,10 @@
 #   - Module 3 (Two-Node): 3 VMs + 1 ignition placeholder secret
 #   Total: 7 VMs per student
 #
+# VM base image: RHEL 9 from openshift-virtualization-os-images DataSource
+# Edge Manager: If scripts/flightctl-enrollment-config.yaml exists, flightctl-agent
+#   enrollment is added to Module 1 and Module 2 cloud-init configs.
+#
 # Usage:
 #   ./scripts/generate-vm-manifests.sh [student-count]
 #
@@ -24,6 +28,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VALUES_FILE="${REPO_ROOT}/helm/retail-edge-ha/values.yaml"
+ENROLLMENT_CONFIG="${SCRIPT_DIR}/flightctl-enrollment-config.yaml"
 
 # Read student count: CLI arg > values.yaml > default 2
 if [[ -n "$1" ]]; then
@@ -44,19 +49,29 @@ else
 fi
 STORAGE_CLASS=${STORAGE_CLASS:-ocs-external-storagecluster-ceph-rbd-immediate}
 
+# Check for Edge Manager enrollment config
+FLIGHTCTL_ENABLED=false
+if [[ -f "$ENROLLMENT_CONFIG" ]]; then
+  FLIGHTCTL_ENABLED=true
+  echo "Edge Manager enrollment config found: ${ENROLLMENT_CONFIG}"
+fi
+
 NAMESPACE_PREFIX="retail-edge-student"
+RHEL9_DS_NAME="rhel9"
+RHEL9_DS_NAMESPACE="openshift-virtualization-os-images"
 
 echo "=========================================="
 echo "Generating VM Manifests"
 echo "=========================================="
-echo "Student count:  ${STUDENT_COUNT}"
-echo "Storage class:  ${STORAGE_CLASS}"
-echo "Namespace:      ${NAMESPACE_PREFIX}-XX"
+echo "Student count:   ${STUDENT_COUNT}"
+echo "Storage class:   ${STORAGE_CLASS}"
+echo "Namespace:       ${NAMESPACE_PREFIX}-XX"
+echo "Base image:      RHEL 9 DataSource (${RHEL9_DS_NAMESPACE}/${RHEL9_DS_NAME})"
+echo "Edge Manager:    ${FLIGHTCTL_ENABLED}"
 echo ""
 
 # =============================================================================
-# Helper: generate_per_student <output_file> <header> <body_func>
-#   Writes a header then calls body_func for each student
+# Helper
 # =============================================================================
 write_header() {
   local file="$1" header="$2"
@@ -64,6 +79,25 @@ write_header() {
 ${header}
 EOF
 }
+
+# Build the flightctl enrollment cloud-init fragments once (reused per VM)
+FLIGHTCTL_WRITE_FILES=""
+FLIGHTCTL_RUNCMD=""
+FLIGHTCTL_PACKAGES=""
+if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+  # Indent the enrollment config for cloud-init write_files (8-space indent for content inside userdata)
+  ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
+
+  FLIGHTCTL_PACKAGES="      - flightctl-agent"
+
+  FLIGHTCTL_WRITE_FILES="      - path: /etc/flightctl/config.yaml
+        owner: root:root
+        permissions: '0600'
+        content: |
+${ENROLLMENT_CONTENT}"
+
+  FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
+fi
 
 # =============================================================================
 # MODULE 1: RHEL HA with Pacemaker
@@ -75,7 +109,8 @@ M1_DIR="${REPO_ROOT}/manifests/vms/module1-rhel-ha"
 # -- vm-rhel-node1.yaml --
 M1_NODE1_VM="${M1_DIR}/vm-rhel-node1.yaml"
 write_header "$M1_NODE1_VM" "# VirtualMachine - Module 1: RHEL HA Node 1
-# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}"
+# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}
+# Base image: RHEL 9 DataSource"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -103,9 +138,10 @@ spec:
     metadata:
       name: rhel-ha-node1-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: ${RHEL9_DS_NAME}
+        namespace: ${RHEL9_DS_NAMESPACE}
       storage:
         resources:
           requests:
@@ -163,7 +199,8 @@ echo "  vm-rhel-node1.yaml"
 # -- vm-rhel-node2.yaml --
 M1_NODE2_VM="${M1_DIR}/vm-rhel-node2.yaml"
 write_header "$M1_NODE2_VM" "# VirtualMachine - Module 1: RHEL HA Node 2
-# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}"
+# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}
+# Base image: RHEL 9 DataSource"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -191,9 +228,10 @@ spec:
     metadata:
       name: rhel-ha-node2-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: ${RHEL9_DS_NAME}
+        namespace: ${RHEL9_DS_NAMESPACE}
       storage:
         resources:
           requests:
@@ -255,7 +293,7 @@ write_header "$M1_INIT1" "# Cloud-init - RHEL HA Node 1
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
-  cat >> "$M1_INIT1" <<EOF
+  cat >> "$M1_INIT1" <<ENDOFCLOUDINIT
 
 ---
 # Student ${sid} - Node 1 Cloud-init
@@ -279,6 +317,18 @@ stringData:
       - fence-agents-kubevirt
       - corosync
       - fence-agents-all
+${FLIGHTCTL_PACKAGES}
+ENDOFCLOUDINIT
+
+  # Add write_files section if flightctl is enabled
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat >> "$M1_INIT1" <<ENDOFWRITEFILES
+    write_files:
+${FLIGHTCTL_WRITE_FILES}
+ENDOFWRITEFILES
+  fi
+
+  cat >> "$M1_INIT1" <<ENDOFRUNCMD
     runcmd:
       - systemctl enable --now pcsd
       - echo "redhat" | passwd --stdin hacluster
@@ -289,7 +339,8 @@ stringData:
       - nmcli con up "Wired connection 2"
       - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
       - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
-EOF
+${FLIGHTCTL_RUNCMD}
+ENDOFRUNCMD
 done
 echo "  cloudinit-node1.yaml"
 
@@ -300,7 +351,7 @@ write_header "$M1_INIT2" "# Cloud-init - RHEL HA Node 2
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
-  cat >> "$M1_INIT2" <<EOF
+  cat >> "$M1_INIT2" <<ENDOFCLOUDINIT
 
 ---
 # Student ${sid} - Node 2 Cloud-init
@@ -324,6 +375,17 @@ stringData:
       - fence-agents-kubevirt
       - corosync
       - fence-agents-all
+${FLIGHTCTL_PACKAGES}
+ENDOFCLOUDINIT
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat >> "$M1_INIT2" <<ENDOFWRITEFILES
+    write_files:
+${FLIGHTCTL_WRITE_FILES}
+ENDOFWRITEFILES
+  fi
+
+  cat >> "$M1_INIT2" <<ENDOFRUNCMD
     runcmd:
       - systemctl enable --now pcsd
       - echo "redhat" | passwd --stdin hacluster
@@ -334,7 +396,8 @@ stringData:
       - nmcli con up "Wired connection 2"
       - echo "10.101.0.20 rhel-ha-node1" >> /etc/hosts
       - echo "10.101.0.21 rhel-ha-node2" >> /etc/hosts
-EOF
+${FLIGHTCTL_RUNCMD}
+ENDOFRUNCMD
 done
 echo "  cloudinit-node2.yaml"
 
@@ -349,7 +412,8 @@ M2_DIR="${REPO_ROOT}/manifests/vms/module2-microshift"
 # -- vm-microshift-gw-a.yaml --
 M2_GWA_VM="${M2_DIR}/vm-microshift-gw-a.yaml"
 write_header "$M2_GWA_VM" "# VirtualMachine - Module 2: MicroShift Gateway A
-# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}"
+# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}
+# Base image: RHEL 9 DataSource"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -377,9 +441,10 @@ spec:
     metadata:
       name: microshift-gw-a-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: ${RHEL9_DS_NAME}
+        namespace: ${RHEL9_DS_NAMESPACE}
       storage:
         resources:
           requests:
@@ -437,7 +502,8 @@ echo "  vm-microshift-gw-a.yaml"
 # -- vm-microshift-gw-b.yaml --
 M2_GWB_VM="${M2_DIR}/vm-microshift-gw-b.yaml"
 write_header "$M2_GWB_VM" "# VirtualMachine - Module 2: MicroShift Gateway B
-# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}"
+# Generated for ${STUDENT_COUNT} students | Storage: ${STORAGE_CLASS}
+# Base image: RHEL 9 DataSource"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -465,9 +531,10 @@ spec:
     metadata:
       name: microshift-gw-b-disk
     spec:
-      source:
-        http:
-          url: "https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2"
+      sourceRef:
+        kind: DataSource
+        name: ${RHEL9_DS_NAME}
+        namespace: ${RHEL9_DS_NAMESPACE}
       storage:
         resources:
           requests:
@@ -522,32 +589,255 @@ EOF
 done
 echo "  vm-microshift-gw-b.yaml"
 
-# Cloud-init for Module 2 is complex (keepalived configs). We preserve it as-is
-# by replicating the Student 01 block from the existing files. The cloud-init
-# content is identical across students; only the namespace differs.
-for gw in gw-a gw-b; do
-  INIT_FILE="${M2_DIR}/cloudinit-${gw}.yaml"
-  if [[ -f "$INIT_FILE" ]]; then
-    # Extract student-01 block (from first --- to second ---)
-    BLOCK=$(awk '/^---$/{ if(n++) exit } n' "$INIT_FILE")
+# -- cloudinit-gw-a.yaml --
+M2_INIT_A="${M2_DIR}/cloudinit-gw-a.yaml"
+write_header "$M2_INIT_A" "# Cloud-init - Module 2: MicroShift Gateway A
+# Generated for ${STUDENT_COUNT} students | IP: 10.102.0.20"
 
-    HEADER="# Cloud-init - Module 2: MicroShift ${gw}
-# Generated for ${STUDENT_COUNT} students"
-    echo "$HEADER" > "${INIT_FILE}.tmp"
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v sid "%02d" "$i"
+  cat >> "$M2_INIT_A" <<ENDOFCLOUDINIT
 
-    for ((i=1; i<=STUDENT_COUNT; i++)); do
-      printf -v sid "%02d" "$i"
-      echo "" >> "${INIT_FILE}.tmp"
-      echo "---" >> "${INIT_FILE}.tmp"
-      echo "$BLOCK" | sed \
-        -e "s/Student 01/Student ${sid}/g" \
-        -e "s/${NAMESPACE_PREFIX}-01/${NAMESPACE_PREFIX}-${sid}/g" \
-        >> "${INIT_FILE}.tmp"
-    done
-    mv "${INIT_FILE}.tmp" "$INIT_FILE"
-    echo "  cloudinit-${gw}.yaml"
-  fi
+---
+# Student ${sid} - Cloud-init for MicroShift Gateway A
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-a
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+${FLIGHTCTL_PACKAGES}
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state MASTER
+              interface eth1
+              virtual_router_id 1
+              priority 100
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+${FLIGHTCTL_WRITE_FILES}
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-a
+
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+
+      - systemctl enable --now microshift
+
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... (\$i/60)"
+          sleep 5
+        done
+
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+
+      - systemctl enable --now keepalived
+
+      - |
+        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
+        #!/bin/bash
+        oc create deployment nginx --image=nginx --replicas=2
+        oc expose deployment nginx --port=80 --type=NodePort
+        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
+        SCRIPT
+      - chmod +x /home/cloud-user/test-deployment.sh
+      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
+${FLIGHTCTL_RUNCMD}
+ENDOFCLOUDINIT
 done
+echo "  cloudinit-gw-a.yaml"
+
+# -- cloudinit-gw-b.yaml --
+M2_INIT_B="${M2_DIR}/cloudinit-gw-b.yaml"
+write_header "$M2_INIT_B" "# Cloud-init - Module 2: MicroShift Gateway B
+# Generated for ${STUDENT_COUNT} students | IP: 10.102.0.21"
+
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v sid "%02d" "$i"
+  cat >> "$M2_INIT_B" <<ENDOFCLOUDINIT
+
+---
+# Student ${sid} - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+${FLIGHTCTL_PACKAGES}
+
+    write_files:
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+
+              track_script {
+                  check_microshift
+              }
+          }
+${FLIGHTCTL_WRITE_FILES}
+
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+
+      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
+      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
+      - nmcli con mod "Wired connection 2" ipv4.method manual
+      - nmcli con mod "Wired connection 2" connection.autoconnect yes
+      - nmcli con up "Wired connection 2"
+
+      - echo "10.102.0.20 microshift-gw-a" >> /etc/hosts
+      - echo "10.102.0.21 microshift-gw-b" >> /etc/hosts
+      - echo "10.102.0.100 microshift-vip" >> /etc/hosts
+
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+
+      - systemctl enable --now microshift
+
+      - |
+        for i in {1..60}; do
+          if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+          fi
+          echo "Waiting for MicroShift... (\$i/60)"
+          sleep 5
+        done
+
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+
+      - systemctl enable --now keepalived
+
+      - |
+        cat > /home/cloud-user/test-deployment.sh << 'SCRIPT'
+        #!/bin/bash
+        oc create deployment nginx --image=nginx --replicas=2
+        oc expose deployment nginx --port=80 --type=NodePort
+        echo "Test deployment created. Access via: curl http://10.102.0.100:<nodeport>"
+        SCRIPT
+      - chmod +x /home/cloud-user/test-deployment.sh
+      - chown cloud-user:cloud-user /home/cloud-user/test-deployment.sh
+${FLIGHTCTL_RUNCMD}
+ENDOFCLOUDINIT
+done
+echo "  cloudinit-gw-b.yaml"
 
 # =============================================================================
 # MODULE 3: Two-Node OpenShift with Arbiter
@@ -556,9 +846,6 @@ echo ""
 echo "--- Module 3: Two-Node OpenShift ---"
 
 M3_DIR="${REPO_ROOT}/manifests/vms/module3-twonode"
-
-# Module 3 uses PVC clone source (not HTTP), ignition (not cloud-init),
-# and has EFI firmware. Generate VMs for master1, master2, arbiter.
 
 generate_m3_vm() {
   local vm_name="$1" disk_name="$2" disk_size="$3" role="$4" \
@@ -669,11 +956,9 @@ generate_m3_vm "twonode-arbiter" "twonode-arbiter-disk" "20Gi" "Arbiter" \
   "etcd-arbiter" 1 "2Gi" "ignition-twonode-arbiter" "${M3_DIR}/vm-twonode-arbiter.yaml"
 echo "  vm-twonode-arbiter.yaml"
 
-# Ignition placeholders - replicate existing student-01 blocks
+# Ignition placeholders
 IGN_FILE="${M3_DIR}/ignition-placeholder.yaml"
 if [[ -f "$IGN_FILE" ]]; then
-  # The ignition file has multiple blocks (master1, master2, arbiter per student).
-  # Extract the three student-01 blocks and replicate per student.
   HEADER="# Ignition Configuration Placeholders - Module 3: Two-Node OpenShift
 # Generated for ${STUDENT_COUNT} students
 # IMPORTANT: These are PLACEHOLDER secrets. Generate proper ignition via openshift-install."
@@ -742,9 +1027,11 @@ echo "=========================================="
 echo "VM Generation Complete"
 echo "=========================================="
 echo ""
-echo "Students: ${STUDENT_COUNT}"
-echo "Storage:  ${STORAGE_CLASS}"
-echo "Running:  false (students start VMs manually)"
+echo "Students:      ${STUDENT_COUNT}"
+echo "Storage:       ${STORAGE_CLASS}"
+echo "Base image:    RHEL 9 (${RHEL9_DS_NAMESPACE}/${RHEL9_DS_NAME})"
+echo "Edge Manager:  ${FLIGHTCTL_ENABLED}"
+echo "Running:       false (students start VMs manually)"
 echo ""
 echo "VMs per student: 7"
 echo "  Module 1: rhel-ha-node1, rhel-ha-node2"

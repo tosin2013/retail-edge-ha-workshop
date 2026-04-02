@@ -15,11 +15,5 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  # High availability for production
   availabilityConfig: High
-
-  # Disable cluster backup (not needed for workshop)
   enableClusterBackup: false
-
-  # Note: RHACM 2.16+ includes all components by default
-  # Component overrides not needed for basic deployment

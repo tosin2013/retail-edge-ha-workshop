@@ -7,7 +7,7 @@ Before diving into individual node HA configurations, let's understand how retai
 In a real retail deployment:
 
 * **100-1000+ stores** each with 2-4 edge devices
-* **Centralized management** via Red Hat Advanced Cluster Management (RHACM)
+* **Centralized management** via Red Hat Edge Manager and Red Hat Advanced Cluster Management (RHACM)
 * **Image-based updates** pushed to entire fleet
 * **Compliance monitoring** across all locations
 * **Remote troubleshooting** without on-site visits
@@ -61,462 +61,333 @@ Each store runs critical applications:
 
 The three HA architectures you'll learn map directly to real retail use cases:
 
-[cols="1,2,2"]
+[cols="1,2,2,2"]
 |===
-|Architecture |Best For |Typical Use Case
+|Architecture |Best For |Typical Use Case |Managed By
 
 |**Pacemaker (Module 1)**
 |Stateful applications with shared storage
 |POS database servers, file servers
+|**Red Hat Edge Manager**
 
 |**MicroShift + VRRP (Module 2)**
 |Edge gateways and network services
 |Network gateway, WiFi controller, video aggregator
+|**Red Hat Edge Manager**
 
 |**Two-Node OpenShift (Module 3)**
 |Regional clusters serving multiple stores
 |Kubernetes platform for 10-50 stores (shared arbiter)
+|**Red Hat Advanced Cluster Management**
 |===
 
-== Red Hat Advanced Cluster Management (RHACM)
+== Two Management Planes
 
-In production, you would manage this fleet using **RHACM** (formerly Advanced Cluster Management for Kubernetes).
+Your workshop uses **two complementary management planes** depending on the type of workload:
 
-=== Hub-Spoke Architecture
+=== Red Hat Edge Manager (Modules 1 and 2)
 
-image::rhacm-hub-spoke.png[RHACM Hub-Spoke Architecture, align=center]
+**Red Hat Edge Manager** (powered by Flight Control / `flightctl`) manages **RHEL Device Edge** systems -- bare-metal or virtual machines running Red Hat Enterprise Linux at the edge. This includes:
 
-Each store is a **spoke cluster** managed from the central **hub cluster**.
+* **Module 1**: Pacemaker HA nodes (RHEL 9 VMs running pacemaker/corosync)
+* **Module 2**: MicroShift gateways (RHEL 9 VMs running MicroShift + keepalived)
 
-=== Key Capabilities
+Edge Manager provides:
 
-**1. Inventory Management**
+* **Device enrollment** -- devices register automatically on first boot
+* **Fleet management** -- group devices by role, location, or module
+* **OS image updates** -- push RHEL image updates to groups of devices
+* **Configuration management** -- apply device-level configs via fleet definitions
+* **Monitoring** -- track device status, connectivity, and drift
 
-View all managed clusters across your fleet:
+.Edge Management Console -- Fleets View
+image::edge-manager-fleets.png[Edge Manager Fleets, align=center]
 
-[source,yaml]
-----
-Name: store-0001-chicago-il
-Status: Ready
-OpenShift Version: 4.21.6
-Nodes: 2 (worker + control-plane)
-Workloads: 45 pods
-Last Heartbeat: 30 seconds ago
-----
+.Edge Management Console -- Devices View
+image::edge-manager-devices.png[Edge Manager Devices, align=center]
 
-**2. Policy-Based Governance**
+=== Red Hat Advanced Cluster Management (Module 3)
 
-Define compliance policies that apply to all stores:
+**RHACM** manages **OpenShift and Kubernetes clusters** -- full container platforms that run at the regional or store level. This includes:
 
-[source,yaml]
-----
-apiVersion: policy.open-cluster-management.io/v1
-kind: Policy
-metadata:
-  name: enforce-resource-limits
-spec:
-  disabled: false
-  policy-templates:
-  - objectDefinition:
-      apiVersion: policy.open-cluster-management.io/v1
-      kind: ConfigurationPolicy
-      metadata:
-        name: require-limits
-      spec:
-        remediationAction: enforce
-        severity: high
-        object-templates:
-        - complianceType: musthave
-          objectDefinition:
-            apiVersion: v1
-            kind: LimitRange
-            metadata:
-              name: resource-limits
-----
+* **Module 3**: Two-Node OpenShift (a full OpenShift cluster running on OpenShift Virtualization)
 
-If a store cluster drifts out of compliance, RHACM can automatically remediate.
+RHACM provides:
 
-**3. Application Deployment**
+* **Cluster lifecycle** -- provision, upgrade, and decommission clusters
+* **Policy governance** -- enforce compliance across all clusters
+* **Application deployment** -- place workloads on clusters by label selectors
+* **Observability** -- aggregate metrics and alerts from all clusters
 
-Deploy applications to specific store groups using **Placement**:
-
-[source,yaml]
-----
-apiVersion: cluster.open-cluster-management.io/v1beta1
-kind: Placement
-metadata:
-  name: west-coast-stores
-spec:
-  predicates:
-  - requiredClusterSelector:
-      labelSelector:
-        matchExpressions:
-        - key: region
-          operator: In
-          values: ["west"]
-        - key: environment
-          operator: In
-          values: ["production"]
-----
-
-Then deploy applications only to matching clusters:
-
-[source,yaml]
-----
-apiVersion: apps.open-cluster-management.io/v1
-kind: Subscription
-metadata:
-  name: pos-application
-spec:
-  channel: store-apps/stable
-  placement:
-    placementRef:
-      name: west-coast-stores
-----
-
-**4. Observability**
-
-Aggregate metrics from all stores into a central dashboard:
-
-* **Cluster health**: 498 healthy, 2 degraded
-* **Resource utilization**: 65% CPU, 70% memory across fleet
-* **Application status**: 99.8% pods running
-* **Compliance**: 95% compliant (25 stores need patches)
-
-=== Fleet Dashboard (Simulated)
-
-NOTE: The dashboard below is a simulated representation of a 500-store fleet. Your workshop environment has a **real RHACM 2.16 hub cluster** with simulated ManagedCluster resources representing your edge sites. You'll interact with these real RHACM APIs in the hands-on exercises later in this module. In production, the RHACM console is accessed via the OpenShift console's **All Clusters** perspective.
-
-.RHACM Inventory Dashboard
-[cols="1,1,1,1,1,1", options="header"]
-|===
-| Cluster Name | Status | Version | Nodes | Region | Last Seen
-
-| store-0001-chicago-il
-| ✅ Ready
-| 4.21.6
-| 2
-| central
-| 30s ago
-
-| store-0002-boston-ma
-| ✅ Ready
-| 4.21.6
-| 2
-| east
-| 45s ago
-
-| store-0123-seattle-wa
-| ✅ Ready
-| 4.21.6
-| 2
-| west
-| 1m ago
-
-| store-0234-dallas-tx
-| ❌ Offline
-| 4.21.2
-| 2
-| central
-| 5m ago
-
-| store-0456-miami-fl
-| ⚠️ Degraded
-| 4.21.6
-| 2
-| east
-| 2m ago
-
-| ... (495 more stores)
-| —
-| —
-| —
-| —
-| —
-|===
-
-**Summary Statistics:**
-
-* Total Clusters: **1,003** (1,000 devices + 3 regional hubs)
-* Status: **953 Ready**, **45 Offline**, **5 Degraded**
-* Compliance: **95%** (980/1,003 compliant)
-
-**Inventory View** shows:
-
-* **1,000 devices** across 500 retail stores
-* **95% online** (50 offline due to maintenance window)
-* **Device groups**:
-  ** POS-Servers (500 clusters)
-  ** Edge-Gateways (500 clusters)
-  ** Regional-Hubs (3 clusters)
-
-Your workshop ManagedClusters appear as:
-
-* `student-01-pacemaker` (Architecture: pacemaker-ha)
-* `student-01-microshift` (Architecture: microshift-vrrp)
-* `student-01-twonode` (Architecture: two-node-openshift)
-
-== Compliance and Security
-
-**Compliance Dashboard** shows:
-
-* ✅ **980 clusters compliant** (97.7%)
-* ⚠️ **15 clusters need security updates** (1.5%)
-* ❌ **8 clusters out of compliance** (0.8%)
-
-.Policy Violations by Type
-[cols="3,1,1", options="header"]
-|===
-| Policy Name | Violated Clusters | Severity
-
-| require-minimum-rhcos-version
-| 5
-| 🔴 High
-
-| enforce-resource-limits
-| 10
-| 🟡 Medium
-
-| network-policy-required
-| 5
-| 🟡 Medium
-
-| pod-security-standards
-| 3
-| 🟢 Low
-|===
-
-Example policy violations:
+=== How They Work Together
 
 [source,text]
 ----
-Policy: require-minimum-rhcos-version
-Failed Clusters:
-  - store-0234-dallas-tx (RHCOS 4.21.2, required: 4.21.6)
-  - store-0451-miami-fl (RHCOS 4.21.3, required: 4.21.6)
-
-Remediation: Automated update scheduled for next maintenance window
+                    +-----------------------------------------+
+                    |      Hub Cluster (ACM 2.16)             |
+                    |                                         |
+                    |  +------------------+  +--------------+ |
+                    |  | Edge Manager     |  | ACM Clusters | |
+                    |  | (flightctl)      |  | Management   | |
+                    |  +--------+---------+  +------+-------+ |
+                    +-----------|--------------------|--------+
+                                |                    |
+               +----------------+------+             |
+               |                       |             |
+     +---------v--------+  +-----------v---+  +------v----------+
+     | Module 1 Devices |  | Module 2      |  | Module 3        |
+     | (RHEL + Pacemaker)|  | Devices       |  | (Two-Node OCP)  |
+     | rhel-ha-node1    |  | (RHEL +       |  | twonode-master1 |
+     | rhel-ha-node2    |  | MicroShift)   |  | twonode-master2 |
+     +------------------+  | microshift-gw-a| | twonode-arbiter |
+                           | microshift-gw-b| +-----------------+
+                           +---------------+
 ----
 
-== Update Orchestration at Scale
+In production at RetailCorp scale:
 
-image::fleet-update-gantt.png[Progressive Rollout Schedule, align=center]
-
-**Update Status Summary:**
-
-[cols="2,1,1,3", options="header"]
-|===
-| Stage | Clusters | Status | Progress
-
-| Stage 1 (Canary)
-| 25 (5%)
-| ✅ Complete
-| 25/25 updated successfully
-
-| Stage 2
-| 50 (10%)
-| ⟳ In Progress
-| 35/50 updated (70%)
-
-| Stage 3
-| 125 (25%)
-| ⏳ Pending
-| Scheduled for 2026-03-27 02:00 EST
-
-| Stage 4
-| 250 (50%)
-| ⏳ Pending
-| Scheduled for 2026-03-28 02:00 EST
-
-| Stage 5
-| 500 (100%)
-| ⏳ Pending
-| Scheduled for 2026-03-30 02:00 EST
-|===
-
-**Update Workflow:**
-
-1. **Build new RHCOS image** with security patches
-2. **Test on dev/staging clusters** (10 stores)
-3. **Canary rollout** to 5% of stores (25 clusters)
-4. **Monitor for 24 hours** (check for regressions)
-5. **Progressive rollout**: 10%, 25%, 50%, 100%
-6. **Automatic rollback** if failures detected
-
-Example canary deployment:
-
-[source,yaml]
-----
-apiVersion: ran.openshift.io/v1
-kind: ClusterGroupUpgrade
-metadata:
-  name: rhcos-4.21.6-canary
-spec:
-  clusters:
-  - store-0001-chicago-il
-  - store-0123-boston-ma
-  - store-0456-seattle-wa
-  enable: true
-  managedPolicies:
-  - update-rhcos-4.21.6
-  remediationStrategy:
-    maxConcurrency: 1
-    timeout: 240
-----
-
-**Maintenance Windows** ensure updates happen during off-peak hours:
-
-* **US East Coast**: 2 AM - 5 AM EST
-* **US West Coast**: 2 AM - 5 AM PST
-* **Always avoid**: 7 AM - 10 PM (business hours)
-
-== Remote Troubleshooting
-
-When a store reports issues, you can troubleshoot remotely via RHACM.
-
-NOTE: The examples below show production-style commands using fictional store cluster names. These are illustrative -- do not run them in your lab terminal. You will practice real cluster inspection in the hands-on exercises below.
-
-**1. Check cluster status:**
-
-[source,bash]
-----
-oc get managedcluster store-0234-dallas-tx -o yaml
-----
-
-**2. Access cluster directly:**
-
-[source,bash]
-----
-oc config use-context store-0234-dallas-tx
-oc get nodes
-oc get pods -A
-----
-
-**3. Run diagnostics:**
-
-[source,bash]
-----
-oc adm must-gather --dest-dir=/tmp/store-0234
-----
-
-**4. SSH to edge server (if needed):**
-
-[source,bash]
-----
-# Via jumphost
-ssh -J jumphost.datacenter.example.com core@store-0234-node1
-----
-
-All without sending a technician on-site!
+* **Edge Manager** would manage 1,000+ RHEL Device Edge systems (POS servers, gateways)
+* **RHACM** would manage 50-100 OpenShift clusters (regional data centers)
 
 == Your Workshop Environment
 
-image::workshop-fleet-context.png[Workshop vs Production Fleet Scale, align=center]
+image::edge-manager-welcome.png[Fleet Management Welcome Page, align=center]
 
 While you'll work hands-on with **2-3 VMs per module**, imagine these represent a much larger fleet:
 
-[cols="1,3,3"]
+[cols="1,2,2,2"]
 |===
-|Your Lab |Scale Factor |Real-World Equivalent
+|Your Lab |Scale Factor |Real-World Equivalent |Management Plane
 
 |**2 VMs (Module 1)**
-|200 stores × 2 nodes
+|200 stores x 2 nodes
 |**400 Pacemaker servers** for POS databases
+|Edge Manager
 
 |**2 VMs (Module 2)**
-|500 stores × 2 gateways
+|500 stores x 2 gateways
 |**1,000 MicroShift edge gateways**
+|Edge Manager
 
 |**3 VMs (Module 3)**
-|100 stores × 2 nodes + shared arbiter
+|100 stores x 2 nodes + shared arbiter
 |**200 OpenShift control-plane nodes + arbiters**
+|ACM Clusters
 |===
 
-=== What You'll Learn Applies to Fleets
+== Key Concepts to Remember
 
-Every command you run in this workshop applies to fleet management:
+As you work through the modules, keep these fleet management principles in mind:
 
-**Lab command:**
-[source,role="execute"]
+[cols="1,3"]
+|===
+|Principle |Why It Matters
+
+|**Infrastructure as Code**
+|All configurations in Git -- easy to replicate across 1000s of stores
+
+|**Observability**
+|Can't fix what you can't see -- centralized metrics/logs critical
+
+|**Automation**
+|Manual changes don't scale -- automate updates, remediation, recovery
+
+|**Standardization**
+|Every store identical -- easier troubleshooting, bulk operations
+
+|**Defense in Depth**
+|HA + backups + DR -- multiple layers prevent total outages
+|===
+
+== Hands-On Lab: Exploring Your Fleet Management Tools
+
+Your workshop runs on a real OpenShift cluster with both **Red Hat Edge Manager** and **Red Hat Advanced Cluster Management** pre-deployed and integrated into the Fleet Management console.
+
+=== Exercise 1: Access the Fleet Management Console
+
+**Step 1:** Get the OpenShift Console URL
+
+[source,bash,role=execute]
 ----
-virtctl start rhel-ha-node1 -n retail-edge-student-01
+oc whoami --show-console
 ----
 
-**Fleet equivalent (RHACM):**
-[source,yaml]
+**Step 2:** Open the console URL in a new browser tab and login with your workshop credentials.
+
+**Step 3:** Switch to the **Fleet Management** perspective using the dropdown at the top-left of the console.
+
+You should see the Fleet Management Welcome page:
+
+image::edge-manager-welcome.png[Fleet Management Welcome, align=center]
+
+**Step 4:** Explore the left navigation. You'll see:
+
+* **Home** -- Welcome and Overview dashboards
+* **Search** -- Search across all managed resources
+* **Infrastructure** -- Clusters managed by ACM
+* **Edge Management** -- Fleets, Devices, and Repositories managed by Edge Manager
+* **Applications** -- Application lifecycle
+* **Governance** -- Policy-based compliance
+
+=== Exercise 2: Explore Edge Manager (Modules 1 and 2)
+
+Edge Manager is where your RHEL Device Edge devices (Modules 1 and 2) will appear once you start the VMs.
+
+**Step 1:** Install the flightctl CLI
+
+[source,bash,role=execute]
 ----
-apiVersion: cluster.open-cluster-management.io/v1beta1
-kind: PlacementDecision
-metadata:
-  name: start-all-pacemaker-nodes
-spec:
-  decisions:
-  - clusterName: store-0001-chicago-il
-  - clusterName: store-0002-boston-ma
-  ... (498 more stores)
+flightctl version
 ----
 
-The HA patterns you learn (Pacemaker, VRRP, etcd quorum) work identically whether you're managing:
+If the CLI is not installed, download it:
 
-* **1 store** (your lab)
-* **500 stores** (typical retail chain)
-* **5,000 stores** (global enterprise)
+[source,bash,role=execute,subs="attributes+"]
+----
+CLI_POD=$(oc get pods -n {edge-manager-namespace} -o name | grep cli-artifacts)
+oc exec -n {edge-manager-namespace} ${CLI_POD#pod/} -- cat /home/server/src/gh-archives/amd64/linux/flightctl-linux-amd64.tar.gz > /tmp/flightctl.tar.gz
+tar xzf /tmp/flightctl.tar.gz -C /usr/local/bin/ 2>/dev/null || tar xzf /tmp/flightctl.tar.gz -C /tmp/ && cp /tmp/flightctl /usr/local/bin/
+flightctl version
+----
 
-== From Learning to Production
+**Step 2:** Login to Edge Manager
 
-=== Your Workshop Journey
+[source,bash,role=execute,subs="attributes+"]
+----
+flightctl login https://{edge-manager-api} -k --token=$(oc whoami -t)
+----
+
+You should see:
 
 [source,text]
 ----
-┌─────────────────────────────────────────────────────┐
-│ Module 0: Fleet Management Overview (YOU ARE HERE)  │
-│   ↓ Understand the big picture                      │
-├─────────────────────────────────────────────────────┤
-│ Module 1: Pacemaker HA                              │
-│   ↓ Learn STONITH fencing + shared storage          │
-├─────────────────────────────────────────────────────┤
-│ Module 2: MicroShift with VRRP                      │
-│   ↓ Learn virtual IP failover + local storage       │
-├─────────────────────────────────────────────────────┤
-│ Module 3: Two-Node OpenShift                        │
-│   ↓ Learn etcd quorum + distributed architecture    │
-├─────────────────────────────────────────────────────┤
-│ Module 4: Chaos Engineering                         │
-│   ↓ Validate resilience at scale                    │
-└─────────────────────────────────────────────────────┘
+Auto-selected organization: <uuid> redhat-edge-manager
+Login successful.
 ----
 
-=== Production Deployment Path
+**Step 3:** Check for devices (none enrolled yet)
 
-After this workshop, deploying to production involves:
+[source,bash,role=execute]
+----
+flightctl get devices
+----
 
-**1. Design Phase (1-2 weeks)**
+[source,bash,role=execute]
+----
+flightctl get fleets
+----
 
-* Choose HA architecture per use case
-* Size hardware (CPU, memory, storage)
-* Plan network topology (Layer 2 requirements)
-* Define SLAs and RTO/RPO targets
+Both commands return empty lists. This is expected -- your Module 1 and Module 2 VMs have not been started yet. When you start them in later modules, they will **automatically enroll** with Edge Manager and appear here.
 
-**2. Pilot Deployment (2-4 weeks)**
+**Step 4:** In the OpenShift console, navigate to **Edge Management** -> **Devices**
 
-* Deploy to 5-10 pilot stores
-* Validate functionality and performance
-* Train on-site staff
-* Document procedures
+image::edge-manager-devices.png[Edge Manager Devices -- empty before VM start, align=center]
 
-**3. Rollout (3-6 months)**
+**Step 5:** Navigate to **Edge Management** -> **Repositories**
 
-* Progressive deployment: 10 stores/week
-* Monitor metrics continuously
-* Iterate based on feedback
-* Build runbooks for common issues
+image::edge-manager-repositories.png[Edge Manager Repositories, align=center]
 
-**4. Steady State Operations**
+Repositories store OS images and configurations for fleet updates. In production, you'd configure a Git repository here to manage device configurations at scale.
 
-* RHACM for centralized management
-* Automated compliance checking
-* Monthly patching cycles
-* Quarterly hardware refresh
+=== Exercise 3: Explore ACM Clusters (Module 3)
+
+Advanced Cluster Management is where your Two-Node OpenShift cluster (Module 3) will be managed.
+
+**Step 1:** List managed clusters
+
+[source,bash,role=execute]
+----
+oc get managedclusters
+----
+
+You should see at minimum:
+
+[source,text]
+----
+NAME              HUB ACCEPTED   MANAGED CLUSTER URLS          JOINED   AVAILABLE   AGE
+local-cluster     true           https://api.cluster-...       True     True        ...
+----
+
+The `local-cluster` is the hub cluster itself. When you deploy Module 3's Two-Node OpenShift, it will register here as an additional managed cluster.
+
+**Step 2:** In the console, navigate to **Infrastructure** -> **Clusters**
+
+This shows the RHACM cluster inventory. Currently only the hub cluster (`local-cluster`) is listed. After Module 3, your Two-Node OpenShift cluster will appear here.
+
+**Step 3:** View cluster details
+
+[source,bash,role=execute]
+----
+oc get managedcluster local-cluster -o jsonpath='{.status.conditions[?(@.type=="ManagedClusterConditionAvailable")].status}'
+----
+
+This returns `True`, confirming the hub cluster is healthy.
+
+=== Exercise 4: Understanding the Two Management Planes
+
+Now you've seen both tools in action. Here's how they map to the workshop modules:
+
+[cols="1,2,2,2"]
+|===
+|Module |VMs |Management Plane |Why
+
+|**Module 1: Pacemaker HA**
+|rhel-ha-node1, rhel-ha-node2
+|**Edge Manager** (flightctl)
+|RHEL Device Edge systems -- managed as individual edge devices
+
+|**Module 2: MicroShift VRRP**
+|microshift-gw-a, microshift-gw-b
+|**Edge Manager** (flightctl)
+|RHEL Device Edge + MicroShift -- device managed by Edge Manager, Kubernetes workloads on MicroShift
+
+|**Module 3: Two-Node OpenShift**
+|twonode-master1, twonode-master2, twonode-arbiter
+|**ACM Clusters**
+|Full OpenShift cluster -- managed as a Kubernetes cluster by RHACM
+|===
+
+**Key insight:** The management tool depends on the workload type:
+
+* **RHEL Device Edge** (bare metal or VM running RHEL) -> **Edge Manager**
+* **OpenShift / Kubernetes cluster** -> **ACM**
+
+In production, both planes work together. Edge Manager handles the 1,000+ individual devices at store level, while ACM manages the regional OpenShift clusters that aggregate data from multiple stores.
+
+=== What You Learned
+
+In this hands-on lab, you:
+
+* Accessed the Fleet Management console with both Edge Manager and ACM
+* Installed and authenticated the `flightctl` CLI
+* Explored Edge Management sections (Fleets, Devices, Repositories)
+* Viewed ACM cluster management (Infrastructure > Clusters)
+* Understood which modules use which management plane
+
+== Your Workshop Journey
+
+[source,text]
+----
++-----------------------------------------------------+
+| Module 0: Fleet Management Overview (YOU ARE HERE)   |
+|   v Understand the big picture                       |
++-----------------------------------------------------+
+| Module 1: Pacemaker HA                               |
+|   v STONITH fencing + shared storage                 |
+|   v VMs auto-enroll in Edge Manager                  |
++-----------------------------------------------------+
+| Module 2: MicroShift with VRRP                       |
+|   v Virtual IP failover + local storage              |
+|   v VMs auto-enroll in Edge Manager                  |
++-----------------------------------------------------+
+| Module 3: Two-Node OpenShift                         |
+|   v etcd quorum + distributed architecture           |
+|   v Cluster registers with ACM                       |
++-----------------------------------------------------+
+| Module 4: Chaos Engineering                          |
+|   v Validate resilience at scale                     |
++-----------------------------------------------------+
+----
 
 == Real-World Success Stories
 
@@ -526,7 +397,7 @@ After this workshop, deploying to production involves:
 
 **Challenge:** POS systems on standalone servers (no HA)
 
-**Solution:** Deployed Pacemaker clusters (Module 1 architecture)
+**Solution:** Deployed Pacemaker clusters (Module 1 architecture), all managed via Edge Manager
 
 **Results:**
 
@@ -540,7 +411,7 @@ After this workshop, deploying to production involves:
 
 **Challenge:** WiFi controllers were single points of failure
 
-**Solution:** Deployed MicroShift + VRRP (Module 2 architecture)
+**Solution:** Deployed MicroShift + VRRP (Module 2 architecture), fleet managed via Edge Manager
 
 **Results:**
 
@@ -554,7 +425,7 @@ After this workshop, deploying to production involves:
 
 **Challenge:** Each store had 3-node OpenShift (expensive)
 
-**Solution:** Two-node OpenShift + shared arbiter (Module 3 architecture)
+**Solution:** Two-node OpenShift + shared arbiter (Module 3 architecture), managed via ACM
 
 **Results:**
 
@@ -562,274 +433,14 @@ After this workshop, deploying to production involves:
 * **Same workload capacity**
 * **Shared arbiter** serves all 150 stores from regional datacenter
 
-== Key Concepts to Remember
-
-As you work through the modules, keep these fleet management principles in mind:
-
-[cols="1,3"]
-|===
-|Principle |Why It Matters
-
-|**Infrastructure as Code**
-|All configurations in Git → easy to replicate across 1000s of stores
-
-|**Observability**
-|Can't fix what you can't see → centralized metrics/logs critical
-
-|**Automation**
-|Manual changes don't scale → automate updates, remediation, recovery
-
-|**Standardization**
-|Every store identical → easier troubleshooting, bulk operations
-
-|**Defense in Depth**
-|HA + backups + DR → multiple layers prevent total outages
-|===
-
-== Hands-On Lab: Exploring Your Fleet Manager
-
-Your workshop runs on a **real RHACM 2.16 hub cluster** with real RHACM APIs. The ManagedCluster resources representing your edge sites are simulated (no klusterlet agents are running), but the hub-side management -- labels, placement, inventory queries -- works exactly as it would in production.
-
-=== Lab Setup
-
-Your workshop environment includes:
-
-* **RHACM 2.16 Hub Cluster** (already deployed and running)
-* **6 ManagedClusters** representing your edge sites (3 per student, simulated)
-* **Fleet Manager Console** integrated into the OpenShift web console
-
-Each student manages a simulated retail store with 3 edge deployments:
-
-[cols="1,2,2"]
-|===
-|ManagedCluster Name |Architecture |Purpose
-
-|`student-{student-id}-pacemaker`
-|Pacemaker HA
-|Represents your store's database servers (Module 1)
-
-|`student-{student-id}-microshift`
-|MicroShift + VRRP
-|Represents your store's edge gateway (Module 2)
-
-|`student-{student-id}-twonode`
-|Two-Node OpenShift
-|Represents your regional cluster (Module 3)
-|===
-
-=== Exercise 1: Access the Fleet Manager Console
-
-In RHACM 2.16, the fleet manager console is integrated directly into the OpenShift web console as a dynamic plugin. There is no separate multicloud-console URL -- you access everything through the standard OpenShift console.
-
-**Step 1:** Get the OpenShift Console URL
-
-[source,bash,role=execute]
-----
-oc whoami --show-console
-----
-
-**Step 2:** Login to OpenShift Console
-
-. Open the console URL in a new browser tab
-. Login with your workshop credentials (provided by instructor)
-. Accept any security warnings if prompted
-
-**Step 3:** Navigate to Fleet Manager
-
-. Click **All Clusters** in the top navigation bar (or use the cluster switcher dropdown at the top left)
-. Go to **Infrastructure** -> **Clusters** in the left navigation
-
-You should see the RHACM dashboard listing your managed clusters.
-
-=== Exercise 2: View Your Fleet Inventory
-
-Now let's explore your edge fleet using the CLI.
-
-**Step 1:** List All Managed Clusters
-
-[source,bash,role=execute]
-----
-oc get managedclusters
-----
-
-You should see output similar to:
-
-[source,text]
-----
-NAME                    HUB ACCEPTED   MANAGED CLUSTER URLS   JOINED   AVAILABLE   AGE
-local-cluster           true           https://api.clust...   True     True        26h
-student-01-microshift   true                                           Unknown     6h
-student-01-pacemaker    true                                           Unknown     6h
-student-01-twonode      true                                           Unknown     6h
-student-02-microshift   true                                           Unknown     6h
-student-02-pacemaker    true                                           Unknown     6h
-student-02-twonode      true                                           Unknown     6h
-----
-
-* `local-cluster` - The hub cluster itself (status: `True` / `True`)
-* Your 3 edge sites (pacemaker, microshift, twonode)
-* Other students' edge sites (if in a multi-user session)
-
-TIP: The student clusters show `AVAILABLE: Unknown` because they are **simulated edge sites** -- placeholder ManagedCluster resources representing stores that would have real klusterlet agents in production. The RHACM hub has accepted them (`HUB ACCEPTED: true`), but no agent is reporting back. This is expected in the workshop environment. In production, each store's agent would register and report `True`.
-
-**Step 2:** View Your Fleet with Details
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc get managedclusters -l student-id={student-id} -o custom-columns=\
-NAME:.metadata.name,\
-ARCHITECTURE:.metadata.labels.architecture,\
-LOCATION:.metadata.labels.location,\
-MODULE:.metadata.labels.module
-----
-
-This shows your 3 edge sites organized by:
-
-* **Architecture** - The HA pattern (pacemaker-ha, microshift-vrrp, two-node-openshift)
-* **Location** - Your simulated store location (edge-store-00X)
-* **Module** - Which workshop module covers this architecture
-
-**Step 3:** Filter Fleet by Architecture
-
-See all Pacemaker HA deployments across the fleet:
-
-[source,bash,role=execute]
-----
-oc get managedclusters -l architecture=pacemaker-ha
-----
-
-See all MicroShift deployments:
-
-[source,bash,role=execute]
-----
-oc get managedclusters -l architecture=microshift-vrrp
-----
-
-💡 **Real-World Application:** In production, you'd have labels like `region=west`, `store-type=flagship`, `compliance-level=pci` to organize hundreds of stores.
-
-=== Exercise 3: Inspect a Managed Cluster
-
-Let's dive deeper into one of your edge sites.
-
-**Step 1:** Get Detailed Information
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc describe managedcluster student-{student-id}-pacemaker
-----
-
-Look for:
-
-* **Labels** - How this cluster is categorized
-* **Status** - Whether the cluster is accepted and joined
-* **Conditions** - Health indicators
-
-**Step 2:** View Cluster Labels
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc get managedcluster student-{student-id}-pacemaker -o jsonpath='{.metadata.labels}' | jq '.'
-----
-
-These labels enable:
-
-* **Placement decisions** - Deploy apps only to specific stores
-* **Policy targeting** - Apply governance rules to groups
-* **Search and filtering** - Find clusters by attributes
-
-=== Exercise 4: Understand Fleet Organization
-
-In a real retail deployment, you'd organize stores by business attributes.
-
-**Step 1:** Count Clusters by Architecture
-
-[source,bash,role=execute]
-----
-echo "Pacemaker HA stores: $(oc get managedclusters -l architecture=pacemaker-ha --no-headers | wc -l)"
-echo "MicroShift stores: $(oc get managedclusters -l architecture=microshift-vrrp --no-headers | wc -l)"
-echo "Two-Node OpenShift: $(oc get managedclusters -l architecture=two-node-openshift --no-headers | wc -l)"
-----
-
-**Step 2:** View Fleet Summary
-
-[source,bash,role=execute]
-----
-cat <<'EOF'
-Fleet Distribution
-==================
-EOF
-
-oc get managedclusters -l location=edge-store-001 --no-headers | wc -l | xargs -I {} echo "Store 001: {} edge systems"
-oc get managedclusters -l location=edge-store-002 --no-headers | wc -l | xargs -I {} echo "Store 002: {} edge systems"
-----
-
-**Real-World Scale:**
-
-* Lab: 6 edge systems (2 stores × 3 systems)
-* Production: 1,000-3,000 edge systems (500 stores × 2-6 systems)
-
-=== Exercise 5: Fleet Manager Console Exploration (Optional)
-
-If you have access to the OpenShift web console, explore these features:
-
-**In the RHACM Console:**
-
-1. **Clusters View**
-   * See all managed clusters at a glance
-   * Filter by labels (try filtering by your student ID)
-   * Check cluster status and health
-
-2. **Search Feature**
-   * Search for resources across all clusters
-   * Try searching: `kind:ManagedCluster label:student-id={student-id}`
-
-3. **Overview Dashboard**
-   * View fleet-wide statistics
-   * See cluster distribution
-   * Monitor compliance status
-
-NOTE: The console provides a visual interface for the same data you just explored via CLI. In production, operations teams use the console for day-to-day fleet management, while automation uses the CLI/API.
-
-=== What You Learned
-
-In this hands-on lab, you:
-
-✅ Accessed a real RHACM hub cluster
-✅ Viewed your managed edge clusters (fleet inventory)
-✅ Filtered and organized clusters using labels
-✅ Explored fleet organization patterns
-✅ Understood how lab VMs map to production scale
-
-**Key Takeaway:** The 3 ManagedClusters you see represent the 3 HA architectures you'll build in Modules 1-3. In production, these same patterns scale to hundreds or thousands of stores.
-
-== Next Steps
-
-Now that you understand the **big picture** of retail edge fleet management, it's time to get hands-on!
-
-In the next module, you'll:
-
-1. **Start VirtualMachines** representing edge servers
-2. **Configure Pacemaker** with STONITH fencing
-3. **Test failover** scenarios
-4. **Add shared storage** with GFS2
-
-Remember: The 2 VMs you configure represent **hundreds or thousands** of similar deployments in a real retail fleet. The skills you learn here apply at any scale!
-
-== Workshop Architecture Reminder
-
-image::module0-workshop-vms.png[Workshop VM Layout, align=center]
-
-NOTE: Each module's VMs are isolated via User Defined Networks (UDNs) providing Layer 2 connectivity for multicast protocols.
-
 == Ready to Begin?
 
 You now understand:
 
-* ✅ How retail edge deployments work at scale (100-1000s of stores)
-* ✅ Red Hat Advanced Cluster Management for fleet management
-* ✅ Why you're learning three different HA architectures
-* ✅ How your lab VMs relate to real-world production
+* How retail edge deployments work at scale (100-1000s of stores)
+* Red Hat Edge Manager for RHEL Device Edge fleet management
+* Red Hat Advanced Cluster Management for OpenShift cluster management
+* Why you're learning three different HA architectures
+* How your lab VMs relate to real-world production
 
 Click **Next Module** below to start with **Module 1: Pacemaker HA Cluster**.
-
-Let's build something resilient! 🚀

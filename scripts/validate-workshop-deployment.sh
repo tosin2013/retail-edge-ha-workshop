@@ -354,23 +354,36 @@ validate_fleet_management() {
         check_fail "MultiClusterHub not found"
     fi
 
-    # Check ManagedCluster CRs (one per student)
-    local managed_cluster_count=$(oc get managedcluster 2>/dev/null | grep -c "retail-edge-student" || echo "0")
-    if [[ $managed_cluster_count -ge $EXPECTED_STUDENTS ]]; then
-        check_pass "ManagedClusters created: $managed_cluster_count (expected: $EXPECTED_STUDENTS)"
+    # Check ManagedCluster CRs
+    local managed_cluster_count=$(oc get managedcluster 2>/dev/null | grep -c "student-" || echo "0")
+    if [[ $managed_cluster_count -ge $((EXPECTED_STUDENTS * 3)) ]]; then
+        check_pass "ManagedClusters created: $managed_cluster_count (expected: $((EXPECTED_STUDENTS * 3)))"
     else
-        check_warn "ManagedClusters created: $managed_cluster_count (expected: $EXPECTED_STUDENTS)"
+        check_warn "ManagedClusters created: $managed_cluster_count (expected: $((EXPECTED_STUDENTS * 3)) for 3 per student)"
     fi
 
-    # Check ManagedCluster availability (sample student-01)
-    if oc get managedcluster retail-edge-student-01 &>/dev/null 2>&1; then
-        local cluster_available=$(oc get managedcluster retail-edge-student-01 -o json 2>/dev/null | \
-            jq -r '.status.conditions[] | select(.type=="ManagedClusterConditionAvailable") | .status')
-        if [[ "$cluster_available" == "True" ]]; then
-            check_pass "ManagedCluster available: retail-edge-student-01"
+    # Check Edge Manager deployment
+    if oc get namespace redhat-edge-manager &>/dev/null; then
+        local em_pods=$(oc get pods -n redhat-edge-manager --no-headers 2>/dev/null | grep -c "Running" || echo "0")
+        if [[ $em_pods -gt 0 ]]; then
+            check_pass "Edge Manager pods running: $em_pods (in redhat-edge-manager)"
         else
-            check_warn "ManagedCluster not available: retail-edge-student-01"
+            check_warn "Edge Manager namespace exists but no running pods"
         fi
+
+        local em_api_route=$(oc get route -n redhat-edge-manager -o jsonpath='{.items[0].spec.host}' 2>/dev/null)
+        if [[ -n "$em_api_route" ]]; then
+            check_pass "Edge Manager API route: $em_api_route"
+        else
+            check_warn "Edge Manager API route not found (may still be initializing)"
+        fi
+
+        local em_ui_route=$(oc get route flightctl-ui -n redhat-edge-manager -o jsonpath='{.spec.host}' 2>/dev/null)
+        if [[ -n "$em_ui_route" ]]; then
+            check_pass "Edge Manager UI: https://$em_ui_route"
+        fi
+    else
+        check_warn "Edge Manager not deployed (redhat-edge-manager namespace not found)"
     fi
 }
 

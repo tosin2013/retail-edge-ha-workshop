@@ -119,8 +119,20 @@ fleetManagement:
 
     # Edge Manager capabilities
     edgeManager:
-      # Enable Edge Manager for device fleet management
+      # Enable Red Hat Edge Manager 1.0 (standalone Helm chart deployment)
       enabled: true
+
+      # Namespace for Edge Manager deployment
+      namespace: "redhat-edge-manager"
+
+      # Helm chart configuration
+      chart:
+        repoURL: "https://charts.openshift.io"
+        chartName: "redhat-rhem"
+        version: "1.0.2"
+
+      # Integrate with ACM console (flightctl-plugin dynamic plugin)
+      acmIntegration: true
 
       # Create ManagedCluster CRs for each student representing edge sites
       createManagedClusters: true
