@@ -1,5 +1,5 @@
 ---
-# Allow Showroom terminal service accounts to extract the flightctl CLI
+# Allow Showroom terminal SAs to extract the flightctl CLI
 # from the cli-artifacts pod in the Edge Manager namespace.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -14,9 +14,6 @@ rules:
   resources: ["pods/exec"]
   verbs: ["create"]
 ---
-# Bind all showroom-student-* default service accounts
-# Uses a group pattern via individual bindings per student.
-# For workshops with more students, add additional subjects.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
@@ -26,6 +23,52 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: flightctl-cli-access
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-01
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-02
+---
+# Allow student SAs to "get" the redhat-edge-manager namespace.
+# The flightctl API checks this via SubjectAccessReview when listing
+# organizations (orgs map to namespaces with io.flightctl/instance label).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: flightctl-org-access
+rules:
+- apiGroups: [""]
+  resources: ["namespaces"]
+  resourceNames: ["redhat-edge-manager"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flightctl-showroom-org-access
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flightctl-org-access
+subjects:
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-01
+- kind: ServiceAccount
+  name: default
+  namespace: showroom-student-02
+---
+# Grant flightctl viewer permissions so students can list devices, fleets, etc.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: flightctl-showroom-viewer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: flightctl-viewer-redhat-edge-manager
 subjects:
 - kind: ServiceAccount
   name: default
