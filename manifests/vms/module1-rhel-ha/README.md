@@ -14,7 +14,7 @@ These VMs form a two-node Pacemaker cluster for testing High-Availability scenar
 
 | Attribute | Value |
 |-----------|-------|
-| **OS** | RHEL 9 Stream (CentOS Stream 9) |
+| **OS** | RHEL 9 |
 | **CPU** | 2 cores |
 | **Memory** | 4Gi |
 | **Disk** | 30Gi |
