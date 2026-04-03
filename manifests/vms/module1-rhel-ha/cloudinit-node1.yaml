@@ -17,8 +17,12 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
-    bootcmd:
-      - subscription-manager repos --enable=rhel-9-for-x86_64-highavailability-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+        - rhel-9-for-x86_64-highavailability-rpms
+        - edge-manager-1.0-for-rhel-9-x86_64-rpms
     packages:
       - pacemaker
       - pcs
@@ -97,8 +101,12 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
-    bootcmd:
-      - subscription-manager repos --enable=rhel-9-for-x86_64-highavailability-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+        - rhel-9-for-x86_64-highavailability-rpms
+        - edge-manager-1.0-for-rhel-9-x86_64-rpms
     packages:
       - pacemaker
       - pcs

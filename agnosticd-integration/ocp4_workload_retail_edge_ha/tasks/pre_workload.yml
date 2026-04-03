@@ -124,7 +124,7 @@
     msg: "OpenShift Virtualization operator found and ready"
   when: cnv_installed
 
-- name: Configure automatic RHEL VM subscription
+- name: Configure RHEL VM subscription credentials
   when:
     - cnv_installed
     - ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length > 0
@@ -143,9 +143,25 @@
             automaticSubscriptionOrganizationId: "{{ ocp4_workload_retail_edge_ha_rhel_org_id }}"
             automaticSubscriptionType: "monitorAndManageSubscriptions"
 
-    - name: Confirm RHEL VM auto-subscription configured
+    - name: Create rhel-subscription-creds Secret for apply-vm-manifests.sh
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: Secret
+        name: rhel-subscription-creds
+        namespace: openshift-cnv
+        state: present
+        definition:
+          type: Opaque
+          stringData:
+            activation-key: "{{ ocp4_workload_retail_edge_ha_rhel_activation_key }}"
+            org-id: "{{ ocp4_workload_retail_edge_ha_rhel_org_id }}"
+
+    - name: Confirm RHEL VM subscription credentials configured
       ansible.builtin.debug:
-        msg: "RHEL VM auto-subscription enabled (activation key + org ID applied to kubevirt-ui-features)"
+        msg: >-
+          RHEL VM subscription configured:
+          kubevirt-ui-features ConfigMap patched,
+          rhel-subscription-creds Secret created in openshift-cnv
 
 - name: Warn if RHEL subscription credentials not provided
   ansible.builtin.debug:

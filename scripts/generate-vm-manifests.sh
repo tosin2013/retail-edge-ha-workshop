@@ -96,10 +96,34 @@ if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
   FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
 fi
 
-# Extra repos that must be enabled before packages install.
-# Auto-subscription registers the VM; these repos are disabled by default.
-M1_EXTRA_REPOS="      - subscription-manager repos --enable=rhel-9-for-x86_64-highavailability-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms"
-M2_EXTRA_REPOS="      - subscription-manager repos --enable=rhocp-4.21-for-rhel-9-x86_64-rpms --enable=fast-datapath-for-rhel-9-x86_64-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms"
+# RHEL subscription: always generate rh_subscription blocks with placeholders.
+# Real credentials are injected at apply time by scripts/apply-vm-manifests.sh
+# which reads them from a Kubernetes Secret (rhel-subscription-creds) or
+# the kubevirt-ui-features ConfigMap.
+RHEL_SUB_ENABLED=true
+
+# Per-module repo lists (enabled after registration)
+M1_REPOS="rhel-9-for-x86_64-highavailability-rpms,edge-manager-1.0-for-rhel-9-x86_64-rpms"
+M2_REPOS="rhocp-4.21-for-rhel-9-x86_64-rpms,fast-datapath-for-rhel-9-x86_64-rpms,edge-manager-1.0-for-rhel-9-x86_64-rpms"
+
+# Helper: generate rh_subscription cloud-init block
+# Args: $1=comma-separated repo list
+generate_rh_subscription() {
+  local repos="$1"
+  if [[ "$RHEL_SUB_ENABLED" != "true" ]]; then
+    return
+  fi
+  cat <<ENDOFSUB
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+ENDOFSUB
+  IFS=',' read -ra REPO_ARRAY <<< "$repos"
+  for repo in "${REPO_ARRAY[@]}"; do
+    echo "        - ${repo}"
+  done
+}
 
 # Helper: generate flightctl write_files block with enrollment config + device role + trigger service
 # Args: $1=role (node1|node2|gw-a|gw-b), $2=module (pacemaker|microshift)
@@ -374,8 +398,11 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
-    bootcmd:
-${M1_EXTRA_REPOS}
+ENDOFCLOUDINIT
+
+  generate_rh_subscription "$M1_REPOS" >> "$M1_INIT1"
+
+  cat >> "$M1_INIT1" <<ENDOFPACKAGES
     packages:
       - pacemaker
       - pcs
@@ -383,7 +410,7 @@ ${M1_EXTRA_REPOS}
       - corosync
       - fence-agents-all
 ${FLIGHTCTL_PACKAGES}
-ENDOFCLOUDINIT
+ENDOFPACKAGES
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     generate_flightctl_write_files "node1" "pacemaker" >> "$M1_INIT1"
@@ -424,8 +451,11 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
-    bootcmd:
-${M1_EXTRA_REPOS}
+ENDOFCLOUDINIT
+
+  generate_rh_subscription "$M1_REPOS" >> "$M1_INIT2"
+
+  cat >> "$M1_INIT2" <<ENDOFPACKAGES
     packages:
       - pacemaker
       - pcs
@@ -433,7 +463,7 @@ ${M1_EXTRA_REPOS}
       - corosync
       - fence-agents-all
 ${FLIGHTCTL_PACKAGES}
-ENDOFCLOUDINIT
+ENDOFPACKAGES
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     generate_flightctl_write_files "node2" "pacemaker" >> "$M1_INIT2"
@@ -661,8 +691,11 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-    bootcmd:
-${M2_EXTRA_REPOS}
+ENDOFCLOUDINIT
+
+  generate_rh_subscription "$M2_REPOS" >> "$M2_INIT_A"
+
+  cat >> "$M2_INIT_A" <<ENDOFPACKAGES
     packages:
       - microshift
       - microshift-selinux
@@ -671,7 +704,7 @@ ${M2_EXTRA_REPOS}
       - openshift-clients
       - firewalld
 ${FLIGHTCTL_PACKAGES}
-ENDOFCLOUDINIT
+ENDOFPACKAGES
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     generate_flightctl_write_files "gw-a" "microshift" >> "$M2_INIT_A"
@@ -711,8 +744,11 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-    bootcmd:
-${M2_EXTRA_REPOS}
+ENDOFCLOUDINIT
+
+  generate_rh_subscription "$M2_REPOS" >> "$M2_INIT_B"
+
+  cat >> "$M2_INIT_B" <<ENDOFPACKAGES
     packages:
       - microshift
       - microshift-selinux
@@ -721,7 +757,7 @@ ${M2_EXTRA_REPOS}
       - openshift-clients
       - firewalld
 ${FLIGHTCTL_PACKAGES}
-ENDOFCLOUDINIT
+ENDOFPACKAGES
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     generate_flightctl_write_files "gw-b" "microshift" >> "$M2_INIT_B"
@@ -937,3 +973,7 @@ echo "  Module 2: microshift-gw-a, microshift-gw-b"
 echo "  Module 3: twonode-master1, twonode-master2, twonode-arbiter"
 echo ""
 echo "Total VMs: $(( STUDENT_COUNT * 7 ))"
+echo ""
+echo "Manifests contain REPLACE_ACTIVATION_KEY / REPLACE_ORG_ID placeholders."
+echo "To deploy, run: scripts/apply-vm-manifests.sh"
+echo "  (reads credentials from cluster and substitutes at apply time)"
