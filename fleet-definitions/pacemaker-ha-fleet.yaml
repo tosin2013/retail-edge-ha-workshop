@@ -3,7 +3,7 @@ kind: Fleet
 metadata:
   name: pacemaker-ha
   labels:
-    version: "2"
+    version: "3"
 spec:
   selector:
     matchLabels:
@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       labels:
-        configVersion: "2"
+        configVersion: "3"
     spec:
       config:
         - name: pacemaker-setup
