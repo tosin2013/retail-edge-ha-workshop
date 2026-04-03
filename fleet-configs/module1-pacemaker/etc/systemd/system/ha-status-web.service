@@ -1,6 +1,6 @@
 [Unit]
 Description=Pacemaker HA Status Web Dashboard
-After=network-online.target edge-config-pacemaker.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]

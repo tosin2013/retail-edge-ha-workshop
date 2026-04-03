@@ -91,7 +91,8 @@ cat /etc/hosts
 
 # Start the status web dashboard
 systemctl daemon-reload
-systemctl enable --now cluster-status-web.service || true
+systemctl enable cluster-status-web.service || true
+systemctl start --no-block cluster-status-web.service || true
 
 touch "$LOCK"
 echo "=== Two-Node OCP configuration complete for $HOSTNAME ==="

@@ -155,7 +155,8 @@ systemctl enable --now keepalived
 
 # Start the status web dashboard
 systemctl daemon-reload
-systemctl enable --now gateway-status-web.service || true
+systemctl enable gateway-status-web.service || true
+systemctl start --no-block gateway-status-web.service || true
 
 touch "$LOCK"
 echo "=== MicroShift VRRP configuration complete for $HOSTNAME ==="

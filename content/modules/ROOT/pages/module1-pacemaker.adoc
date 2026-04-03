@@ -153,12 +153,15 @@ Wait about 30 seconds for the flightctl agent to enroll, then check:
 flightctl get enrollmentrequests
 ----
 
-Approve any pending enrollment requests (in a production environment, auto-approval policies handle this):
+Approve any pending enrollment requests with labels including an alias for easy identification (in a production environment, auto-approval policies handle this):
 
 [source,bash,role=execute]
 ----
+# Get enrollment request details and approve with appropriate labels
 for req in $(flightctl get enrollmentrequests -o json 2>/dev/null | python3 -c "import sys,json; [print(d['metadata']['name']) for d in json.load(sys.stdin).get('items',[])]" 2>/dev/null); do
-  flightctl approve "$req" --labels module=pacemaker
+  hostname=$(flightctl get enrollmentrequest "$req" -o yaml 2>/dev/null | grep "hostname:" | awk '{print $2}')
+  role=$(echo "$hostname" | sed 's/rhel-ha-//')
+  flightctl approve enrollmentrequest "$req" -l module=pacemaker -l role="$role" -l alias="$hostname"
 done
 ----
 
@@ -169,13 +172,13 @@ done
 flightctl get devices
 ----
 
-You should see your two Pacemaker nodes listed as devices with their fleet assignment:
+You should see your two Pacemaker nodes listed as devices with their fleet assignment and aliases:
 
 [source,text]
 ----
-NAME                    ALIAS   OWNER          SYSTEM   UPDATED   APPLICATIONS
-<device-id-node1>               pacemaker-ha
-<device-id-node2>               pacemaker-ha
+NAME              ALIAS          OWNER             SYSTEM   UPDATED    APPLICATIONS
+<device-id>       rhel-ha-node1  Fleet/pacemaker-ha Online   UpToDate   NoApplications
+<device-id>       rhel-ha-node2  Fleet/pacemaker-ha Online   UpToDate   NoApplications
 ----
 
 [source,bash,role=execute]
@@ -185,7 +188,20 @@ flightctl get fleets
 
 The `pacemaker-ha` fleet should now show devices matched.
 
-TIP: In the OpenShift console, navigate to **Fleet Management** -> **Edge Management** -> **Devices** to see them in the UI. In production, hundreds of similar Pacemaker HA servers across retail stores would appear here, organized into fleets by region or store type.
+=== Verify in the Fleet Manager Dashboard
+
+Navigate to the OpenShift console: **Fleet Management** -> **Edge Management** -> **Fleets** -> **pacemaker-ha**.
+
+image::fleet-pacemaker-ha-devices-updated.png[Fleet Manager Dashboard showing pacemaker-ha fleet with 2 devices online, align=center,link=self,window=blank]
+
+You should see:
+
+* **Status**: Valid
+* **Up-to-date/devices**: 2/2
+* **Device status**: 100% Online
+* **Update status**: 100% In-to-date
+
+TIP: In production, hundreds of similar Pacemaker HA servers across retail stores would appear here, organized into fleets by region or store type.
 
 === Monitor Configuration Delivery
 
@@ -201,6 +217,30 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace} -c "hostname; systemct
 Password: `{vm-password}`
 
 Once Fleet Manager has delivered the configuration, the hostname will show `rhel-ha-node1` and `pcsd` will be `active`.
+
+=== Access the HA Status Dashboard
+
+Fleet Manager also deployed a live status dashboard on each node. Expose it via a Service and Route:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+virtctl expose vmi {rhel-node1} --port=8080 --target-port=8080 --name=ha-status-node1 -n {student-namespace}
+oc expose svc/ha-status-node1 -n {student-namespace}
+virtctl expose vmi {rhel-node2} --port=8080 --target-port=8080 --name=ha-status-node2 -n {student-namespace}
+oc expose svc/ha-status-node2 -n {student-namespace}
+----
+
+Get the dashboard URLs:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+echo "Node 1: http://$(oc get route ha-status-node1 -n {student-namespace} -o jsonpath='{.spec.host}')"
+echo "Node 2: http://$(oc get route ha-status-node2 -n {student-namespace} -o jsonpath='{.spec.host}')"
+----
+
+Open these URLs in your browser. The dashboard shows real-time status of cluster services, STONITH fencing, GFS2 storage, and peer connectivity. It auto-refreshes every 15 seconds.
+
+NOTE: At this point, the dashboard will show Pacemaker and Corosync as **Inactive** -- that's expected. As you complete the remaining steps, watch the dashboard update to reflect each configuration change.
 
 == Step 3: Verify Network and Fleet Configuration
 

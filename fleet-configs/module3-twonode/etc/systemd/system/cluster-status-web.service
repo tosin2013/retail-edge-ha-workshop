@@ -1,6 +1,6 @@
 [Unit]
 Description=Two-Node OCP Cluster Status Web Dashboard
-After=network-online.target edge-config-twonode.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]

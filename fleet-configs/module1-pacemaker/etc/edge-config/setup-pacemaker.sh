@@ -93,9 +93,11 @@ systemctl enable --now pcsd
 dnf install -y gfs2-utils dlm lvm2-lockd || echo "WARNING: Some storage packages failed to install"
 systemctl enable dlm || true
 
-# Start the status web dashboard
+# Start the status web dashboard (--no-block avoids deadlock since this
+# script runs inside edge-config-pacemaker.service)
 systemctl daemon-reload
-systemctl enable --now ha-status-web.service || true
+systemctl enable ha-status-web.service || true
+systemctl start --no-block ha-status-web.service || true
 
 touch "$LOCK"
 echo "=== Pacemaker HA configuration complete for $HOSTNAME ==="
