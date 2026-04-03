@@ -15,8 +15,11 @@
 # IP Allocation per Student:
 #   - Student 01: 10.102.0.20-21 (nodes) + 10.102.0.100 (VIP)
 #   - Student 02: 10.102.0.20-21 + 10.102.0.100 (isolated, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own UDN namespace)
+#   - Student 03-50: Same pattern (each in their own namespace)
+#
+# Generated for 5 students
 # =============================================================================
+
 
 ---
 # Student 01 - MicroShift VRRP Network
@@ -24,7 +27,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-01-udn
+  namespace: retail-edge-student-01
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -34,9 +37,15 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.102.0.0/24"
+    - cidr: 10.102.0.0/24
+      gateway: 10.102.0.1
+      excludeSubnets:
+      - 10.102.0.1/32
+      - 10.102.0.2-10.102.0.10
+      - 10.102.0.100/32
+    ipv4Mode: {}
 
 ---
 # Student 02 - MicroShift VRRP Network
@@ -44,7 +53,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-02-udn
+  namespace: retail-edge-student-02
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -54,9 +63,15 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.102.0.0/24"
+    - cidr: 10.102.0.0/24
+      gateway: 10.102.0.1
+      excludeSubnets:
+      - 10.102.0.1/32
+      - 10.102.0.2-10.102.0.10
+      - 10.102.0.100/32
+    ipv4Mode: {}
 
 ---
 # Student 03 - MicroShift VRRP Network
@@ -64,7 +79,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-03-udn
+  namespace: retail-edge-student-03
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -74,9 +89,15 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.102.0.0/24"
+    - cidr: 10.102.0.0/24
+      gateway: 10.102.0.1
+      excludeSubnets:
+      - 10.102.0.1/32
+      - 10.102.0.2-10.102.0.10
+      - 10.102.0.100/32
+    ipv4Mode: {}
 
 ---
 # Student 04 - MicroShift VRRP Network
@@ -84,7 +105,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-04-udn
+  namespace: retail-edge-student-04
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -94,9 +115,15 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.102.0.0/24"
+    - cidr: 10.102.0.0/24
+      gateway: 10.102.0.1
+      excludeSubnets:
+      - 10.102.0.1/32
+      - 10.102.0.2-10.102.0.10
+      - 10.102.0.100/32
+    ipv4Mode: {}
 
 ---
 # Student 05 - MicroShift VRRP Network
@@ -104,7 +131,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: microshift-net
-  namespace: retail-edge-student-05-udn
+  namespace: retail-edge-student-05
   labels:
     workshop: retail-edge-ha
     module: module2
@@ -114,6 +141,12 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.102.0.0/24"
+    - cidr: 10.102.0.0/24
+      gateway: 10.102.0.1
+      excludeSubnets:
+      - 10.102.0.1/32
+      - 10.102.0.2-10.102.0.10
+      - 10.102.0.100/32
+    ipv4Mode: {}

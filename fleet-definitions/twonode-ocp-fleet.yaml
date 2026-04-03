@@ -1,0 +1,16 @@
+apiVersion: flightctl.io/v1beta1
+kind: Fleet
+metadata:
+  name: twonode-ocp
+spec:
+  selector:
+    matchLabels:
+      module: twonode
+  template:
+    spec:
+      config:
+        - name: twonode-setup
+          gitRef:
+            repository: retail-edge-ha-workshop
+            targetRevision: main
+            path: fleet-configs/module3-twonode

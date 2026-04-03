@@ -1,0 +1,15 @@
+[Unit]
+Description=Run Two-Node OCP setup when fleet config arrives
+ConditionPathExists=/etc/edge-config/setup-twonode.sh
+ConditionPathExists=!/var/run/edge-config-twonode.done
+After=network-online.target flightctl-agent.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash /etc/edge-config/setup-twonode.sh
+RemainAfterExit=true
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

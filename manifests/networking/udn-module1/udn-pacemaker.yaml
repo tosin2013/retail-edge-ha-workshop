@@ -15,7 +15,10 @@
 #   - Student 01: 10.101.0.20-21
 #   - Student 02: 10.101.0.20-21 (isolated UDN, same IPs OK)
 #   - Student 03-50: 10.101.0.20-21 (each in their own namespace)
+#
+# Generated for 5 students
 # =============================================================================
+
 
 ---
 # Student 01 - Pacemaker Network
@@ -35,7 +38,12 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - "10.101.0.0/24"
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
 
 ---
 # Student 02 - Pacemaker Network
@@ -55,7 +63,12 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - "10.101.0.0/24"
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
 
 ---
 # Student 03 - Pacemaker Network
@@ -75,7 +88,12 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - "10.101.0.0/24"
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
 
 ---
 # Student 04 - Pacemaker Network
@@ -95,7 +113,12 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - "10.101.0.0/24"
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}
 
 ---
 # Student 05 - Pacemaker Network
@@ -115,4 +138,9 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - "10.101.0.0/24"
+    - cidr: 10.101.0.0/24
+      gateway: 10.101.0.1
+      excludeSubnets:
+      - 10.101.0.1/32
+      - 10.101.0.2-10.101.0.10
+    ipv4Mode: {}

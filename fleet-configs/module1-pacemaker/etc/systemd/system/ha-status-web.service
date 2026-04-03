@@ -1,0 +1,13 @@
+[Unit]
+Description=Pacemaker HA Status Web Dashboard
+After=network-online.target edge-config-pacemaker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /etc/edge-config/ha-status-web.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

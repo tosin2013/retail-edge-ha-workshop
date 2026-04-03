@@ -66,6 +66,8 @@ apply_module() {
   for f in "${module_dir}"/*.yaml; do
     [[ -f "$f" ]] || continue
     fname=$(basename "$f")
+    # Skip kustomize config files
+    [[ "$fname" == "kustomization.yaml" ]] && continue
 
     if grep -q "REPLACE_ACTIVATION_KEY" "$f" 2>/dev/null; then
       echo "  ${fname} (injecting credentials)"

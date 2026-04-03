@@ -376,7 +376,7 @@ echo "  vm-rhel-node2.yaml"
 # -- cloudinit-node1.yaml --
 M1_INIT1="${M1_DIR}/cloudinit-node1.yaml"
 write_header "$M1_INIT1" "# Cloud-init - RHEL HA Node 1
-# Generated for ${STUDENT_COUNT} students | IP: 10.101.0.20"
+# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -418,8 +418,6 @@ ENDOFPACKAGES
 
   cat >> "$M1_INIT1" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.20/24 ipv4.method manual connection.autoconnect yes
-      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
@@ -429,7 +427,7 @@ echo "  cloudinit-node1.yaml"
 # -- cloudinit-node2.yaml --
 M1_INIT2="${M1_DIR}/cloudinit-node2.yaml"
 write_header "$M1_INIT2" "# Cloud-init - RHEL HA Node 2
-# Generated for ${STUDENT_COUNT} students | IP: 10.101.0.21"
+# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -471,8 +469,6 @@ ENDOFPACKAGES
 
   cat >> "$M1_INIT2" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.21/24 ipv4.method manual connection.autoconnect yes
-      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
@@ -670,7 +666,7 @@ echo "  vm-microshift-gw-b.yaml"
 # -- cloudinit-gw-a.yaml --
 M2_INIT_A="${M2_DIR}/cloudinit-gw-a.yaml"
 write_header "$M2_INIT_A" "# Cloud-init - Module 2: MicroShift Gateway A
-# Generated for ${STUDENT_COUNT} students | IP: 10.102.0.20"
+# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -712,8 +708,6 @@ ENDOFPACKAGES
 
   cat >> "$M2_INIT_A" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.102.0.20/24 ipv4.gateway 10.102.0.1 ipv4.method manual connection.autoconnect yes
-      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-microshift.path
 ENDOFRUNCMD
@@ -723,7 +717,7 @@ echo "  cloudinit-gw-a.yaml"
 # -- cloudinit-gw-b.yaml --
 M2_INIT_B="${M2_DIR}/cloudinit-gw-b.yaml"
 write_header "$M2_INIT_B" "# Cloud-init - Module 2: MicroShift Gateway B
-# Generated for ${STUDENT_COUNT} students | IP: 10.102.0.21"
+# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -765,8 +759,6 @@ ENDOFPACKAGES
 
   cat >> "$M2_INIT_B" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.102.0.21/24 ipv4.gateway 10.102.0.1 ipv4.method manual connection.autoconnect yes
-      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-microshift.path
 ENDOFRUNCMD

@@ -15,12 +15,11 @@
 # IP Allocation per Student:
 #   - Student 01: 10.103.0.20-22 (master1, master2, arbiter)
 #   - Student 02: 10.103.0.20-22 (isolated UDN, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own UDN namespace)
+#   - Student 03-50: Same pattern (each in their own namespace)
 #
-# Note: The arbiter node is on the same UDN for simplicity. In production,
-# the arbiter would be in a remote datacenter connected via WAN. We simulate
-# WAN latency using NetworkPolicies in Module 4 (Chaos Testing).
+# Generated for 5 students
 # =============================================================================
+
 
 ---
 # Student 01 - Two-Node OpenShift Network
@@ -28,7 +27,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-01-udn
+  namespace: retail-edge-student-01
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -38,9 +37,14 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.103.0.0/24"
+    - cidr: 10.103.0.0/24
+      gateway: 10.103.0.1
+      excludeSubnets:
+      - 10.103.0.1/32
+      - 10.103.0.2-10.103.0.10
+    ipv4Mode: {}
 
 ---
 # Student 02 - Two-Node OpenShift Network
@@ -48,7 +52,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-02-udn
+  namespace: retail-edge-student-02
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -58,9 +62,14 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.103.0.0/24"
+    - cidr: 10.103.0.0/24
+      gateway: 10.103.0.1
+      excludeSubnets:
+      - 10.103.0.1/32
+      - 10.103.0.2-10.103.0.10
+    ipv4Mode: {}
 
 ---
 # Student 03 - Two-Node OpenShift Network
@@ -68,7 +77,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-03-udn
+  namespace: retail-edge-student-03
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -78,9 +87,14 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.103.0.0/24"
+    - cidr: 10.103.0.0/24
+      gateway: 10.103.0.1
+      excludeSubnets:
+      - 10.103.0.1/32
+      - 10.103.0.2-10.103.0.10
+    ipv4Mode: {}
 
 ---
 # Student 04 - Two-Node OpenShift Network
@@ -88,7 +102,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-04-udn
+  namespace: retail-edge-student-04
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -98,9 +112,14 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.103.0.0/24"
+    - cidr: 10.103.0.0/24
+      gateway: 10.103.0.1
+      excludeSubnets:
+      - 10.103.0.1/32
+      - 10.103.0.2-10.103.0.10
+    ipv4Mode: {}
 
 ---
 # Student 05 - Two-Node OpenShift Network
@@ -108,7 +127,7 @@ apiVersion: k8s.ovn.org/v1
 kind: UserDefinedNetwork
 metadata:
   name: twonode-net
-  namespace: retail-edge-student-05-udn
+  namespace: retail-edge-student-05
   labels:
     workshop: retail-edge-ha
     module: module3
@@ -118,6 +137,11 @@ metadata:
 spec:
   topology: Layer2
   layer2:
-    role: Primary
+    role: Secondary
     subnets:
-    - "10.103.0.0/24"
+    - cidr: 10.103.0.0/24
+      gateway: 10.103.0.1
+      excludeSubnets:
+      - 10.103.0.1/32
+      - 10.103.0.2-10.103.0.10
+    ipv4Mode: {}

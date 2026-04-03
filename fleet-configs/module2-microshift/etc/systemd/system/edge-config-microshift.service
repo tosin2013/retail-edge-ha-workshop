@@ -9,6 +9,7 @@ Wants=network-online.target
 Type=oneshot
 ExecStart=/bin/bash /etc/edge-config/setup-microshift.sh
 RemainAfterExit=true
+StandardOutput=journal+console
 
 [Install]
 WantedBy=multi-user.target

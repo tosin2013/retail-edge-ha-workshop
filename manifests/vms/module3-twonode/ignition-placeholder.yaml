@@ -1,5 +1,5 @@
 # Ignition Configuration Placeholders - Module 3: Two-Node OpenShift
-# Generated for 2 students
+# Generated for 5 students
 # IMPORTANT: These are PLACEHOLDER secrets. Generate proper ignition via openshift-install.
 
 ---
@@ -46,6 +46,117 @@ kind: Secret
 metadata:
   name: ignition-twonode-master1
   namespace: retail-edge-student-02
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIx"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 03 - Master1 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master1
+  namespace: retail-edge-student-03
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIx"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 04 - Master1 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master1
+  namespace: retail-edge-student-04
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIx"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 05 - Master1 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master1
+  namespace: retail-edge-student-05
 type: Opaque
 stringData:
   ignition: |
@@ -151,6 +262,117 @@ stringData:
     }
 
 ---
+# Student 03 - Master2 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master2
+  namespace: retail-edge-student-03
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIy"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 04 - Master2 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master2
+  namespace: retail-edge-student-04
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIy"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 05 - Master2 Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-master2
+  namespace: retail-edge-student-05
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1tYXN0ZXIy"
+            }
+          }
+        ]
+      }
+    }
+
+---
 # Student 01 - Arbiter Ignition
 apiVersion: v1
 kind: Secret
@@ -194,6 +416,117 @@ kind: Secret
 metadata:
   name: ignition-twonode-arbiter
   namespace: retail-edge-student-02
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1hcmJpdGVy"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 03 - Arbiter Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-arbiter
+  namespace: retail-edge-student-03
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1hcmJpdGVy"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 04 - Arbiter Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-arbiter
+  namespace: retail-edge-student-04
+type: Opaque
+stringData:
+  ignition: |
+    {
+      "ignition": {
+        "version": "3.2.0"
+      },
+      "passwd": {
+        "users": [
+          {
+            "name": "core",
+            "sshAuthorizedKeys": [
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC... (replace-with-your-ssh-key)"
+            ]
+          }
+        ]
+      },
+      "storage": {
+        "files": [
+          {
+            "path": "/etc/hostname",
+            "mode": 420,
+            "contents": {
+              "source": "data:text/plain;charset=utf-8;base64,dHdvbm9kZS1hcmJpdGVy"
+            }
+          }
+        ]
+      }
+    }
+
+---
+# Student 05 - Arbiter Ignition
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ignition-twonode-arbiter
+  namespace: retail-edge-student-05
 type: Opaque
 stringData:
   ignition: |
