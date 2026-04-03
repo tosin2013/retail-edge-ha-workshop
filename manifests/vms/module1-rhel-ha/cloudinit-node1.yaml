@@ -129,7 +129,7 @@ stringData:
       - systemctl enable update-cluster-hosts.service
       - systemctl start update-cluster-hosts.service
       - systemctl enable --now flightctl-agent
-      - systemctl enable ha-status-web.path
+      - systemctl enable --now ha-status-web.path
 
 ---
 # Student 02 - Node 1 Cloud-init
@@ -259,4 +259,4 @@ stringData:
       - systemctl enable update-cluster-hosts.service
       - systemctl start update-cluster-hosts.service
       - systemctl enable --now flightctl-agent
-      - systemctl enable ha-status-web.path
+      - systemctl enable --now ha-status-web.path

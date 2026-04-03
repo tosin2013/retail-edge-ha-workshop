@@ -170,7 +170,7 @@ stringData:
       - chmod 600 /home/cloud-user/.kube/config
       - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
-      - systemctl enable gateway-status-web.path
+      - systemctl enable --now gateway-status-web.path
 
 ---
 # Student 02 - Cloud-init for MicroShift Gateway B
@@ -341,4 +341,4 @@ stringData:
       - chmod 600 /home/cloud-user/.kube/config
       - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
-      - systemctl enable gateway-status-web.path
+      - systemctl enable --now gateway-status-web.path

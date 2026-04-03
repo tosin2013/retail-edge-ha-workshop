@@ -239,7 +239,7 @@ RCEOF
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     cat <<RCEOF
       - systemctl enable --now flightctl-agent
-      - systemctl enable ha-status-web.path
+      - systemctl enable --now ha-status-web.path
 RCEOF
   fi
 }
@@ -424,7 +424,7 @@ RCEOF
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     cat <<RCEOF
       - systemctl enable --now flightctl-agent
-      - systemctl enable gateway-status-web.path
+      - systemctl enable --now gateway-status-web.path
 RCEOF
   fi
 }
