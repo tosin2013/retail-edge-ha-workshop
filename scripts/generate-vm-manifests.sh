@@ -263,6 +263,7 @@ spec:
             masquerade: {}
           - name: pacemaker-net
             bridge: {}
+            macAddress: "02:de:ad:01:01:01"
           networkInterfaceMultiqueue: true
           rng: {}
         resources:
@@ -353,6 +354,7 @@ spec:
             masquerade: {}
           - name: pacemaker-net
             bridge: {}
+            macAddress: "02:de:ad:01:01:02"
           networkInterfaceMultiqueue: true
           rng: {}
         resources:
@@ -553,6 +555,7 @@ spec:
             masquerade: {}
           - name: microshift-net
             bridge: {}
+            macAddress: "02:de:ad:02:02:01"
           networkInterfaceMultiqueue: true
           rng: {}
         resources:
@@ -643,6 +646,7 @@ spec:
             masquerade: {}
           - name: microshift-net
             bridge: {}
+            macAddress: "02:de:ad:02:02:02"
           networkInterfaceMultiqueue: true
           rng: {}
         resources:

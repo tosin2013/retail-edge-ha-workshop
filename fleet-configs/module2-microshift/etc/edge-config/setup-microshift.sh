@@ -15,8 +15,6 @@ VIP="10.102.0.100"
 
 exec > >(tee -a "$LOG") 2>&1
 
-[ -f "$LOCK" ] && { echo "Already configured. Remove $LOCK to re-run."; exit 0; }
-
 if [ ! -f "$ROLE_FILE" ]; then
     echo "ERROR: $ROLE_FILE not found. Cannot determine gateway role."
     exit 1
@@ -47,7 +45,8 @@ echo "=== MicroShift VRRP Setup: role=$ROLE hostname=$HOSTNAME state=$KEEPALIVED
 
 hostnamectl set-hostname "$HOSTNAME"
 
-# Discover own IP on the UDN interface (eth1, assigned by OVN DHCP)
+# --- Networking (runs every boot to handle DHCP IP changes) ---
+
 for attempt in $(seq 1 30); do
     MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
     [ -n "$MY_IP" ] && break
@@ -62,13 +61,14 @@ fi
 
 echo "My IP: $MY_IP"
 
-grep -q "$MY_IP $HOSTNAME" /etc/hosts 2>/dev/null || echo "$MY_IP $HOSTNAME" >> /etc/hosts
+# Replace (not append) /etc/hosts entries for cluster hostnames
+sed -i "/ $HOSTNAME\$/d" /etc/hosts
+echo "$MY_IP $HOSTNAME" >> /etc/hosts
 grep -q "$VIP microshift-vip" /etc/hosts 2>/dev/null || echo "$VIP microshift-vip" >> /etc/hosts
 
-# Discover peer via ARP scan on the L2 segment
 PEER_IP=""
 for attempt in $(seq 1 60); do
-    for candidate in $(seq 11 254); do
+    for candidate in $(seq 2 254); do
         CANDIDATE_IP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$candidate/")
         [ "$CANDIDATE_IP" = "$MY_IP" ] && continue
         [ "$CANDIDATE_IP" = "$VIP" ] && continue
@@ -83,14 +83,17 @@ done
 
 if [ -n "$PEER_IP" ]; then
     echo "Peer discovered: $PEER_IP ($PEER_HOSTNAME)"
-    grep -q "$PEER_IP $PEER_HOSTNAME" /etc/hosts 2>/dev/null || echo "$PEER_IP $PEER_HOSTNAME" >> /etc/hosts
+    sed -i "/ $PEER_HOSTNAME\$/d" /etc/hosts
+    echo "$PEER_IP $PEER_HOSTNAME" >> /etc/hosts
 else
     echo "WARNING: Peer not discovered after 300s. /etc/hosts may need manual update."
 fi
 
-# Keepalived configuration
-mkdir -p /etc/keepalived
-cat > /etc/keepalived/keepalived.conf << KEEPALIVED_EOF
+# --- One-time setup (skipped on subsequent boots) ---
+
+if [ ! -f "$LOCK" ]; then
+    mkdir -p /etc/keepalived
+    cat > /etc/keepalived/keepalived.conf << KEEPALIVED_EOF
 vrrp_script check_microshift {
     script "/usr/bin/curl -k -s https://localhost:6443/readyz"
     interval 3
@@ -121,42 +124,39 @@ vrrp_instance MICROSHIFT_VIP {
 }
 KEEPALIVED_EOF
 
-# Firewall rules
-systemctl enable --now firewalld
-firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
-firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
-firewall-cmd --permanent --zone=public --add-port=6443/tcp
-firewall-cmd --permanent --zone=public --add-port=80/tcp
-firewall-cmd --permanent --zone=public --add-port=443/tcp
-firewall-cmd --permanent --zone=public --add-port=5353/udp
-firewall-cmd --permanent --add-protocol=vrrp
-firewall-cmd --reload
+    systemctl enable --now firewalld
+    firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+    firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+    firewall-cmd --permanent --zone=public --add-port=6443/tcp
+    firewall-cmd --permanent --zone=public --add-port=80/tcp
+    firewall-cmd --permanent --zone=public --add-port=443/tcp
+    firewall-cmd --permanent --zone=public --add-port=5353/udp
+    firewall-cmd --permanent --add-protocol=vrrp
+    firewall-cmd --reload
 
-# Start MicroShift
-systemctl enable --now microshift
+    systemctl enable --now microshift
 
-for i in $(seq 1 60); do
-    if curl -k -s https://localhost:6443/readyz &>/dev/null; then
-        echo "MicroShift is ready"
-        break
-    fi
-    echo "Waiting for MicroShift... ($i/60)"
-    sleep 5
-done
+    for i in $(seq 1 60); do
+        if curl -k -s https://localhost:6443/readyz &>/dev/null; then
+            echo "MicroShift is ready"
+            break
+        fi
+        echo "Waiting for MicroShift... ($i/60)"
+        sleep 5
+    done
 
-# Set up kubeconfig for cloud-user
-mkdir -p /home/cloud-user/.kube
-cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
-chown -R cloud-user:cloud-user /home/cloud-user/.kube
-chmod 600 /home/cloud-user/.kube/config
+    mkdir -p /home/cloud-user/.kube
+    cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+    chown -R cloud-user:cloud-user /home/cloud-user/.kube
+    chmod 600 /home/cloud-user/.kube/config
 
-# Start Keepalived (after MicroShift so health check can work)
-systemctl enable --now keepalived
+    systemctl enable --now keepalived
 
-# Start the status web dashboard
+    touch "$LOCK"
+fi
+
 systemctl daemon-reload
 systemctl enable gateway-status-web.service || true
 systemctl start --no-block gateway-status-web.service || true
 
-touch "$LOCK"
 echo "=== MicroShift VRRP configuration complete for $HOSTNAME ==="

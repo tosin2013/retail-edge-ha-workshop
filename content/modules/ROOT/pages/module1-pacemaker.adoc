@@ -65,7 +65,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 ----
 ┌─────────────────────┐      ┌─────────────────────┐
 │  rhel-ha-node1      │◄────►│  rhel-ha-node2      │
-│  10.101.0.20        │      │  10.101.0.21        │
+│  DHCP (eth1)        │      │  DHCP (eth1)        │
 │  (Active)           │      │  (Standby)          │
 └─────────────────────┘      └─────────────────────┘
          │                            │
@@ -334,7 +334,7 @@ Create the cluster:
 [source,role="execute"]
 ----
 sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 \
-  --transport udp \
+  transport udp \
   --force
 ----
 
@@ -381,28 +381,35 @@ TIP: Refresh the **HA Status Dashboard** in your browser -- Pacemaker, Corosync,
 
 == Step 6: Configure STONITH Fencing
 
-Create a ServiceAccount for fence_kubevirt:
+Exit the SSH session to return to the bastion:
 
 [source,role="execute"]
 ----
 exit
 ----
 
-Back in the terminal, create the ServiceAccount:
+Create a ServiceAccount and RBAC for fence_kubevirt. The fence agent needs permission to manage VMs *and* their subresources (start/stop/restart):
 
 [source,bash,role=execute,subs="attributes+"]
 ----
 oc create sa pacemaker-fencing -n {student-namespace}
 ----
 
-Grant permissions to manage VMs:
-
 [source,bash,role=execute,subs="attributes+"]
 ----
-oc create role vm-manager \
-  --verb=get,list,update,patch,delete \
-  --resource=virtualmachines,virtualmachineinstances \
-  -n {student-namespace}
+cat <<'EOF' | oc apply -n {student-namespace} -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vm-manager
+rules:
+- apiGroups: ["kubevirt.io"]
+  resources: ["virtualmachines", "virtualmachineinstances"]
+  verbs: ["get", "list", "update", "patch", "delete"]
+- apiGroups: ["subresources.kubevirt.io"]
+  resources: ["virtualmachines/restart", "virtualmachines/start", "virtualmachines/stop"]
+  verbs: ["update", "get"]
+EOF
 ----
 
 [source,bash,role=execute,subs="attributes+"]
@@ -413,14 +420,47 @@ oc create rolebinding vm-manager-binding \
   -n {student-namespace}
 ----
 
-Get the ServiceAccount token:
+Generate a long-lived token and create a kubeconfig file that the fence agent will use:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-oc create token pacemaker-fencing -n {student-namespace} --duration=8760h
+FENCE_TOKEN=$(oc create token pacemaker-fencing -n {student-namespace} --duration=8760h)
 ----
 
-*Copy the token output* - you'll need it in the next step.
+Create the kubeconfig content:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+KUBECONFIG_CONTENT="apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    insecure-skip-tls-verify: true
+    server: {cluster-api}
+  name: ocp
+contexts:
+- context:
+    cluster: ocp
+    namespace: {student-namespace}
+    user: pacemaker-fencing
+  name: ocp
+current-context: ocp
+users:
+- name: pacemaker-fencing
+  user:
+    token: ${FENCE_TOKEN}"
+----
+
+Deploy the kubeconfig to both nodes:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+for node in {rhel-node1} {rhel-node2}; do
+  echo "Deploying kubeconfig to $node..."
+  virtctl ssh {vm-user}@${node} -n {student-namespace} -c \
+    "sudo mkdir -p /etc/pacemaker && echo '${KUBECONFIG_CONTENT}' | sudo tee /etc/pacemaker/kubeconfig > /dev/null && sudo chmod 600 /etc/pacemaker/kubeconfig"
+done
+----
 
 == Step 7: Configure fence_kubevirt
 
@@ -431,15 +471,16 @@ SSH back into node1:
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
+NOTE: The `fence_kubevirt` agent on RHEL 9 uses a `kubeconfig` file (not token/apiserveraddr directly). The kubeconfig was deployed in the previous step.
+
 Create fence device for node1:
 
 [source,role="execute",subs="attributes+"]
 ----
 sudo pcs stonith create fence-node1 fence_kubevirt \
-  token="<paste-token-here>" \
+  kubeconfig=/etc/pacemaker/kubeconfig \
   plug=rhel-ha-node1 \
   namespace={student-namespace} \
-  apiserveraddr={cluster-api} \
   pcmk_host_list="rhel-ha-node1" \
   pcmk_reboot_action="reboot" \
   ssl_insecure=1
@@ -450,16 +491,15 @@ Create fence device for node2:
 [source,role="execute",subs="attributes+"]
 ----
 sudo pcs stonith create fence-node2 fence_kubevirt \
-  token="<paste-token-here>" \
+  kubeconfig=/etc/pacemaker/kubeconfig \
   plug=rhel-ha-node2 \
   namespace={student-namespace} \
-  apiserveraddr={cluster-api} \
   pcmk_host_list="rhel-ha-node2" \
   pcmk_reboot_action="reboot" \
   ssl_insecure=1
 ----
 
-Add location constraints (fence devices on opposite nodes):
+Add location constraints so each fence device runs on the _opposite_ node:
 
 [source,role="execute"]
 ----
@@ -474,21 +514,21 @@ Enable STONITH:
 sudo pcs property set stonith-enabled=true
 ----
 
-Test fencing (this will reboot node2):
+Test fencing (this will reboot node2 via the KubeVirt API):
 
 [source,role="execute"]
 ----
 sudo pcs stonith fence rhel-ha-node2
 ----
 
-Wait 30 seconds for node2 to reboot and rejoin:
+Wait for node2 to reboot and rejoin (typically 60-90 seconds):
 
 [source,role="execute"]
 ----
-watch -n 2 sudo pcs status
+watch -n 5 sudo pcs status
 ----
 
-Press `Ctrl+C` when node2 shows online again.
+Press `Ctrl+C` when both nodes show `Online`.
 
 == Step 8: Create Virtual IP Resource
 

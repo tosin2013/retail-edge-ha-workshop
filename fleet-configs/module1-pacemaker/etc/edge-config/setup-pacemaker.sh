@@ -15,8 +15,6 @@ LOG="/var/log/edge-config-pacemaker.log"
 
 exec > >(tee -a "$LOG") 2>&1
 
-[ -f "$LOCK" ] && { echo "Already configured. Remove $LOCK to re-run."; exit 0; }
-
 if [ ! -f "$ROLE_FILE" ]; then
     echo "ERROR: $ROLE_FILE not found. Cannot determine node role."
     exit 1
@@ -43,7 +41,8 @@ echo "=== Pacemaker HA Setup: role=$ROLE hostname=$HOSTNAME ==="
 
 hostnamectl set-hostname "$HOSTNAME"
 
-# Discover own IP on the UDN interface (eth1, assigned by OVN DHCP)
+# --- Networking (runs every boot to handle DHCP IP changes) ---
+
 for attempt in $(seq 1 30); do
     MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
     [ -n "$MY_IP" ] && break
@@ -58,15 +57,16 @@ fi
 
 echo "My IP: $MY_IP"
 
-grep -q "$MY_IP $HOSTNAME" /etc/hosts 2>/dev/null || echo "$MY_IP $HOSTNAME" >> /etc/hosts
+# Replace (not append) /etc/hosts entries for cluster hostnames
+sed -i "/ $HOSTNAME\$/d" /etc/hosts
+echo "$MY_IP $HOSTNAME" >> /etc/hosts
 
-# Discover peer via ARP scan on the L2 segment
 SUBNET=$(echo "$MY_IP" | sed 's/\.[0-9]*$/.0\/24/')
 echo "Scanning $SUBNET for peer (excluding self $MY_IP)..."
 
 PEER_IP=""
 for attempt in $(seq 1 60); do
-    for candidate in $(seq 11 254); do
+    for candidate in $(seq 2 254); do
         CANDIDATE_IP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$candidate/")
         [ "$CANDIDATE_IP" = "$MY_IP" ] && continue
         if arping -c 1 -w 1 -I eth1 "$CANDIDATE_IP" &>/dev/null; then
@@ -80,24 +80,27 @@ done
 
 if [ -n "$PEER_IP" ]; then
     echo "Peer discovered: $PEER_IP ($PEER_HOSTNAME)"
-    grep -q "$PEER_IP $PEER_HOSTNAME" /etc/hosts 2>/dev/null || echo "$PEER_IP $PEER_HOSTNAME" >> /etc/hosts
+    sed -i "/ $PEER_HOSTNAME\$/d" /etc/hosts
+    echo "$PEER_IP $PEER_HOSTNAME" >> /etc/hosts
 else
     echo "WARNING: Peer not discovered after 300s. /etc/hosts may need manual update."
 fi
 
-echo "redhat" | passwd --stdin hacluster
+# --- One-time setup (skipped on subsequent boots) ---
 
-systemctl enable --now pcsd
+if [ ! -f "$LOCK" ]; then
+    echo "redhat" | passwd --stdin hacluster
 
-# Pre-install GFS2 and DLM packages for the shared-storage exercise (Step 11)
-dnf install -y gfs2-utils dlm lvm2-lockd || echo "WARNING: Some storage packages failed to install"
-systemctl enable dlm || true
+    systemctl enable --now pcsd
 
-# Start the status web dashboard (--no-block avoids deadlock since this
-# script runs inside edge-config-pacemaker.service)
+    dnf install -y gfs2-utils dlm lvm2-lockd || echo "WARNING: Some storage packages failed to install"
+    systemctl enable dlm || true
+
+    touch "$LOCK"
+fi
+
 systemctl daemon-reload
 systemctl enable ha-status-web.service || true
 systemctl start --no-block ha-status-web.service || true
 
-touch "$LOCK"
 echo "=== Pacemaker HA configuration complete for $HOSTNAME ==="
