@@ -9,7 +9,7 @@
 set -euo pipefail
 
 ROLE_FILE="/etc/edge-config/device-role"
-LOCK="/var/run/edge-config-microshift.done"
+LOCK="/var/lib/edge-config-microshift.done"
 LOG="/var/log/edge-config-microshift.log"
 VIP="10.102.0.100"
 
@@ -158,5 +158,7 @@ fi
 systemctl daemon-reload
 systemctl enable gateway-status-web.service || true
 systemctl start --no-block gateway-status-web.service || true
+
+touch /var/run/edge-config-microshift.done
 
 echo "=== MicroShift VRRP configuration complete for $HOSTNAME ==="

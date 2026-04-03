@@ -10,7 +10,7 @@
 set -euo pipefail
 
 ROLE_FILE="/etc/edge-config/device-role"
-LOCK="/var/run/edge-config-pacemaker.done"
+LOCK="/var/lib/edge-config-pacemaker.done"
 LOG="/var/log/edge-config-pacemaker.log"
 
 exec > >(tee -a "$LOG") 2>&1
@@ -102,5 +102,8 @@ fi
 systemctl daemon-reload
 systemctl enable ha-status-web.service || true
 systemctl start --no-block ha-status-web.service || true
+
+# Signal to systemd ConditionPathExists that this boot's run is done
+touch /var/run/edge-config-pacemaker.done
 
 echo "=== Pacemaker HA configuration complete for $HOSTNAME ==="
