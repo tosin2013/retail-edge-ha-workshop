@@ -70,12 +70,7 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - cidr: 10.101.0.0/24
-      gateway: 10.101.0.1
-      excludeSubnets:
-      - 10.101.0.1/32
-      - 10.101.0.2-10.101.0.10
-    ipv4Mode: {}
+    - "10.101.0.0/24"
 EOF
 done
 
@@ -128,13 +123,9 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - cidr: 10.102.0.0/24
-      gateway: 10.102.0.1
-      excludeSubnets:
-      - 10.102.0.1/32
-      - 10.102.0.2-10.102.0.10
-      - 10.102.0.100/32
-    ipv4Mode: {}
+    - "10.102.0.0/24"
+    reservedSubnets:
+    - "10.102.0.100/32"
 EOF
 done
 
@@ -187,12 +178,7 @@ spec:
   layer2:
     role: Secondary
     subnets:
-    - cidr: 10.103.0.0/24
-      gateway: 10.103.0.1
-      excludeSubnets:
-      - 10.103.0.1/32
-      - 10.103.0.2-10.103.0.10
-    ipv4Mode: {}
+    - "10.103.0.0/24"
 EOF
 done
 

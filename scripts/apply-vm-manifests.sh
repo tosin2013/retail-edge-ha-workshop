@@ -72,10 +72,10 @@ apply_module() {
     if grep -q "REPLACE_ACTIVATION_KEY" "$f" 2>/dev/null; then
       echo "  ${fname} (injecting credentials)"
       sed "s|REPLACE_ACTIVATION_KEY|${RHEL_ACTIVATION_KEY}|g;s|REPLACE_ORG_ID|${RHEL_ORG_ID}|g" "$f" \
-        | oc apply -f - 2>&1 | sed 's/^/    /'
+        | oc apply -f - 2>&1 | grep -v "NotFound" | sed 's/^/    /' || true
     else
       echo "  ${fname}"
-      oc apply -f "$f" 2>&1 | sed 's/^/    /'
+      oc apply -f "$f" 2>&1 | grep -v "NotFound" | sed 's/^/    /' || true
     fi
   done
 }
