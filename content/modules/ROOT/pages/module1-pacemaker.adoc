@@ -220,27 +220,35 @@ Once Fleet Manager has delivered the configuration, the hostname will show `rhel
 
 === Access the HA Status Dashboard
 
-Fleet Manager also deployed a live status dashboard on each node. Expose it via a Service and Route:
+Fleet Manager deployed a live status dashboard on each node. Create a single HA-aware Service that targets **both** VMs -- this way the dashboard stays accessible even when one node goes down during failover testing:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl expose vmi {rhel-node1} --port=8080 --target-port=8080 --name=ha-status-node1 -n {student-namespace}
-oc expose svc/ha-status-node1 -n {student-namespace}
-virtctl expose vmi {rhel-node2} --port=8080 --target-port=8080 --name=ha-status-node2 -n {student-namespace}
-oc expose svc/ha-status-node2 -n {student-namespace}
+cat <<EOF | oc apply -n {student-namespace} -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: ha-status-pacemaker
+spec:
+  selector:
+    module: module1
+  ports:
+    - port: 8080
+      targetPort: 8080
+EOF
+oc expose svc/ha-status-pacemaker -n {student-namespace}
 ----
 
-Get the dashboard URLs:
+Get the dashboard URL:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-echo "Node 1: http://$(oc get route ha-status-node1 -n {student-namespace} -o jsonpath='{.spec.host}')"
-echo "Node 2: http://$(oc get route ha-status-node2 -n {student-namespace} -o jsonpath='{.spec.host}')"
+echo "Dashboard: http://$(oc get route ha-status-pacemaker -n {student-namespace} -o jsonpath='{.spec.host}')"
 ----
 
-Open these URLs in your browser. The dashboard shows real-time status of cluster services, STONITH fencing, GFS2 storage, and peer connectivity. It auto-refreshes every 15 seconds.
+Open this URL in your browser. The dashboard shows real-time status of cluster services, STONITH fencing, GFS2 storage, and peer connectivity. It auto-refreshes every 15 seconds.
 
-NOTE: At this point, the dashboard will show Pacemaker and Corosync as **Inactive** -- that's expected. As you complete the remaining steps, watch the dashboard update to reflect each configuration change.
+NOTE: At this point, the dashboard will show Pacemaker and Corosync as **Inactive** and no resources configured -- that's expected! Watch the dashboard fill in as you complete each step. The single Route targets both VMs, so it stays up even during failover testing.
 
 == Step 3: Verify Network and Fleet Configuration
 
@@ -368,6 +376,8 @@ sudo pcs status
 ----
 
 You should see both nodes online.
+
+TIP: Refresh the **HA Status Dashboard** in your browser -- Pacemaker, Corosync, and Pcsd should all show **Active**, and the PCS Status section should display both nodes Online.
 
 == Step 6: Configure STONITH Fencing
 
@@ -509,6 +519,8 @@ Verify the VIP is accessible:
 ping -c 3 {pacemaker-vip}
 ----
 
+TIP: Check the **HA Status Dashboard** -- the Resources section now shows `cluster-vip` as **Started**, and the STONITH section shows both fence devices.
+
 == Step 9: Test Failover
 
 From node1, put node1 into standby mode:
@@ -540,6 +552,8 @@ Bring node1 back online:
 ----
 sudo pcs node unstandby rhel-ha-node1
 ----
+
+TIP: During failover, keep the **HA Status Dashboard** open. Notice it stays accessible the entire time -- the Route targets both VMs, so when one node goes into standby, the other continues serving the dashboard. You'll see the `cluster-vip` resource move between nodes in real time.
 
 == Step 10: Test STONITH Fencing
 
@@ -978,6 +992,8 @@ In production retail deployments:
 * Lab uses Ceph RBD (ODF) over network
 * Production stores typically use local SAN (lower latency, higher cost)
 * Both support ReadWriteMany for GFS2
+
+TIP: Check the **HA Status Dashboard** one more time -- the Shared Storage (GFS2) section now shows the filesystem mounted, the write test passing, and all GFS2 packages installed.
 
 === Key Takeaways
 

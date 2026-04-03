@@ -180,6 +180,28 @@ Monitor VM status:
 oc get vmi -n {student-namespace} | grep twonode
 ----
 
+=== Deploy the Cluster Status Dashboard
+
+Unlike Modules 1 and 2 (where dashboards are delivered by Fleet Manager to RHEL devices), Module 3 VMs run RHCOS. The status dashboard runs as an OpenShift pod that queries the Kubernetes API for VM state:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+oc create configmap cluster-status-web -n {student-namespace} \
+  --from-file=cluster-status-web.py=manifests/dashboards/cluster-status-web.py \
+  --dry-run=client -o yaml | oc apply -f -
+oc apply -f manifests/dashboards/module3-dashboard.yaml -n {student-namespace}
+oc expose svc/cluster-status-twonode -n {student-namespace} 2>/dev/null || true
+----
+
+Get the dashboard URL:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+echo "Dashboard: http://$(oc get route cluster-status-twonode -n {student-namespace} -o jsonpath='{.spec.host}')"
+----
+
+Open this URL in your browser. The dashboard shows VM running state, network connectivity between nodes, etcd quorum status, and storage. It auto-refreshes every 15 seconds.
+
 == Step 4: Verify Network Configuration
 
 SSH into master1:

@@ -196,6 +196,36 @@ Password: `{vm-password}`
 
 NOTE: Everything below -- MicroShift, keepalived, firewall rules, kubeconfig -- was configured automatically by Fleet Manager. In production, this same fleet configuration would be applied to thousands of MicroShift gateways simultaneously.
 
+=== Access the Gateway Status Dashboard
+
+Fleet Manager deployed a live status dashboard on each gateway. Create a single HA-aware Service that targets both gateways -- this way the dashboard stays accessible even when one gateway fails over:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+cat <<EOF | oc apply -n {student-namespace} -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-status-microshift
+spec:
+  selector:
+    module: module2
+  ports:
+    - port: 8080
+      targetPort: 8080
+EOF
+oc expose svc/gateway-status-microshift -n {student-namespace}
+----
+
+Get the dashboard URL:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+echo "Dashboard: http://$(oc get route gateway-status-microshift -n {student-namespace} -o jsonpath='{.spec.host}')"
+----
+
+Open this URL in your browser. The dashboard shows MicroShift health, Keepalived/VRRP state, VIP ownership, pod status, firewall rules, and peer connectivity. It auto-refreshes every 15 seconds and stays up during failover because it targets both gateways.
+
 == Step 2: Verify MicroShift Installation
 
 SSH into Gateway A:
@@ -340,6 +370,8 @@ Exit the session:
 exit
 ----
 
+TIP: Check the **Gateway Status Dashboard** -- you should see MicroShift **Active**, Keepalived showing **MASTER** state on Gateway A, and the VIP address assigned.
+
 == Step 5: Check Gateway B (Backup State)
 
 SSH into Gateway B:
@@ -444,6 +476,8 @@ Exit the session:
 ----
 exit
 ----
+
+TIP: Watch the **Gateway Status Dashboard** during failover -- it stays accessible the entire time because the Route targets both gateways. You'll see the VRRP state change from BACKUP to MASTER on Gateway B.
 
 == Step 7: Test Preemption
 
