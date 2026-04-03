@@ -65,7 +65,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 ----
 ┌─────────────────────┐      ┌─────────────────────┐
 │  rhel-ha-node1      │◄────►│  rhel-ha-node2      │
-│  DHCP (eth1)        │      │  DHCP (eth1)        │
+│  10.101.0.20 (eth1) │      │  10.101.0.21 (eth1) │
 │  (Active)           │      │  (Standby)          │
 └─────────────────────┘      └─────────────────────┘
          │                            │
@@ -77,6 +77,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 
 *Key Features:*
 
+* **Static IPs**: Assigned by OpenShift via IPAMClaims on a Persistent-lifecycle UDN (required by Corosync -- see <<_references>>)
 * **Corosync**: Knet unicast heartbeat (default transport)
 * **STONITH**: fence_kubevirt for VM-level fencing
 * **Virtual IP**: Floats between nodes for application access
@@ -268,20 +269,28 @@ Check the hostname:
 hostname
 ----
 
-Check the IP address on the UDN interface (assigned by OVN DHCP):
+Check the static IP address on the UDN interface (assigned via cloud-init):
 
 [source,role="execute"]
 ----
 ip -4 addr show eth1
 ----
 
-NOTE: The IP is dynamically assigned by OVN DHCP. Note the address -- you will use it for cluster configuration.
+You should see `10.101.0.20/24` on node1 (or `10.101.0.21/24` on node2). These IPs are **static** -- they never change across reboots or fencing events. This is critical because https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters[Red Hat requires static IPs on Corosync interfaces^].
 
-Verify `/etc/hosts` entries (auto-discovered via the `update-cluster-hosts` service):
+Verify `/etc/hosts` entries (configured statically by cloud-init):
 
 [source,role="execute"]
 ----
 grep -E "rhel-ha-node[12]" /etc/hosts
+----
+
+You should see:
+
+[source,text]
+----
+10.101.0.20 rhel-ha-node1
+10.101.0.21 rhel-ha-node2
 ----
 
 Verify `pcsd` is running:
@@ -312,7 +321,7 @@ Exit the SSH session:
 exit
 ----
 
-NOTE: All infrastructure setup -- hostname, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. Fleet Manager will separately deliver the HA status dashboard for monitoring.
+NOTE: All infrastructure setup -- hostname, static IPs, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. The UDN uses https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[`ipam.lifecycle: Persistent`^] with pre-created IPAMClaims so each VM always receives the same IP from OVN-Kubernetes -- visible in the OpenShift console under the VMI details. Fleet Manager separately delivers the HA status dashboard for monitoring.
 
 Check the HA Status Dashboard in your browser. At this point it should show *pcsd* active, but *Pacemaker* and *Corosync* inactive since the cluster has not been configured yet:
 
@@ -1535,6 +1544,12 @@ Or keep it if you want to experiment more!
 * STONITH fencing is critical for database integrity
 * Fleet Manager enables central management of distributed edge databases
 * Real stores need this level of HA for business continuity
+
+== References
+
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters[RHEL 9 -- Configuring and managing high availability clusters^] -- Corosync requires static IPs on cluster communication interfaces; DHCP is not supported.
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[OCP 4.21 -- UserDefinedNetwork API^] -- `ipam.lifecycle: Persistent` with IPAMClaims pins VMs to stable IPs that survive restarts.
+* https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/proc_configuring-fencing-configuring-and-managing-high-availability-clusters[RHEL 9 -- Configuring fencing (STONITH)^] -- fence_kubevirt setup for KubeVirt environments.
 
 == Next Steps
 

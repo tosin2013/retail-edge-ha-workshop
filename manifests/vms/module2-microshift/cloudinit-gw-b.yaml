@@ -1,5 +1,5 @@
 # Cloud-init - Module 2: MicroShift Gateway B
-# Generated for 2 students | IP: OVN DHCP assigned
+# Generated for 5 students | IP via IPAMClaim: 10.102.0.21
 
 ---
 # Student 01 - Cloud-init for MicroShift Gateway B
@@ -51,80 +51,14 @@ stringData:
           module: microshift
           role: gw-b
           alias: microshift-gw-b
-      - path: /etc/edge-config/update-hosts.sh
-        owner: root:root
-        permissions: '0755'
-        content: |
-          #!/bin/bash
-          set -euo pipefail
-          ROLE_FILE="/etc/edge-config/device-role"
-          VIP="10.102.0.100"
-          [ ! -f "$ROLE_FILE" ] && exit 1
-          ROLE=$(cat "$ROLE_FILE")
-          case "$ROLE" in
-            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
-            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
-            *) exit 1 ;;
-          esac
-          MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-          if [ -z "$MY_IP" ]; then
-            for attempt in $(seq 1 30); do
-              sleep 5
-              MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-              [ -n "$MY_IP" ] && break
-            done
-          fi
-          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
-          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
-          echo "$MY_IP $HOSTNAME" >> /etc/hosts
-          grep -q "$VIP microshift-vip" /etc/hosts || echo "$VIP microshift-vip" >> /etc/hosts
-          KNOWN_PEER=$(grep " ${PEER}\$" /etc/hosts | awk '{print $1}' || true)
-          if [ -n "$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "$KNOWN_PEER" &>/dev/null; then
-            exit 0
-          fi
-          PEER_IP=""
-          SUBNET=$(echo "$MY_IP" | sed 's/\.[0-9]*$//')
-          for attempt in $(seq 1 24); do
-            for c in $(seq 2 254); do
-              CIP="${SUBNET}.$c"
-              [ "$CIP" = "$MY_IP" ] && continue
-              [ "$CIP" = "$VIP" ] && continue
-              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
-                PEER_IP="$CIP"; break 2
-              fi
-            done
-            sleep 5
-          done
-          if [ -n "$PEER_IP" ]; then
-            sed -i "/ ${PEER}\$/d" /etc/hosts
-            echo "$PEER_IP $PEER" >> /etc/hosts
-          fi
-      - path: /etc/systemd/system/update-cluster-hosts.service
+      - path: /etc/hosts
         owner: root:root
         permissions: '0644'
+        append: true
         content: |
-          [Unit]
-          Description=Discover cluster peer IPs and update /etc/hosts
-          After=network-online.target
-          Wants=network-online.target
-          [Service]
-          Type=oneshot
-          RemainAfterExit=true
-          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
-          StandardOutput=journal+console
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/update-cluster-hosts.timer
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Periodically refresh cluster peer IPs in /etc/hosts
-          [Timer]
-          OnBootSec=60
-          OnUnitActiveSec=30
-          [Install]
-          WantedBy=timers.target
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          10.102.0.100 microshift-vip
       - path: /etc/keepalived/keepalived.conf
         owner: root:root
         permissions: '0644'
@@ -169,10 +103,6 @@ stringData:
         content: "gw-b"
     runcmd:
       - hostnamectl set-hostname microshift-gw-b
-      - systemctl daemon-reload
-      - systemctl enable update-cluster-hosts.service
-      - systemctl start update-cluster-hosts.service
-      - systemctl enable --now update-cluster-hosts.timer
       - systemctl enable --now firewalld
       - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
       - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
@@ -190,6 +120,7 @@ stringData:
       - chmod 600 /home/cloud-user/.kube/config
       - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
       - systemctl enable --now gateway-status-web.path
 
 ---
@@ -242,80 +173,14 @@ stringData:
           module: microshift
           role: gw-b
           alias: microshift-gw-b
-      - path: /etc/edge-config/update-hosts.sh
-        owner: root:root
-        permissions: '0755'
-        content: |
-          #!/bin/bash
-          set -euo pipefail
-          ROLE_FILE="/etc/edge-config/device-role"
-          VIP="10.102.0.100"
-          [ ! -f "$ROLE_FILE" ] && exit 1
-          ROLE=$(cat "$ROLE_FILE")
-          case "$ROLE" in
-            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
-            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
-            *) exit 1 ;;
-          esac
-          MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-          if [ -z "$MY_IP" ]; then
-            for attempt in $(seq 1 30); do
-              sleep 5
-              MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-              [ -n "$MY_IP" ] && break
-            done
-          fi
-          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
-          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
-          echo "$MY_IP $HOSTNAME" >> /etc/hosts
-          grep -q "$VIP microshift-vip" /etc/hosts || echo "$VIP microshift-vip" >> /etc/hosts
-          KNOWN_PEER=$(grep " ${PEER}\$" /etc/hosts | awk '{print $1}' || true)
-          if [ -n "$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "$KNOWN_PEER" &>/dev/null; then
-            exit 0
-          fi
-          PEER_IP=""
-          SUBNET=$(echo "$MY_IP" | sed 's/\.[0-9]*$//')
-          for attempt in $(seq 1 24); do
-            for c in $(seq 2 254); do
-              CIP="${SUBNET}.$c"
-              [ "$CIP" = "$MY_IP" ] && continue
-              [ "$CIP" = "$VIP" ] && continue
-              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
-                PEER_IP="$CIP"; break 2
-              fi
-            done
-            sleep 5
-          done
-          if [ -n "$PEER_IP" ]; then
-            sed -i "/ ${PEER}\$/d" /etc/hosts
-            echo "$PEER_IP $PEER" >> /etc/hosts
-          fi
-      - path: /etc/systemd/system/update-cluster-hosts.service
+      - path: /etc/hosts
         owner: root:root
         permissions: '0644'
+        append: true
         content: |
-          [Unit]
-          Description=Discover cluster peer IPs and update /etc/hosts
-          After=network-online.target
-          Wants=network-online.target
-          [Service]
-          Type=oneshot
-          RemainAfterExit=true
-          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
-          StandardOutput=journal+console
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/update-cluster-hosts.timer
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Periodically refresh cluster peer IPs in /etc/hosts
-          [Timer]
-          OnBootSec=60
-          OnUnitActiveSec=30
-          [Install]
-          WantedBy=timers.target
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          10.102.0.100 microshift-vip
       - path: /etc/keepalived/keepalived.conf
         owner: root:root
         permissions: '0644'
@@ -360,10 +225,6 @@ stringData:
         content: "gw-b"
     runcmd:
       - hostnamectl set-hostname microshift-gw-b
-      - systemctl daemon-reload
-      - systemctl enable update-cluster-hosts.service
-      - systemctl start update-cluster-hosts.service
-      - systemctl enable --now update-cluster-hosts.timer
       - systemctl enable --now firewalld
       - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
       - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
@@ -381,4 +242,371 @@ stringData:
       - chmod 600 /home/cloud-user/.kube/config
       - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
+      - systemctl enable --now gateway-status-web.path
+
+---
+# Student 03 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-03
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+        - rhocp-4.21-for-rhel-9-x86_64-rpms
+        - fast-datapath-for-rhel-9-x86_64-rpms
+        - edge-manager-1.0-for-rhel-9-x86_64-rpms
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+      - flightctl-agent
+    write_files:
+      - path: /etc/flightctl/config.yaml
+        owner: root:root
+        permissions: '0600'
+        content: |
+          enrollment-service:
+            authentication:
+              client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI5ekNDQVoyZ0F3SUJBZ0lJVDhmSDhFUHlmMkF3Q2dZSUtvWkl6ajBFQXdJd0pURWpNQ0VHQTFVRUF4TWEKWm14cFoyaDBZM1JzTFdOc2FXVnVkQzF6YVdkdVpYSXRZMkV3SGhjTk1qWXdOREF5TVRVek56QTFXaGNOTWpjdwpOREF5TVRVek56QTJXakFsTVNNd0lRWURWUVFERXhwamJHbGxiblF0Wlc1eWIyeHNiV1Z1ZEMweFpqSXdNREEyCk1UQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJOL2k0RS9CeUdJNnNmWDd6bE40UHNMbGI2VUkKQW5PVEhCZi9pNnZBNFF0dWZtTkhna20wYkExaEQ0ZStlQVVrWXlNUU1nNHcxZGxnVDNwbDd0b3EyMHlqZ2JZdwpnYk13RGdZRFZSMFBBUUgvQkFRREFnV2dNQk1HQTFVZEpRUU1NQW9HQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCCi93UUNNQUF3SHdZRFZSMGpCQmd3Rm9BVXNWYk1hVC9zQ1I5VVR0dE5YRmU3UG5uc1E5Z3dOQVlLS3dZQkJBR0cKalI4QkFnUW1FeVJsWkdJNE56UTFOQzFsTlRaakxUUmpOVEl0WWpZNU5DMDFZamxrTnpNek1tWmxOREF3SndZSwpLd1lCQkFHR2pSOEJBUVFaRXhkbWJHbG5hSFJqZEd3dWFXOHZaVzV5YjJ4c2JXVnVkREFLQmdncWhrak9QUVFECkFnTklBREJGQWlFQXNCQmxTK3ZKZk94MGN3QnBKNDNhSnFtZXVJSURZazVVVXRtRENaR1lJUUFDSUVDb3dUcTcKekozdm83RDlXM24rRWFhaHVIdVdxVjN4YWcxK0YvaUFQcHFsCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+              client-key-data: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUMzMDFadEkzUHlxbXYzWTE2KzVXZmNvLzVwQ1AvVHdkWFo0TndWaVlBVmpvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFMytMZ1Q4SElZanF4OWZ2T1UzZyt3dVZ2cFFnQ2M1TWNGLytMcThEaEMyNStZMGVDU2JScwpEV0VQaDc1NEJTUmpJeEF5RGpEVjJXQlBlbVh1MmlyYlRBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+            enrollment-ui-endpoint: https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io/edge
+            service:
+              certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJiakNDQVJXZ0F3SUJBZ0lSQUpIcUt4WjExbnAwQmM1YW9uNEd5Vzh3Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemMxT0ZvWERUTTJNRE16TURFMApNemMxT0Zvd0Z6RVZNQk1HQTFVRUF4TU1abXhwWjJoMFkzUnNMV05oTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRW9tWkRHRmlQU0JZZSsrandKSUNjelpCVlExajVkaUxIK014WkJKSVk1SVI3OEpDeVQvNksKcFJIdXlkTnJtcXExdGZlVFhuUGZYaFZBaXdUd0RGVzNqS05DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4RwpBMVVkRXdFQi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFR0o1dVlXakQxbHJHZjRmRHZBaS9JUjJYalJNQW9HCkNDcUdTTTQ5QkFNQ0EwY0FNRVFDSUFTK2s5UzZUVm9qeFJ4aHJscG52VFFTWGh6bVVBUE1mSi9DdFJrc21yK08KQWlBdVRFdWk5cTBqbGZVT1ZjTE5mUVZDaGJMN1JwRmxuYTA4NHFqTzBxd2R0UT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJuakNDQVVTZ0F3SUJBZ0lSQUlVQ0VXa0dEUFM5cEpZeFpvay9peG93Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemd3TUZvWERUTTJNRE16TURFMApNemd3TUZvd0pURWpNQ0VHQTFVRUF4TWFabXhwWjJoMFkzUnNMV05zYVdWdWRDMXphV2R1WlhJdFkyRXdXVEFUCkJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRLZnpxS1VLenBzaU5OOFprOGR6ZjRNVnJPYnhsWUFaVW4KTXpsd2lEYzZYK0xDaDc2SFlsVXJxYjRncVNZMExjbkFqaFl4eWZEdWRNaVpUQ2RsREdIdm8yTXdZVEFPQmdOVgpIUThCQWY4RUJBTUNBcVF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVc1ZiTWFUL3NDUjlVClR0dE5YRmU3UG5uc1E5Z3dId1lEVlIwakJCZ3dGb0FVUVlubTVoYU1QV1dzWi9oOE84Q0w4aEhaZU5Fd0NnWUkKS29aSXpqMEVBd0lEU0FBd1JRSWhBSUlzcWcrQmlGaG5CV3RaZXBkN3o3NmtSa0RzT1FLK3dIdE03NUhCb0dtZApBaUFIclJDUC8zN1VwYzUyQ0FZNDMvTnRvNXF3eGhDQVJERXJTc3pYbHF4b0FBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
+              server: https://agent-api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io/
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: gw-b
+          alias: microshift-gw-b
+      - path: /etc/hosts
+        owner: root:root
+        permissions: '0644'
+        append: true
+        content: |
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          10.102.0.100 microshift-vip
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+      - path: /etc/systemd/system/gateway-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start gateway dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/gateway-status-web.py
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "gw-b"
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in $(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
+      - systemctl enable --now gateway-status-web.path
+
+---
+# Student 04 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-04
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+        - rhocp-4.21-for-rhel-9-x86_64-rpms
+        - fast-datapath-for-rhel-9-x86_64-rpms
+        - edge-manager-1.0-for-rhel-9-x86_64-rpms
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+      - flightctl-agent
+    write_files:
+      - path: /etc/flightctl/config.yaml
+        owner: root:root
+        permissions: '0600'
+        content: |
+          enrollment-service:
+            authentication:
+              client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI5ekNDQVoyZ0F3SUJBZ0lJVDhmSDhFUHlmMkF3Q2dZSUtvWkl6ajBFQXdJd0pURWpNQ0VHQTFVRUF4TWEKWm14cFoyaDBZM1JzTFdOc2FXVnVkQzF6YVdkdVpYSXRZMkV3SGhjTk1qWXdOREF5TVRVek56QTFXaGNOTWpjdwpOREF5TVRVek56QTJXakFsTVNNd0lRWURWUVFERXhwamJHbGxiblF0Wlc1eWIyeHNiV1Z1ZEMweFpqSXdNREEyCk1UQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJOL2k0RS9CeUdJNnNmWDd6bE40UHNMbGI2VUkKQW5PVEhCZi9pNnZBNFF0dWZtTkhna20wYkExaEQ0ZStlQVVrWXlNUU1nNHcxZGxnVDNwbDd0b3EyMHlqZ2JZdwpnYk13RGdZRFZSMFBBUUgvQkFRREFnV2dNQk1HQTFVZEpRUU1NQW9HQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCCi93UUNNQUF3SHdZRFZSMGpCQmd3Rm9BVXNWYk1hVC9zQ1I5VVR0dE5YRmU3UG5uc1E5Z3dOQVlLS3dZQkJBR0cKalI4QkFnUW1FeVJsWkdJNE56UTFOQzFsTlRaakxUUmpOVEl0WWpZNU5DMDFZamxrTnpNek1tWmxOREF3SndZSwpLd1lCQkFHR2pSOEJBUVFaRXhkbWJHbG5hSFJqZEd3dWFXOHZaVzV5YjJ4c2JXVnVkREFLQmdncWhrak9QUVFECkFnTklBREJGQWlFQXNCQmxTK3ZKZk94MGN3QnBKNDNhSnFtZXVJSURZazVVVXRtRENaR1lJUUFDSUVDb3dUcTcKekozdm83RDlXM24rRWFhaHVIdVdxVjN4YWcxK0YvaUFQcHFsCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+              client-key-data: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUMzMDFadEkzUHlxbXYzWTE2KzVXZmNvLzVwQ1AvVHdkWFo0TndWaVlBVmpvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFMytMZ1Q4SElZanF4OWZ2T1UzZyt3dVZ2cFFnQ2M1TWNGLytMcThEaEMyNStZMGVDU2JScwpEV0VQaDc1NEJTUmpJeEF5RGpEVjJXQlBlbVh1MmlyYlRBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+            enrollment-ui-endpoint: https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io/edge
+            service:
+              certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJiakNDQVJXZ0F3SUJBZ0lSQUpIcUt4WjExbnAwQmM1YW9uNEd5Vzh3Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemMxT0ZvWERUTTJNRE16TURFMApNemMxT0Zvd0Z6RVZNQk1HQTFVRUF4TU1abXhwWjJoMFkzUnNMV05oTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRW9tWkRHRmlQU0JZZSsrandKSUNjelpCVlExajVkaUxIK014WkJKSVk1SVI3OEpDeVQvNksKcFJIdXlkTnJtcXExdGZlVFhuUGZYaFZBaXdUd0RGVzNqS05DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4RwpBMVVkRXdFQi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFR0o1dVlXakQxbHJHZjRmRHZBaS9JUjJYalJNQW9HCkNDcUdTTTQ5QkFNQ0EwY0FNRVFDSUFTK2s5UzZUVm9qeFJ4aHJscG52VFFTWGh6bVVBUE1mSi9DdFJrc21yK08KQWlBdVRFdWk5cTBqbGZVT1ZjTE5mUVZDaGJMN1JwRmxuYTA4NHFqTzBxd2R0UT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJuakNDQVVTZ0F3SUJBZ0lSQUlVQ0VXa0dEUFM5cEpZeFpvay9peG93Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemd3TUZvWERUTTJNRE16TURFMApNemd3TUZvd0pURWpNQ0VHQTFVRUF4TWFabXhwWjJoMFkzUnNMV05zYVdWdWRDMXphV2R1WlhJdFkyRXdXVEFUCkJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRLZnpxS1VLenBzaU5OOFprOGR6ZjRNVnJPYnhsWUFaVW4KTXpsd2lEYzZYK0xDaDc2SFlsVXJxYjRncVNZMExjbkFqaFl4eWZEdWRNaVpUQ2RsREdIdm8yTXdZVEFPQmdOVgpIUThCQWY4RUJBTUNBcVF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVc1ZiTWFUL3NDUjlVClR0dE5YRmU3UG5uc1E5Z3dId1lEVlIwakJCZ3dGb0FVUVlubTVoYU1QV1dzWi9oOE84Q0w4aEhaZU5Fd0NnWUkKS29aSXpqMEVBd0lEU0FBd1JRSWhBSUlzcWcrQmlGaG5CV3RaZXBkN3o3NmtSa0RzT1FLK3dIdE03NUhCb0dtZApBaUFIclJDUC8zN1VwYzUyQ0FZNDMvTnRvNXF3eGhDQVJERXJTc3pYbHF4b0FBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
+              server: https://agent-api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io/
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: gw-b
+          alias: microshift-gw-b
+      - path: /etc/hosts
+        owner: root:root
+        permissions: '0644'
+        append: true
+        content: |
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          10.102.0.100 microshift-vip
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+      - path: /etc/systemd/system/gateway-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start gateway dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/gateway-status-web.py
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "gw-b"
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in $(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
+      - systemctl enable --now gateway-status-web.path
+
+---
+# Student 05 - Cloud-init for MicroShift Gateway B
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudinit-microshift-gw-b
+  namespace: retail-edge-student-05
+type: Opaque
+stringData:
+  userdata: |
+    #cloud-config
+    user: cloud-user
+    password: redhat
+    chpasswd: { expire: False }
+    ssh_pwauth: True
+    rh_subscription:
+      activation-key: 'REPLACE_ACTIVATION_KEY'
+      org: 'REPLACE_ORG_ID'
+      enable-repo:
+        - rhocp-4.21-for-rhel-9-x86_64-rpms
+        - fast-datapath-for-rhel-9-x86_64-rpms
+        - edge-manager-1.0-for-rhel-9-x86_64-rpms
+    packages:
+      - microshift
+      - microshift-selinux
+      - microshift-networking
+      - keepalived
+      - openshift-clients
+      - firewalld
+      - flightctl-agent
+    write_files:
+      - path: /etc/flightctl/config.yaml
+        owner: root:root
+        permissions: '0600'
+        content: |
+          enrollment-service:
+            authentication:
+              client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUI5ekNDQVoyZ0F3SUJBZ0lJVDhmSDhFUHlmMkF3Q2dZSUtvWkl6ajBFQXdJd0pURWpNQ0VHQTFVRUF4TWEKWm14cFoyaDBZM1JzTFdOc2FXVnVkQzF6YVdkdVpYSXRZMkV3SGhjTk1qWXdOREF5TVRVek56QTFXaGNOTWpjdwpOREF5TVRVek56QTJXakFsTVNNd0lRWURWUVFERXhwamJHbGxiblF0Wlc1eWIyeHNiV1Z1ZEMweFpqSXdNREEyCk1UQlpNQk1HQnlxR1NNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJOL2k0RS9CeUdJNnNmWDd6bE40UHNMbGI2VUkKQW5PVEhCZi9pNnZBNFF0dWZtTkhna20wYkExaEQ0ZStlQVVrWXlNUU1nNHcxZGxnVDNwbDd0b3EyMHlqZ2JZdwpnYk13RGdZRFZSMFBBUUgvQkFRREFnV2dNQk1HQTFVZEpRUU1NQW9HQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCCi93UUNNQUF3SHdZRFZSMGpCQmd3Rm9BVXNWYk1hVC9zQ1I5VVR0dE5YRmU3UG5uc1E5Z3dOQVlLS3dZQkJBR0cKalI4QkFnUW1FeVJsWkdJNE56UTFOQzFsTlRaakxUUmpOVEl0WWpZNU5DMDFZamxrTnpNek1tWmxOREF3SndZSwpLd1lCQkFHR2pSOEJBUVFaRXhkbWJHbG5hSFJqZEd3dWFXOHZaVzV5YjJ4c2JXVnVkREFLQmdncWhrak9QUVFECkFnTklBREJGQWlFQXNCQmxTK3ZKZk94MGN3QnBKNDNhSnFtZXVJSURZazVVVXRtRENaR1lJUUFDSUVDb3dUcTcKekozdm83RDlXM24rRWFhaHVIdVdxVjN4YWcxK0YvaUFQcHFsCi0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+              client-key-data: LS0tLS1CRUdJTiBFQyBQUklWQVRFIEtFWS0tLS0tCk1IY0NBUUVFSUMzMDFadEkzUHlxbXYzWTE2KzVXZmNvLzVwQ1AvVHdkWFo0TndWaVlBVmpvQW9HQ0NxR1NNNDkKQXdFSG9VUURRZ0FFMytMZ1Q4SElZanF4OWZ2T1UzZyt3dVZ2cFFnQ2M1TWNGLytMcThEaEMyNStZMGVDU2JScwpEV0VQaDc1NEJTUmpJeEF5RGpEVjJXQlBlbVh1MmlyYlRBPT0KLS0tLS1FTkQgRUMgUFJJVkFURSBLRVktLS0tLQo=
+            enrollment-ui-endpoint: https://console-openshift-console.apps.cluster-cfz7p.dynamic.redhatworkshops.io/edge
+            service:
+              certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJiakNDQVJXZ0F3SUJBZ0lSQUpIcUt4WjExbnAwQmM1YW9uNEd5Vzh3Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemMxT0ZvWERUTTJNRE16TURFMApNemMxT0Zvd0Z6RVZNQk1HQTFVRUF4TU1abXhwWjJoMFkzUnNMV05oTUZrd0V3WUhLb1pJemowQ0FRWUlLb1pJCnpqMERBUWNEUWdBRW9tWkRHRmlQU0JZZSsrandKSUNjelpCVlExajVkaUxIK014WkJKSVk1SVI3OEpDeVQvNksKcFJIdXlkTnJtcXExdGZlVFhuUGZYaFZBaXdUd0RGVzNqS05DTUVBd0RnWURWUjBQQVFIL0JBUURBZ0trTUE4RwpBMVVkRXdFQi93UUZNQU1CQWY4d0hRWURWUjBPQkJZRUZFR0o1dVlXakQxbHJHZjRmRHZBaS9JUjJYalJNQW9HCkNDcUdTTTQ5QkFNQ0EwY0FNRVFDSUFTK2s5UzZUVm9qeFJ4aHJscG52VFFTWGh6bVVBUE1mSi9DdFJrc21yK08KQWlBdVRFdWk5cTBqbGZVT1ZjTE5mUVZDaGJMN1JwRmxuYTA4NHFqTzBxd2R0UT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0KLS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJuakNDQVVTZ0F3SUJBZ0lSQUlVQ0VXa0dEUFM5cEpZeFpvay9peG93Q2dZSUtvWkl6ajBFQXdJd0Z6RVYKTUJNR0ExVUVBeE1NWm14cFoyaDBZM1JzTFdOaE1CNFhEVEkyTURRd01qRTBNemd3TUZvWERUTTJNRE16TURFMApNemd3TUZvd0pURWpNQ0VHQTFVRUF4TWFabXhwWjJoMFkzUnNMV05zYVdWdWRDMXphV2R1WlhJdFkyRXdXVEFUCkJnY3Foa2pPUFFJQkJnZ3Foa2pPUFFNQkJ3TkNBQVRLZnpxS1VLenBzaU5OOFprOGR6ZjRNVnJPYnhsWUFaVW4KTXpsd2lEYzZYK0xDaDc2SFlsVXJxYjRncVNZMExjbkFqaFl4eWZEdWRNaVpUQ2RsREdIdm8yTXdZVEFPQmdOVgpIUThCQWY4RUJBTUNBcVF3RHdZRFZSMFRBUUgvQkFVd0F3RUIvekFkQmdOVkhRNEVGZ1FVc1ZiTWFUL3NDUjlVClR0dE5YRmU3UG5uc1E5Z3dId1lEVlIwakJCZ3dGb0FVUVlubTVoYU1QV1dzWi9oOE84Q0w4aEhaZU5Fd0NnWUkKS29aSXpqMEVBd0lEU0FBd1JRSWhBSUlzcWcrQmlGaG5CV3RaZXBkN3o3NmtSa0RzT1FLK3dIdE03NUhCb0dtZApBaUFIclJDUC8zN1VwYzUyQ0FZNDMvTnRvNXF3eGhDQVJERXJTc3pYbHF4b0FBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQ==
+              server: https://agent-api.redhat-edge-manager.apps.cluster-cfz7p.dynamic.redhatworkshops.io/
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: gw-b
+          alias: microshift-gw-b
+      - path: /etc/hosts
+        owner: root:root
+        permissions: '0644'
+        append: true
+        content: |
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          10.102.0.100 microshift-vip
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state BACKUP
+              interface eth1
+              virtual_router_id 1
+              priority 90
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+      - path: /etc/systemd/system/gateway-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start gateway dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/gateway-status-web.py
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "gw-b"
+    runcmd:
+      - hostnamectl set-hostname microshift-gw-b
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in $(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+      - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
       - systemctl enable --now gateway-status-web.path

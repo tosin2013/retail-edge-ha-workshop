@@ -82,6 +82,16 @@ EOF
 
 # Cloud-init does ALL infrastructure setup. Fleet Manager only delivers
 # the status dashboard applications after device enrollment.
+#
+# Networking: VMs get persistent static IPs from OVN-K via IPAMClaims.
+# The UDN uses ipam.lifecycle: Persistent so OVN remembers the IP across
+# VM restarts (including STONITH fencing). Pre-created IPAMClaims pin each
+# VM to a deterministic IP visible in the OpenShift console (oc get vmi).
+#   References:
+#     - RHEL HA: static IPs required for Corosync:
+#       https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters
+#     - OCP 4.21 UDN API (ipam.lifecycle: Persistent, IPAMClaim):
+#       https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
 FLIGHTCTL_PACKAGES=""
 if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
   FLIGHTCTL_PACKAGES="      - flightctl-agent"
@@ -110,6 +120,9 @@ ENDOFSUB
 
 # Generate Module 1 (Pacemaker) cloud-init write_files + runcmd
 # Args: $1=role (node1|node2)
+# Static IPs: node1=10.101.0.20, node2=10.101.0.21, VIP=10.101.0.100
+# /etc/hosts is written statically — no dynamic discovery needed because
+# ipam.mode=Disabled on the UDN ensures IPs never change across reboots.
 generate_m1_cloudinit_config() {
   local role="$1"
   local hostname peer_hostname alias_name dashboard_script
@@ -147,79 +160,15 @@ ${ENROLLMENT_INDENT}
 WFEOF
   fi
 
-  cat <<'WFEOF'
-      - path: /etc/edge-config/update-hosts.sh
-        owner: root:root
-        permissions: '0755'
-        content: |
-          #!/bin/bash
-          set -euo pipefail
-          ROLE_FILE="/etc/edge-config/device-role"
-          [ ! -f "$ROLE_FILE" ] && exit 1
-          ROLE=$(cat "$ROLE_FILE")
-          case "$ROLE" in
-            node1) HOSTNAME="rhel-ha-node1"; PEER="rhel-ha-node2" ;;
-            node2) HOSTNAME="rhel-ha-node2"; PEER="rhel-ha-node1" ;;
-            *) exit 1 ;;
-          esac
-          MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-          if [ -z "$MY_IP" ]; then
-            for attempt in $(seq 1 30); do
-              sleep 5
-              MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-              [ -n "$MY_IP" ] && break
-            done
-          fi
-          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
-          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
-          echo "$MY_IP $HOSTNAME" >> /etc/hosts
-          KNOWN_PEER=$(grep " ${PEER}\$" /etc/hosts | awk '{print $1}' || true)
-          if [ -n "$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "$KNOWN_PEER" &>/dev/null; then
-            exit 0
-          fi
-          PEER_IP=""
-          SUBNET=$(echo "$MY_IP" | sed 's/\.[0-9]*$//')
-          for attempt in $(seq 1 24); do
-            for c in $(seq 2 254); do
-              CIP="${SUBNET}.$c"
-              [ "$CIP" = "$MY_IP" ] && continue
-              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
-                PEER_IP="$CIP"; break 2
-              fi
-            done
-            sleep 5
-          done
-          if [ -n "$PEER_IP" ]; then
-            sed -i "/ ${PEER}\$/d" /etc/hosts
-            echo "$PEER_IP $PEER" >> /etc/hosts
-          fi
-      - path: /etc/systemd/system/update-cluster-hosts.service
+  # Static /etc/hosts — IPs never change because UDN IPAM is disabled
+  cat <<WFEOF
+      - path: /etc/hosts
         owner: root:root
         permissions: '0644'
+        append: true
         content: |
-          [Unit]
-          Description=Discover cluster peer IPs and update /etc/hosts
-          After=network-online.target
-          Wants=network-online.target
-          Before=corosync.service pacemaker.service
-          [Service]
-          Type=oneshot
-          RemainAfterExit=true
-          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
-          StandardOutput=journal+console
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/update-cluster-hosts.timer
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Periodically refresh cluster peer IPs in /etc/hosts
-          [Timer]
-          OnBootSec=60
-          OnUnitActiveSec=30
-          [Install]
-          WantedBy=timers.target
+          10.101.0.20 rhel-ha-node1
+          10.101.0.21 rhel-ha-node2
 WFEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
@@ -250,15 +199,12 @@ WFEOF
       - hostnamectl set-hostname ${hostname}
       - echo "redhat" | passwd --stdin hacluster
       - systemctl enable --now pcsd
-      - systemctl daemon-reload
-      - systemctl enable update-cluster-hosts.service
-      - systemctl start update-cluster-hosts.service
-      - systemctl enable --now update-cluster-hosts.timer
 RCEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     cat <<RCEOF
       - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
       - systemctl enable --now ha-status-web.path
 RCEOF
   fi
@@ -266,6 +212,9 @@ RCEOF
 
 # Generate Module 2 (MicroShift) cloud-init write_files + runcmd
 # Args: $1=role (gw-a|gw-b)
+# Static IPs: gw-a=10.102.0.20, gw-b=10.102.0.21, VIP=10.102.0.100
+# Same rationale as Module 1 — static IPs on ipam-disabled UDN prevent
+# DHCP instability that breaks Keepalived/VRRP peer communication.
 generate_m2_cloudinit_config() {
   local role="$1"
   local hostname peer_hostname alias_name keepalived_state keepalived_priority
@@ -307,82 +256,16 @@ ${ENROLLMENT_INDENT}
 WFEOF
   fi
 
-  # update-hosts.sh for Module 2 (excludes VIP from peer scan)
+  # Static /etc/hosts — IPs never change because UDN IPAM is disabled
   cat <<WFEOF
-      - path: /etc/edge-config/update-hosts.sh
-        owner: root:root
-        permissions: '0755'
-        content: |
-          #!/bin/bash
-          set -euo pipefail
-          ROLE_FILE="/etc/edge-config/device-role"
-          VIP="${VIP}"
-          [ ! -f "\$ROLE_FILE" ] && exit 1
-          ROLE=\$(cat "\$ROLE_FILE")
-          case "\$ROLE" in
-            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
-            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
-            *) exit 1 ;;
-          esac
-          MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-          if [ -z "\$MY_IP" ]; then
-            for attempt in \$(seq 1 30); do
-              sleep 5
-              MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-              [ -n "\$MY_IP" ] && break
-            done
-          fi
-          [ -z "\$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
-          sed -i "/ \${HOSTNAME}\\\$/d" /etc/hosts
-          echo "\$MY_IP \$HOSTNAME" >> /etc/hosts
-          grep -q "\$VIP microshift-vip" /etc/hosts || echo "\$VIP microshift-vip" >> /etc/hosts
-          KNOWN_PEER=\$(grep " \${PEER}\\\$" /etc/hosts | awk '{print \$1}' || true)
-          if [ -n "\$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "\$KNOWN_PEER" &>/dev/null; then
-            exit 0
-          fi
-          PEER_IP=""
-          SUBNET=\$(echo "\$MY_IP" | sed 's/\.[0-9]*\$//')
-          for attempt in \$(seq 1 24); do
-            for c in \$(seq 2 254); do
-              CIP="\${SUBNET}.\$c"
-              [ "\$CIP" = "\$MY_IP" ] && continue
-              [ "\$CIP" = "\$VIP" ] && continue
-              if arping -c 1 -w 1 -I eth1 "\$CIP" &>/dev/null; then
-                PEER_IP="\$CIP"; break 2
-              fi
-            done
-            sleep 5
-          done
-          if [ -n "\$PEER_IP" ]; then
-            sed -i "/ \${PEER}\\\$/d" /etc/hosts
-            echo "\$PEER_IP \$PEER" >> /etc/hosts
-          fi
-      - path: /etc/systemd/system/update-cluster-hosts.service
+      - path: /etc/hosts
         owner: root:root
         permissions: '0644'
+        append: true
         content: |
-          [Unit]
-          Description=Discover cluster peer IPs and update /etc/hosts
-          After=network-online.target
-          Wants=network-online.target
-          [Service]
-          Type=oneshot
-          RemainAfterExit=true
-          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
-          StandardOutput=journal+console
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/update-cluster-hosts.timer
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Periodically refresh cluster peer IPs in /etc/hosts
-          [Timer]
-          OnBootSec=60
-          OnUnitActiveSec=30
-          [Install]
-          WantedBy=timers.target
+          10.102.0.20 microshift-gw-a
+          10.102.0.21 microshift-gw-b
+          ${VIP} microshift-vip
       - path: /etc/keepalived/keepalived.conf
         owner: root:root
         permissions: '0644'
@@ -439,10 +322,6 @@ WFEOF
   cat <<RCEOF
     runcmd:
       - hostnamectl set-hostname ${hostname}
-      - systemctl daemon-reload
-      - systemctl enable update-cluster-hosts.service
-      - systemctl start update-cluster-hosts.service
-      - systemctl enable --now update-cluster-hosts.timer
       - systemctl enable --now firewalld
       - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
       - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
@@ -464,6 +343,7 @@ RCEOF
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
     cat <<RCEOF
       - systemctl enable --now flightctl-agent
+      - systemctl daemon-reload
       - systemctl enable --now gateway-status-web.path
 RCEOF
   fi
@@ -659,7 +539,7 @@ echo "  vm-rhel-node2.yaml"
 # -- cloudinit-node1.yaml --
 M1_INIT1="${M1_DIR}/cloudinit-node1.yaml"
 write_header "$M1_INIT1" "# Cloud-init - RHEL HA Node 1
-# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
+# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.101.0.20"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -705,7 +585,7 @@ echo "  cloudinit-node1.yaml"
 # -- cloudinit-node2.yaml --
 M1_INIT2="${M1_DIR}/cloudinit-node2.yaml"
 write_header "$M1_INIT2" "# Cloud-init - RHEL HA Node 2
-# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
+# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.101.0.21"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -747,6 +627,47 @@ ENDOFPACKAGES
   generate_m1_cloudinit_config "node2" >> "$M1_INIT2"
 done
 echo "  cloudinit-node2.yaml"
+
+# -- ipamclaims.yaml --
+# Pre-created IPAMClaims pin each VM to a known static IP on the UDN.
+# OVN-K honours existing claims when lifecycle: Persistent is set.
+M1_IPAM="${M1_DIR}/ipamclaims.yaml"
+write_header "$M1_IPAM" "# IPAMClaims - Module 1: RHEL HA Pacemaker
+# Pre-created claims pin VMs to static IPs on the pacemaker-net UDN.
+# Node 1: 10.101.0.20  |  Node 2: 10.101.0.21
+# Generated for ${STUDENT_COUNT} students"
+
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v sid "%02d" "$i"
+  cat >> "$M1_IPAM" <<ENDOFIPAM
+
+---
+# Student ${sid} - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: ${NAMESPACE_PREFIX}-${sid}_pacemaker-net
+---
+# Student ${sid} - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: ${NAMESPACE_PREFIX}-${sid}_pacemaker-net
+ENDOFIPAM
+done
+echo "  ipamclaims.yaml"
 
 # =============================================================================
 # MODULE 2: MicroShift with VRRP
@@ -939,7 +860,7 @@ echo "  vm-microshift-gw-b.yaml"
 # -- cloudinit-gw-a.yaml --
 M2_INIT_A="${M2_DIR}/cloudinit-gw-a.yaml"
 write_header "$M2_INIT_A" "# Cloud-init - Module 2: MicroShift Gateway A
-# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
+# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.102.0.20"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -982,7 +903,7 @@ echo "  cloudinit-gw-a.yaml"
 # -- cloudinit-gw-b.yaml --
 M2_INIT_B="${M2_DIR}/cloudinit-gw-b.yaml"
 write_header "$M2_INIT_B" "# Cloud-init - Module 2: MicroShift Gateway B
-# Generated for ${STUDENT_COUNT} students | IP: OVN DHCP assigned"
+# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.102.0.21"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -1021,6 +942,45 @@ ENDOFPACKAGES
   generate_m2_cloudinit_config "gw-b" >> "$M2_INIT_B"
 done
 echo "  cloudinit-gw-b.yaml"
+
+# -- ipamclaims.yaml --
+M2_IPAM="${M2_DIR}/ipamclaims.yaml"
+write_header "$M2_IPAM" "# IPAMClaims - Module 2: MicroShift VRRP
+# Pre-created claims pin VMs to static IPs on the microshift-net UDN.
+# Gateway A: 10.102.0.20  |  Gateway B: 10.102.0.21
+# Generated for ${STUDENT_COUNT} students"
+
+for ((i=1; i<=STUDENT_COUNT; i++)); do
+  printf -v sid "%02d" "$i"
+  cat >> "$M2_IPAM" <<ENDOFIPAM
+
+---
+# Student ${sid} - Gateway A IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: microshift-gw-a.microshift-net
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+  labels:
+    kubevirt.io/vm: microshift-gw-a
+spec:
+  interface: ""
+  network: ${NAMESPACE_PREFIX}-${sid}_microshift-net
+---
+# Student ${sid} - Gateway B IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: microshift-gw-b.microshift-net
+  namespace: ${NAMESPACE_PREFIX}-${sid}
+  labels:
+    kubevirt.io/vm: microshift-gw-b
+spec:
+  interface: ""
+  network: ${NAMESPACE_PREFIX}-${sid}_microshift-net
+ENDOFIPAM
+done
+echo "  ipamclaims.yaml"
 
 # =============================================================================
 # MODULE 3: Two-Node OpenShift with Arbiter

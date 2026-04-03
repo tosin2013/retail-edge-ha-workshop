@@ -30,19 +30,21 @@ echo "# ========================================================================
 # User Defined Network - Module 1: RHEL HA with Pacemaker
 # =============================================================================
 # This UDN provides Layer 2 networking for Corosync cluster heartbeat.
-# Corosync requires multicast support for cluster communication, which is
-# only available over true Layer 2 networks.
+# OVN-K IPAM assigns IPs from the subnet; lifecycle: Persistent ensures IPs
+# are stored in IPAMClaim objects and survive VM restarts (including STONITH
+# fencing). Pre-created IPAMClaims pin each VM to a known static IP.
+#
+# References:
+#   - RHEL HA cluster config (static IPs required for Corosync):
+#     https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters
+#   - OCP 4.21 UDN API (ipam.lifecycle: Persistent):
+#     https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
 #
 # Network Details:
-#   - CIDR: 10.101.0.0/24
-#   - Gateway: 10.101.0.1
 #   - Purpose: Pacemaker cluster heartbeat and fence_kubevirt communication
+#   - Subnet: 10.101.0.0/24
 #   - VMs per student: 2 (rhel-ha-node1, rhel-ha-node2)
-#
-# IP Allocation per Student:
-#   - Student 01: 10.101.0.20-21
-#   - Student 02: 10.101.0.20-21 (isolated UDN, same IPs OK)
-#   - Student 03-50: 10.101.0.20-21 (each in their own namespace)
+#   - Static IPs (via IPAMClaim): node1=10.101.0.20, node2=10.101.0.21
 #
 # Generated for ${STUDENT_COUNT} students
 # =============================================================================
@@ -71,6 +73,9 @@ spec:
     role: Secondary
     subnets:
     - "10.101.0.0/24"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 EOF
 done
 
@@ -85,17 +90,18 @@ echo "# ========================================================================
 # Protocol) virtual IP failover. VRRP requires Layer 2 for multicast
 # advertisements (224.0.0.18) and ARP replies for the Virtual IP.
 #
-# Network Details:
-#   - CIDR: 10.102.0.0/24
-#   - Gateway: 10.102.0.1
-#   - Virtual IP (VIP): 10.102.0.100
-#   - Purpose: MicroShift VRRP failover for Point-of-Sale applications
-#   - VMs per student: 2 (microshift-gw-a, microshift-gw-b)
+# OVN-K IPAM assigns IPs from the subnet; lifecycle: Persistent ensures IPs
+# survive VM restarts. Pre-created IPAMClaims pin each VM to a known static IP.
 #
-# IP Allocation per Student:
-#   - Student 01: 10.102.0.20-21 (nodes) + 10.102.0.100 (VIP)
-#   - Student 02: 10.102.0.20-21 + 10.102.0.100 (isolated, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own namespace)
+# References:
+#   - OCP 4.21 UDN API (ipam.lifecycle: Persistent):
+#     https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
+#
+# Network Details:
+#   - Purpose: MicroShift VRRP failover for Point-of-Sale applications
+#   - Subnet: 10.102.0.0/24
+#   - VMs per student: 2 (microshift-gw-a, microshift-gw-b)
+#   - Static IPs (via IPAMClaim): gw-a=10.102.0.20, gw-b=10.102.0.21
 #
 # Generated for ${STUDENT_COUNT} students
 # =============================================================================
@@ -124,8 +130,9 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 EOF
 done
 

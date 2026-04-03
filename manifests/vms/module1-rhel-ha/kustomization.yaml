@@ -6,6 +6,7 @@ resources:
   - vm-rhel-node2.yaml
   - cloudinit-node1.yaml
   - cloudinit-node2.yaml
+  - ipamclaims.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop

@@ -1,0 +1,129 @@
+# IPAMClaims - Module 1: RHEL HA Pacemaker
+# Pre-created claims pin VMs to static IPs on the pacemaker-net UDN.
+# Node 1: 10.101.0.20  |  Node 2: 10.101.0.21
+# Generated for 5 students
+
+---
+# Student 01 - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: retail-edge-student-01
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: retail-edge-student-01_pacemaker-net
+---
+# Student 01 - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: retail-edge-student-01
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: retail-edge-student-01_pacemaker-net
+
+---
+# Student 02 - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: retail-edge-student-02
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: retail-edge-student-02_pacemaker-net
+---
+# Student 02 - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: retail-edge-student-02
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: retail-edge-student-02_pacemaker-net
+
+---
+# Student 03 - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: retail-edge-student-03
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: retail-edge-student-03_pacemaker-net
+---
+# Student 03 - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: retail-edge-student-03
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: retail-edge-student-03_pacemaker-net
+
+---
+# Student 04 - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: retail-edge-student-04
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: retail-edge-student-04_pacemaker-net
+---
+# Student 04 - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: retail-edge-student-04
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: retail-edge-student-04_pacemaker-net
+
+---
+# Student 05 - Node 1 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node1.pacemaker-net
+  namespace: retail-edge-student-05
+  labels:
+    kubevirt.io/vm: rhel-ha-node1
+spec:
+  interface: ""
+  network: retail-edge-student-05_pacemaker-net
+---
+# Student 05 - Node 2 IPAMClaim
+apiVersion: k8s.cni.cncf.io/v1alpha1
+kind: IPAMClaim
+metadata:
+  name: rhel-ha-node2.pacemaker-net
+  namespace: retail-edge-student-05
+  labels:
+    kubevirt.io/vm: rhel-ha-node2
+spec:
+  interface: ""
+  network: retail-edge-student-05_pacemaker-net

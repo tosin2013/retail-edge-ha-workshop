@@ -5,17 +5,18 @@
 # Protocol) virtual IP failover. VRRP requires Layer 2 for multicast
 # advertisements (224.0.0.18) and ARP replies for the Virtual IP.
 #
-# Network Details:
-#   - CIDR: 10.102.0.0/24
-#   - Gateway: 10.102.0.1
-#   - Virtual IP (VIP): 10.102.0.100
-#   - Purpose: MicroShift VRRP failover for Point-of-Sale applications
-#   - VMs per student: 2 (microshift-gw-a, microshift-gw-b)
+# OVN-K IPAM assigns IPs from the subnet; lifecycle: Persistent ensures IPs
+# survive VM restarts. Pre-created IPAMClaims pin each VM to a known static IP.
 #
-# IP Allocation per Student:
-#   - Student 01: 10.102.0.20-21 (nodes) + 10.102.0.100 (VIP)
-#   - Student 02: 10.102.0.20-21 + 10.102.0.100 (isolated, same IPs OK)
-#   - Student 03-50: Same pattern (each in their own namespace)
+# References:
+#   - OCP 4.21 UDN API (ipam.lifecycle: Persistent):
+#     https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
+#
+# Network Details:
+#   - Purpose: MicroShift VRRP failover for Point-of-Sale applications
+#   - Subnet: 10.102.0.0/24
+#   - VMs per student: 2 (microshift-gw-a, microshift-gw-b)
+#   - Static IPs (via IPAMClaim): gw-a=10.102.0.20, gw-b=10.102.0.21
 #
 # Generated for 5 students
 # =============================================================================
@@ -40,8 +41,9 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 
 ---
 # Student 02 - MicroShift VRRP Network
@@ -62,8 +64,9 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 
 ---
 # Student 03 - MicroShift VRRP Network
@@ -84,8 +87,9 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 
 ---
 # Student 04 - MicroShift VRRP Network
@@ -106,8 +110,9 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
 
 ---
 # Student 05 - MicroShift VRRP Network
@@ -128,5 +133,6 @@ spec:
     role: Secondary
     subnets:
     - "10.102.0.0/24"
-    reservedSubnets:
-    - "10.102.0.100/32"
+    ipam:
+      mode: Enabled
+      lifecycle: Persistent
