@@ -83,15 +83,17 @@ EOF
 # Cloud-init does ALL infrastructure setup. Fleet Manager only delivers
 # the status dashboard applications after device enrollment.
 #
-# Networking: VMs get persistent static IPs from OVN-K via IPAMClaims.
-# The UDN uses ipam.lifecycle: Persistent so OVN remembers the IP across
-# VM restarts (including STONITH fencing). Pre-created IPAMClaims pin each
-# VM to a deterministic IP visible in the OpenShift console (oc get vmi).
+# Networking: UDNs use ipam.mode: Disabled so OVN-K does not assign or
+# police IPs.  VMs configure static IPs via cloud-init networkData
+# (Netplan v2), and qemu-guest-agent reports all guest IPs (including
+# floating VIPs) to the VMI status visible in the OpenShift console.
 #   References:
 #     - RHEL HA: static IPs required for Corosync:
 #       https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters
-#     - OCP 4.21 UDN API (ipam.lifecycle: Persistent, IPAMClaim):
+#     - OCP 4.21 UDN API (ipam.mode):
 #       https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
+#     - KubeVirt cloud-init networkData:
+#       https://kubevirt.io/user-guide/virtual_machines/startup_scripts/#cloud-init-network-config
 FLIGHTCTL_PACKAGES=""
 if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
   FLIGHTCTL_PACKAGES="      - flightctl-agent"
@@ -183,6 +185,21 @@ WFEOF
           PathExists=/etc/edge-config/${dashboard_script}
           [Install]
           WantedBy=multi-user.target
+      - path: /etc/systemd/system/ha-status-web.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Pacemaker HA Status Web Dashboard
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/python3 /etc/edge-config/${dashboard_script}
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
 WFEOF
   fi
 
@@ -199,6 +216,7 @@ WFEOF
       - hostnamectl set-hostname ${hostname}
       - echo "redhat" | passwd --stdin hacluster
       - systemctl enable --now pcsd
+      - systemctl enable --now qemu-guest-agent
 RCEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
@@ -308,6 +326,21 @@ WFEOF
           PathExists=/etc/edge-config/${dashboard_script}
           [Install]
           WantedBy=multi-user.target
+      - path: /etc/systemd/system/gateway-status-web.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=MicroShift Gateway Status Web Dashboard
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/python3 /etc/edge-config/${dashboard_script}
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
 WFEOF
   fi
 
@@ -338,6 +371,7 @@ WFEOF
       - chown -R cloud-user:cloud-user /home/cloud-user/.kube
       - chmod 600 /home/cloud-user/.kube/config
       - systemctl enable --now keepalived
+      - systemctl enable --now qemu-guest-agent
 RCEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
@@ -441,6 +475,12 @@ spec:
       - cloudInitNoCloud:
           secretRef:
             name: rhel-ha-node1-cloudinit
+          networkData: |
+            version: 2
+            ethernets:
+              eth1:
+                addresses:
+                - 10.101.0.20/24
         name: cloudinitdisk
 EOF
 done
@@ -531,6 +571,12 @@ spec:
       - cloudInitNoCloud:
           secretRef:
             name: rhel-ha-node2-cloudinit
+          networkData: |
+            version: 2
+            ethernets:
+              eth1:
+                addresses:
+                - 10.101.0.21/24
         name: cloudinitdisk
 EOF
 done
@@ -539,7 +585,7 @@ echo "  vm-rhel-node2.yaml"
 # -- cloudinit-node1.yaml --
 M1_INIT1="${M1_DIR}/cloudinit-node1.yaml"
 write_header "$M1_INIT1" "# Cloud-init - RHEL HA Node 1
-# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.101.0.20"
+# Generated for ${STUDENT_COUNT} students | Static IP via cloud-init networkData: 10.101.0.20"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -575,6 +621,7 @@ ENDOFCLOUDINIT
       - gfs2-utils
       - dlm
       - lvm2-lockd
+      - qemu-guest-agent
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
@@ -585,7 +632,7 @@ echo "  cloudinit-node1.yaml"
 # -- cloudinit-node2.yaml --
 M1_INIT2="${M1_DIR}/cloudinit-node2.yaml"
 write_header "$M1_INIT2" "# Cloud-init - RHEL HA Node 2
-# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.101.0.21"
+# Generated for ${STUDENT_COUNT} students | Static IP via cloud-init networkData: 10.101.0.21"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -621,53 +668,13 @@ ENDOFCLOUDINIT
       - gfs2-utils
       - dlm
       - lvm2-lockd
+      - qemu-guest-agent
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
   generate_m1_cloudinit_config "node2" >> "$M1_INIT2"
 done
 echo "  cloudinit-node2.yaml"
-
-# -- ipamclaims.yaml --
-# Pre-created IPAMClaims pin each VM to a known static IP on the UDN.
-# OVN-K honours existing claims when lifecycle: Persistent is set.
-M1_IPAM="${M1_DIR}/ipamclaims.yaml"
-write_header "$M1_IPAM" "# IPAMClaims - Module 1: RHEL HA Pacemaker
-# Pre-created claims pin VMs to static IPs on the pacemaker-net UDN.
-# Node 1: 10.101.0.20  |  Node 2: 10.101.0.21
-# Generated for ${STUDENT_COUNT} students"
-
-for ((i=1; i<=STUDENT_COUNT; i++)); do
-  printf -v sid "%02d" "$i"
-  cat >> "$M1_IPAM" <<ENDOFIPAM
-
----
-# Student ${sid} - Node 1 IPAMClaim
-apiVersion: k8s.cni.cncf.io/v1alpha1
-kind: IPAMClaim
-metadata:
-  name: rhel-ha-node1.pacemaker-net
-  namespace: ${NAMESPACE_PREFIX}-${sid}
-  labels:
-    kubevirt.io/vm: rhel-ha-node1
-spec:
-  interface: ""
-  network: ${NAMESPACE_PREFIX}-${sid}_pacemaker-net
----
-# Student ${sid} - Node 2 IPAMClaim
-apiVersion: k8s.cni.cncf.io/v1alpha1
-kind: IPAMClaim
-metadata:
-  name: rhel-ha-node2.pacemaker-net
-  namespace: ${NAMESPACE_PREFIX}-${sid}
-  labels:
-    kubevirt.io/vm: rhel-ha-node2
-spec:
-  interface: ""
-  network: ${NAMESPACE_PREFIX}-${sid}_pacemaker-net
-ENDOFIPAM
-done
-echo "  ipamclaims.yaml"
 
 # =============================================================================
 # MODULE 2: MicroShift with VRRP
@@ -762,6 +769,12 @@ spec:
       - cloudInitNoCloud:
           secretRef:
             name: cloudinit-microshift-gw-a
+          networkData: |
+            version: 2
+            ethernets:
+              eth1:
+                addresses:
+                - 10.102.0.20/24
         name: cloudinitdisk
 EOF
 done
@@ -852,6 +865,12 @@ spec:
       - cloudInitNoCloud:
           secretRef:
             name: cloudinit-microshift-gw-b
+          networkData: |
+            version: 2
+            ethernets:
+              eth1:
+                addresses:
+                - 10.102.0.21/24
         name: cloudinitdisk
 EOF
 done
@@ -860,7 +879,7 @@ echo "  vm-microshift-gw-b.yaml"
 # -- cloudinit-gw-a.yaml --
 M2_INIT_A="${M2_DIR}/cloudinit-gw-a.yaml"
 write_header "$M2_INIT_A" "# Cloud-init - Module 2: MicroShift Gateway A
-# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.102.0.20"
+# Generated for ${STUDENT_COUNT} students | Static IP via cloud-init networkData: 10.102.0.20"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -893,6 +912,7 @@ ENDOFCLOUDINIT
       - keepalived
       - openshift-clients
       - firewalld
+      - qemu-guest-agent
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
@@ -903,7 +923,7 @@ echo "  cloudinit-gw-a.yaml"
 # -- cloudinit-gw-b.yaml --
 M2_INIT_B="${M2_DIR}/cloudinit-gw-b.yaml"
 write_header "$M2_INIT_B" "# Cloud-init - Module 2: MicroShift Gateway B
-# Generated for ${STUDENT_COUNT} students | IP via IPAMClaim: 10.102.0.21"
+# Generated for ${STUDENT_COUNT} students | Static IP via cloud-init networkData: 10.102.0.21"
 
 for ((i=1; i<=STUDENT_COUNT; i++)); do
   printf -v sid "%02d" "$i"
@@ -936,51 +956,13 @@ ENDOFCLOUDINIT
       - keepalived
       - openshift-clients
       - firewalld
+      - qemu-guest-agent
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
   generate_m2_cloudinit_config "gw-b" >> "$M2_INIT_B"
 done
 echo "  cloudinit-gw-b.yaml"
-
-# -- ipamclaims.yaml --
-M2_IPAM="${M2_DIR}/ipamclaims.yaml"
-write_header "$M2_IPAM" "# IPAMClaims - Module 2: MicroShift VRRP
-# Pre-created claims pin VMs to static IPs on the microshift-net UDN.
-# Gateway A: 10.102.0.20  |  Gateway B: 10.102.0.21
-# Generated for ${STUDENT_COUNT} students"
-
-for ((i=1; i<=STUDENT_COUNT; i++)); do
-  printf -v sid "%02d" "$i"
-  cat >> "$M2_IPAM" <<ENDOFIPAM
-
----
-# Student ${sid} - Gateway A IPAMClaim
-apiVersion: k8s.cni.cncf.io/v1alpha1
-kind: IPAMClaim
-metadata:
-  name: microshift-gw-a.microshift-net
-  namespace: ${NAMESPACE_PREFIX}-${sid}
-  labels:
-    kubevirt.io/vm: microshift-gw-a
-spec:
-  interface: ""
-  network: ${NAMESPACE_PREFIX}-${sid}_microshift-net
----
-# Student ${sid} - Gateway B IPAMClaim
-apiVersion: k8s.cni.cncf.io/v1alpha1
-kind: IPAMClaim
-metadata:
-  name: microshift-gw-b.microshift-net
-  namespace: ${NAMESPACE_PREFIX}-${sid}
-  labels:
-    kubevirt.io/vm: microshift-gw-b
-spec:
-  interface: ""
-  network: ${NAMESPACE_PREFIX}-${sid}_microshift-net
-ENDOFIPAM
-done
-echo "  ipamclaims.yaml"
 
 # =============================================================================
 # MODULE 3: Two-Node OpenShift with Arbiter

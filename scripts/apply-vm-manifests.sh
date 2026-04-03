@@ -80,32 +80,6 @@ apply_module() {
   done
 }
 
-# --- Patch IPAMClaim status with desired static IPs ---
-# IPAMClaims are created without status (oc apply ignores subresources).
-# We patch the status so OVN-K assigns our chosen IPs when the VM starts.
-patch_ipamclaim_ip() {
-  local ns="$1" claim_name="$2" ip_cidr="$3"
-  oc patch ipamclaim "$claim_name" -n "$ns" \
-    --type=merge --subresource=status \
-    -p "{\"status\":{\"ips\":[\"${ip_cidr}\"]}}" 2>&1 | sed 's/^/    /'
-}
-
-patch_m1_ipamclaims() {
-  echo "Patching Module 1 IPAMClaim IPs..."
-  for ns in $(oc get namespaces -l workshop=retail-edge-ha -o name 2>/dev/null | sed 's|namespace/||'); do
-    patch_ipamclaim_ip "$ns" "rhel-ha-node1.pacemaker-net" "10.101.0.20/24" || true
-    patch_ipamclaim_ip "$ns" "rhel-ha-node2.pacemaker-net" "10.101.0.21/24" || true
-  done
-}
-
-patch_m2_ipamclaims() {
-  echo "Patching Module 2 IPAMClaim IPs..."
-  for ns in $(oc get namespaces -l workshop=retail-edge-ha -o name 2>/dev/null | sed 's|namespace/||'); do
-    patch_ipamclaim_ip "$ns" "microshift-gw-a.microshift-net" "10.102.0.20/24" || true
-    patch_ipamclaim_ip "$ns" "microshift-gw-b.microshift-net" "10.102.0.21/24" || true
-  done
-}
-
 echo ""
 echo "=========================================="
 echo "Applying VM Manifests"
@@ -114,20 +88,16 @@ echo "=========================================="
 case "$MODULE" in
   1)
     apply_module "${MANIFESTS_DIR}/module1-rhel-ha" "Module 1: Pacemaker HA"
-    patch_m1_ipamclaims
     ;;
   2)
     apply_module "${MANIFESTS_DIR}/module2-microshift" "Module 2: MicroShift"
-    patch_m2_ipamclaims
     ;;
   3)
     apply_module "${MANIFESTS_DIR}/module3-twonode" "Module 3: Two-Node OpenShift"
     ;;
   all)
     apply_module "${MANIFESTS_DIR}/module1-rhel-ha" "Module 1: Pacemaker HA"
-    patch_m1_ipamclaims
     apply_module "${MANIFESTS_DIR}/module2-microshift" "Module 2: MicroShift"
-    patch_m2_ipamclaims
     apply_module "${MANIFESTS_DIR}/module3-twonode" "Module 3: Two-Node OpenShift"
     ;;
   *)

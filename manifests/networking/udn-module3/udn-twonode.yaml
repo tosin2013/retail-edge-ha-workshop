@@ -17,7 +17,7 @@
 #   - Student 02: 10.103.0.20-22 (isolated UDN, same IPs OK)
 #   - Student 03-50: Same pattern (each in their own namespace)
 #
-# Generated for 5 students
+# Generated for 2 students
 # =============================================================================
 
 
@@ -52,66 +52,6 @@ metadata:
     workshop: retail-edge-ha
     module: module3
     student-id: "02"
-  annotations:
-    description: "Layer 2 network for OpenShift two-node cluster with arbiter"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.103.0.0/24"
-
----
-# Student 03 - Two-Node OpenShift Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: twonode-net
-  namespace: retail-edge-student-03
-  labels:
-    workshop: retail-edge-ha
-    module: module3
-    student-id: "03"
-  annotations:
-    description: "Layer 2 network for OpenShift two-node cluster with arbiter"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.103.0.0/24"
-
----
-# Student 04 - Two-Node OpenShift Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: twonode-net
-  namespace: retail-edge-student-04
-  labels:
-    workshop: retail-edge-ha
-    module: module3
-    student-id: "04"
-  annotations:
-    description: "Layer 2 network for OpenShift two-node cluster with arbiter"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.103.0.0/24"
-
----
-# Student 05 - Two-Node OpenShift Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: twonode-net
-  namespace: retail-edge-student-05
-  labels:
-    workshop: retail-edge-ha
-    module: module3
-    student-id: "05"
   annotations:
     description: "Layer 2 network for OpenShift two-node cluster with arbiter"
 spec:

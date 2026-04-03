@@ -77,7 +77,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 
 *Key Features:*
 
-* **Static IPs**: Assigned by OpenShift via IPAMClaims on a Persistent-lifecycle UDN (required by Corosync -- see <<_references>>)
+* **Static IPs**: Assigned via cloud-init `networkData` on an IPAM-disabled UDN (required by Corosync -- see <<_references>>)
 * **Corosync**: Knet unicast heartbeat (default transport)
 * **STONITH**: fence_kubevirt for VM-level fencing
 * **Virtual IP**: Floats between nodes for application access
@@ -269,7 +269,7 @@ Check the hostname:
 hostname
 ----
 
-Check the static IP address on the UDN interface (assigned via cloud-init):
+Check the static IP address on the UDN interface (assigned via cloud-init `networkData`):
 
 [source,role="execute"]
 ----
@@ -321,7 +321,7 @@ Exit the SSH session:
 exit
 ----
 
-NOTE: All infrastructure setup -- hostname, static IPs, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. The UDN uses https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[`ipam.lifecycle: Persistent`^] with pre-created IPAMClaims so each VM always receives the same IP from OVN-Kubernetes -- visible in the OpenShift console under the VMI details. Fleet Manager separately delivers the HA status dashboard for monitoring.
+NOTE: All infrastructure setup -- hostname, static IPs, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. The UDN uses https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[`ipam.mode: Disabled`^] so OVN-Kubernetes does not assign or police IPs; static addresses are configured inside the VM via https://kubevirt.io/user-guide/virtual_machines/startup_scripts/#cloud-init-network-config[cloud-init `networkData`^]. The `qemu-guest-agent` reports guest IPs (including any floating VIP) to the VMI status visible in the OpenShift console. Fleet Manager separately delivers the HA status dashboard for monitoring.
 
 Check the HA Status Dashboard in your browser. At this point it should show *pcsd* active, but *Pacemaker* and *Corosync* inactive since the cluster has not been configured yet:
 
@@ -612,28 +612,28 @@ TIP: During failover, keep the **HA Status Dashboard** open. Notice it stays acc
 
 Simulate a network failure by stopping Corosync on node2.
 
-SSH into node2 from node1:
+Open a **second terminal** and SSH into node2 to stop Corosync (simulating a hung node):
 
-[source,role="execute"]
+[source,bash,role=execute,subs="attributes+"]
 ----
-ssh rhel-ha-node2
+virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace}
 ----
 
-Stop Corosync (simulating a hung node):
+Password: `{vm-password}`
 
 [source,role="execute"]
 ----
 sudo systemctl stop corosync
 ----
 
-Exit back to node1:
+Exit back to the bastion:
 
 [source,role="execute"]
 ----
 exit
 ----
 
-On node1, watch the cluster status:
+In your **first terminal** (still on node1), watch the cluster status:
 
 [source,role="execute"]
 ----
@@ -686,10 +686,11 @@ metadata:
 spec:
   accessModes:
     - ReadWriteMany
+  volumeMode: Block
   resources:
     requests:
       storage: 10Gi
-  storageClassName: ocs-external-storagecluster-cephfs
+  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
 EOF
 ----
 
@@ -702,7 +703,7 @@ oc get pvc pacemaker-shared-storage -n {student-namespace}
 
 You should see `STATUS: Bound`.
 
-NOTE: ReadWriteMany (RWX) access mode allows both VMs to mount the volume simultaneously - essential for clustered filesystems.
+NOTE: ReadWriteMany (RWX) access mode with `volumeMode: Block` allows both VMs to attach the raw block device simultaneously -- essential for clustered filesystems like GFS2 that manage their own locking. CephFS filesystem-mode PVCs cannot be shared as block devices between VMs due to QEMU write-lock conflicts.
 
 === Attach Shared Storage to VMs
 
@@ -716,75 +717,18 @@ virtctl stop {rhel-node2} -n {student-namespace}
 
 Wait for VMs to stop (check with `oc get vmi -n {student-namespace}`).
 
-Patch node1 to add the shared disk:
+Patch both VMs to add the shared disk using a JSON patch (this appends without overwriting existing disks/volumes):
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-oc patch vm rhel-ha-node1 -n {student-namespace} --type=merge -p '
-spec:
-  template:
-    spec:
-      domain:
-        devices:
-          disks:
-          - name: containerdisk
-            disk:
-              bus: virtio
-          - name: cloudinitdisk
-            disk:
-              bus: virtio
-          - name: shared-data
-            disk:
-              bus: virtio
-      volumes:
-      - name: containerdisk
-        containerDisk:
-          image: registry.redhat.io/rhel9/rhel-guest-image:latest
-      - name: cloudinitdisk
-        cloudInitNoCloud:
-          userData: |
-            # (existing cloud-init - unchanged)
-      - name: shared-data
-        persistentVolumeClaim:
-          claimName: pacemaker-shared-storage
-'
+for vm in {rhel-node1} {rhel-node2}; do
+  echo "Patching $vm..."
+  oc patch vm $vm -n {student-namespace} --type=json -p '[
+    {"op":"add","path":"/spec/template/spec/domain/devices/disks/-","value":{"disk":{"bus":"virtio"},"name":"shared-data"}},
+    {"op":"add","path":"/spec/template/spec/volumes/-","value":{"name":"shared-data","persistentVolumeClaim":{"claimName":"pacemaker-shared-storage"}}}
+  ]'
+done
 ----
-
-Repeat for node2:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc patch vm rhel-ha-node2 -n {student-namespace} --type=merge -p '
-spec:
-  template:
-    spec:
-      domain:
-        devices:
-          disks:
-          - name: containerdisk
-            disk:
-              bus: virtio
-          - name: cloudinitdisk
-            disk:
-              bus: virtio
-          - name: shared-data
-            disk:
-              bus: virtio
-      volumes:
-      - name: containerdisk
-        containerDisk:
-          image: registry.redhat.io/rhel9/rhel-guest-image:latest
-      - name: cloudinitdisk
-        cloudInitNoCloud:
-          userData: |
-            # (existing cloud-init - unchanged)
-      - name: shared-data
-        persistentVolumeClaim:
-          claimName: pacemaker-shared-storage
-'
-----
-
-IMPORTANT: In production, you would use DataVolumes or edit VM manifests directly. This patch command is simplified for workshop purposes.
 
 Start the VMs:
 
@@ -805,7 +749,7 @@ SSH into node1:
 virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 ----
 
-Check that the shared disk appears as `/dev/vdb`:
+Check that the shared disk appears (typically `/dev/vdc`):
 
 [source,role="execute"]
 ----
@@ -816,11 +760,17 @@ You should see:
 
 [source,text]
 ----
-NAME   MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
-vda    252:0    0  30G  0 disk
-└─vda1 252:1    0  30G  0 part /
-vdb    252:16   0  10G  0 disk
+NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
+vda    252:0    0   30G  0 disk
+├─vda1 252:1    0    1M  0 part
+├─vda2 252:2    0  200M  0 part /efi
+├─vda3 252:3    0    1G  0 part /boot
+└─vda4 252:4    0 28.8G  0 part /
+vdb    252:16   0    1M  0 disk
+vdc    252:32   0   10G  0 disk
 ----
+
+NOTE: `vdb` is a small metadata disk; the 10G shared block device is `vdc`.
 
 Verify GFS2 utilities are available (pre-installed via cloud-init):
 
@@ -833,7 +783,7 @@ Create GFS2 filesystem on the shared disk:
 
 [source,role="execute"]
 ----
-sudo mkfs.gfs2 -p lock_dlm -t ha-cluster:shared-data -j 2 /dev/vdb
+echo y | sudo mkfs.gfs2 -p lock_dlm -t ha-cluster:shared-data -j 2 /dev/vdc
 ----
 
 Parameters explained:
@@ -848,19 +798,34 @@ Create mount point:
 sudo mkdir -p /mnt/shared
 ----
 
-=== Add Filesystem Resource to Pacemaker
+=== Add DLM and Filesystem Resources to Pacemaker
+
+GFS2 with `lock_dlm` requires the DLM (Distributed Lock Manager) service. Create a DLM cluster resource first:
+
+[source,role="execute"]
+----
+sudo pcs resource create dlm systemd:dlm op monitor interval=30s clone interleave=true ordered=true
+----
 
 Create a Pacemaker resource for the GFS2 filesystem:
 
 [source,role="execute"]
 ----
 sudo pcs resource create shared-fs Filesystem \
-  device="/dev/vdb" \
+  device="/dev/vdc" \
   directory="/mnt/shared" \
   fstype="gfs2" \
   options="noatime" \
   op monitor interval=20s \
   clone interleave=true
+----
+
+Set ordering and colocation constraints so DLM starts before GFS2:
+
+[source,role="execute"]
+----
+sudo pcs constraint order dlm-clone then shared-fs-clone
+sudo pcs constraint colocation add shared-fs-clone with dlm-clone
 ----
 
 The `clone` parameter allows both nodes to mount the filesystem simultaneously.
@@ -885,7 +850,7 @@ Expected output:
 
 [source,text]
 ----
-/dev/vdb on /mnt/shared type gfs2 (rw,noatime)
+/dev/vdc on /mnt/shared type gfs2 (rw,noatime,seclabel,rgrplvb)
 ----
 
 === Test Storage Failover
@@ -898,12 +863,14 @@ echo "Transaction log $(date)" | sudo tee /mnt/shared/test-transaction.log
 cat /mnt/shared/test-transaction.log
 ----
 
-SSH into node2 from node1:
+Open a second terminal and SSH into node2:
 
-[source,role="execute"]
+[source,bash,role=execute,subs="attributes+"]
 ----
-ssh rhel-ha-node2
+virtctl ssh {vm-user}@{rhel-node2} -n {student-namespace}
 ----
+
+Password: `{vm-password}`
 
 Verify the file is immediately visible on node2 (concurrent access):
 
@@ -1548,7 +1515,8 @@ Or keep it if you want to experiment more!
 == References
 
 * https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/assembly_creating-high-availability-cluster-configuring-and-managing-high-availability-clusters[RHEL 9 -- Configuring and managing high availability clusters^] -- Corosync requires static IPs on cluster communication interfaces; DHCP is not supported.
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[OCP 4.21 -- UserDefinedNetwork API^] -- `ipam.lifecycle: Persistent` with IPAMClaims pins VMs to stable IPs that survive restarts.
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[OCP 4.21 -- UserDefinedNetwork API^] -- `ipam.mode: Disabled` allows floating VIPs without OVN-K port-security restrictions.
+* https://kubevirt.io/user-guide/virtual_machines/startup_scripts/#cloud-init-network-config[KubeVirt -- Cloud-init network config^] -- Netplan v2 `networkData` configures static IPs inside the guest VM.
 * https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_high_availability_clusters/proc_configuring-fencing-configuring-and-managing-high-availability-clusters[RHEL 9 -- Configuring fencing (STONITH)^] -- fence_kubevirt setup for KubeVirt environments.
 
 == Next Steps

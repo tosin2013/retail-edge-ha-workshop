@@ -5,20 +5,24 @@
 # Protocol) virtual IP failover. VRRP requires Layer 2 for multicast
 # advertisements (224.0.0.18) and ARP replies for the Virtual IP.
 #
-# OVN-K IPAM assigns IPs from the subnet; lifecycle: Persistent ensures IPs
-# survive VM restarts. Pre-created IPAMClaims pin each VM to a known static IP.
+# IPAM is disabled so OVN-K does NOT assign or police IPs on this network.
+# VMs configure static IPs via cloud-init networkData (Netplan v2), and the
+# Keepalived floating VIP moves freely between nodes without port-security
+# restrictions.  qemu-guest-agent reports all guest IPs to the VMI status.
 #
 # References:
-#   - OCP 4.21 UDN API (ipam.lifecycle: Persistent):
+#   - OCP 4.21 UDN API (ipam.mode):
 #     https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1
+#   - KubeVirt cloud-init networkData:
+#     https://kubevirt.io/user-guide/virtual_machines/startup_scripts/#cloud-init-network-config
 #
 # Network Details:
 #   - Purpose: MicroShift VRRP failover for Point-of-Sale applications
 #   - Subnet: 10.102.0.0/24
 #   - VMs per student: 2 (microshift-gw-a, microshift-gw-b)
-#   - Static IPs (via IPAMClaim): gw-a=10.102.0.20, gw-b=10.102.0.21
+#   - Static IPs (via cloud-init networkData): gw-a=10.102.0.20, gw-b=10.102.0.21
 #
-# Generated for 5 students
+# Generated for 2 students
 # =============================================================================
 
 
@@ -39,11 +43,8 @@ spec:
   topology: Layer2
   layer2:
     role: Secondary
-    subnets:
-    - "10.102.0.0/24"
     ipam:
-      mode: Enabled
-      lifecycle: Persistent
+      mode: Disabled
 
 ---
 # Student 02 - MicroShift VRRP Network
@@ -62,77 +63,5 @@ spec:
   topology: Layer2
   layer2:
     role: Secondary
-    subnets:
-    - "10.102.0.0/24"
     ipam:
-      mode: Enabled
-      lifecycle: Persistent
-
----
-# Student 03 - MicroShift VRRP Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: microshift-net
-  namespace: retail-edge-student-03
-  labels:
-    workshop: retail-edge-ha
-    module: module2
-    student-id: "03"
-  annotations:
-    description: "Layer 2 network for MicroShift VRRP virtual IP failover"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.102.0.0/24"
-    ipam:
-      mode: Enabled
-      lifecycle: Persistent
-
----
-# Student 04 - MicroShift VRRP Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: microshift-net
-  namespace: retail-edge-student-04
-  labels:
-    workshop: retail-edge-ha
-    module: module2
-    student-id: "04"
-  annotations:
-    description: "Layer 2 network for MicroShift VRRP virtual IP failover"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.102.0.0/24"
-    ipam:
-      mode: Enabled
-      lifecycle: Persistent
-
----
-# Student 05 - MicroShift VRRP Network
-apiVersion: k8s.ovn.org/v1
-kind: UserDefinedNetwork
-metadata:
-  name: microshift-net
-  namespace: retail-edge-student-05
-  labels:
-    workshop: retail-edge-ha
-    module: module2
-    student-id: "05"
-  annotations:
-    description: "Layer 2 network for MicroShift VRRP virtual IP failover"
-spec:
-  topology: Layer2
-  layer2:
-    role: Secondary
-    subnets:
-    - "10.102.0.0/24"
-    ipam:
-      mode: Enabled
-      lifecycle: Persistent
+      mode: Disabled

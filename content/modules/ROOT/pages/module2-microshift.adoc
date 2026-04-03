@@ -86,7 +86,7 @@ image::module2-real-architecture.png[Real-World Edge Gateway Deployment, align=c
 
 *Key Features:*
 
-* **Static IPs**: Assigned by OpenShift via IPAMClaims on a Persistent-lifecycle UDN (see <<_references>>)
+* **Static IPs**: Assigned via cloud-init `networkData` on an IPAM-disabled UDN (see <<_references>>)
 * **MicroShift**: Lightweight Kubernetes for edge
 * **VRRP**: Multicast advertisements (224.0.0.18)
 * **Health Check**: Monitors MicroShift API (port 6443)
@@ -1101,7 +1101,8 @@ virtctl stop {microshift-gw-b} -n {student-namespace}
 
 == References
 
-* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[OCP 4.21 -- UserDefinedNetwork API^] -- `ipam.lifecycle: Persistent` with IPAMClaims pins VMs to stable IPs that survive restarts.
+* https://docs.redhat.com/en/documentation/openshift_container_platform/4.21/html/network_apis/userdefinednetwork-k8s-ovn-org-v1[OCP 4.21 -- UserDefinedNetwork API^] -- `ipam.mode: Disabled` allows floating VIPs without OVN-K port-security restrictions.
+* https://kubevirt.io/user-guide/virtual_machines/startup_scripts/#cloud-init-network-config[KubeVirt -- Cloud-init network config^] -- Netplan v2 `networkData` configures static IPs inside the guest VM.
 * https://docs.redhat.com/en/documentation/red_hat_build_of_microshift/4.18/html/networking/microshift-networking[MicroShift Networking^] -- MicroShift network architecture and firewall requirements.
 * https://keepalived.readthedocs.io/en/latest/introduction.html[Keepalived Documentation^] -- VRRP configuration and health check scripts.
 
