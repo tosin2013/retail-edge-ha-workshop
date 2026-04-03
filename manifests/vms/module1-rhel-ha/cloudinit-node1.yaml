@@ -76,10 +76,8 @@ stringData:
           [Install]
           WantedBy=multi-user.target
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.20/24 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
       - systemctl enable --now flightctl-agent
       - systemctl enable --now edge-config-pacemaker.path
 
@@ -158,9 +156,7 @@ stringData:
           [Install]
           WantedBy=multi-user.target
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.20/24 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
       - systemctl enable --now flightctl-agent
       - systemctl enable --now edge-config-pacemaker.path

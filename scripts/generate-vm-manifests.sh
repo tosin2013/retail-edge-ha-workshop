@@ -391,10 +391,8 @@ ENDOFCLOUDINIT
 
   cat >> "$M1_INIT1" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.20/24 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
@@ -443,10 +441,8 @@ ENDOFCLOUDINIT
 
   cat >> "$M1_INIT2" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.101.0.21/24
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.101.0.21/24 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-pacemaker.path
 ENDOFRUNCMD
@@ -683,11 +679,8 @@ ENDOFCLOUDINIT
 
   cat >> "$M2_INIT_A" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.20/24
-      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.102.0.20/24 ipv4.gateway 10.102.0.1 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-microshift.path
 ENDOFRUNCMD
@@ -736,11 +729,8 @@ ENDOFCLOUDINIT
 
   cat >> "$M2_INIT_B" <<ENDOFRUNCMD
     runcmd:
-      - nmcli con mod "Wired connection 2" ipv4.addresses 10.102.0.21/24
-      - nmcli con mod "Wired connection 2" ipv4.gateway 10.102.0.1
-      - nmcli con mod "Wired connection 2" ipv4.method manual
-      - nmcli con mod "Wired connection 2" connection.autoconnect yes
-      - nmcli con up "Wired connection 2"
+      - nmcli con add type ethernet con-name eth1-static ifname eth1 ipv4.addresses 10.102.0.21/24 ipv4.gateway 10.102.0.1 ipv4.method manual connection.autoconnect yes
+      - nmcli con up eth1-static
 ${FLIGHTCTL_RUNCMD}
       - systemctl enable --now edge-config-microshift.path
 ENDOFRUNCMD
