@@ -16,7 +16,8 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-
+    bootcmd:
+      - subscription-manager repos --enable=rhocp-4.21-for-rhel-9-x86_64-rpms --enable=fast-datapath-for-rhel-9-x86_64-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms
     packages:
       - microshift
       - microshift-selinux
@@ -98,7 +99,8 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-
+    bootcmd:
+      - subscription-manager repos --enable=rhocp-4.21-for-rhel-9-x86_64-rpms --enable=fast-datapath-for-rhel-9-x86_64-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms
     packages:
       - microshift
       - microshift-selinux

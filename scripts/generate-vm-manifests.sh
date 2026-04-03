@@ -96,6 +96,11 @@ if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
   FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
 fi
 
+# Extra repos that must be enabled before packages install.
+# Auto-subscription registers the VM; these repos are disabled by default.
+M1_EXTRA_REPOS="      - subscription-manager repos --enable=rhel-9-for-x86_64-highavailability-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms"
+M2_EXTRA_REPOS="      - subscription-manager repos --enable=rhocp-4.21-for-rhel-9-x86_64-rpms --enable=fast-datapath-for-rhel-9-x86_64-rpms --enable=edge-manager-1.0-for-rhel-9-x86_64-rpms"
+
 # Helper: generate flightctl write_files block with enrollment config + device role + trigger service
 # Args: $1=role (node1|node2|gw-a|gw-b), $2=module (pacemaker|microshift)
 generate_flightctl_write_files() {
@@ -369,6 +374,8 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
+    bootcmd:
+${M1_EXTRA_REPOS}
     packages:
       - pacemaker
       - pcs
@@ -419,6 +426,8 @@ stringData:
     chpasswd:
       expire: false
     ssh_pwauth: true
+    bootcmd:
+${M1_EXTRA_REPOS}
     packages:
       - pacemaker
       - pcs
@@ -656,7 +665,8 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-
+    bootcmd:
+${M2_EXTRA_REPOS}
     packages:
       - microshift
       - microshift-selinux
@@ -708,7 +718,8 @@ stringData:
     password: redhat
     chpasswd: { expire: False }
     ssh_pwauth: True
-
+    bootcmd:
+${M2_EXTRA_REPOS}
     packages:
       - microshift
       - microshift-selinux
