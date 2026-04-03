@@ -29,6 +29,12 @@ ocp4_workload_retail_edge_ha_enable_module1: true
 ocp4_workload_retail_edge_ha_enable_module2: true
 ocp4_workload_retail_edge_ha_enable_module3: true
 
+# RHEL VM Subscription (required for RHEL 9 VMs to get yum repos)
+# These values should be set in agnosticd-v2-secrets/<account>.yml
+# Create an activation key at: https://access.redhat.com/management/activation_keys
+ocp4_workload_retail_edge_ha_rhel_activation_key: ""
+ocp4_workload_retail_edge_ha_rhel_org_id: ""
+
 # Cluster information (auto-discovered in pre_workload.yml)
 # These are set dynamically and don't need to be overridden
 # ocp4_workload_retail_edge_ha_cluster_domain: ""

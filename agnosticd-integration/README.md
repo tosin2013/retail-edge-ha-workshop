@@ -46,7 +46,15 @@ Deploys the complete Retail Edge HA Workshop to an existing OpenShift 4.21+ clus
      ~/Development/agnosticd-v2/roles/
    ```
 
-3. Configure cluster access (create `~/Development/agnosticd-v2-vars/retail-edge-ha-vars.yml`):
+3. Configure secrets (add to `~/Development/agnosticd-v2-secrets/<account>.yml`):
+   ```yaml
+   # RHEL VM auto-subscription (required for RHEL 9 VMs to get yum repos)
+   # Create key at: https://access.redhat.com/management/activation_keys
+   ocp4_workload_retail_edge_ha_rhel_activation_key: "your-activation-key"
+   ocp4_workload_retail_edge_ha_rhel_org_id: "your-org-id"
+   ```
+
+4. Configure cluster access (create `~/Development/agnosticd-v2-vars/retail-edge-ha-vars.yml`):
    ```yaml
    num_users: 5
    ocp4_workload_retail_edge_ha_enable_module3: false
@@ -96,6 +104,8 @@ This approach preserves the existing Helm + ArgoCD architecture while integratin
 | `ocp4_workload_retail_edge_ha_auto_start_vms` | Auto-start VMs | `false` |
 | `ocp4_workload_retail_edge_ha_enable_showroom` | Deploy Showroom | `true` |
 | `ocp4_workload_retail_edge_ha_auto_install_virtualization` | Auto-install OpenShift Virtualization operator if missing | `true` |
+| `ocp4_workload_retail_edge_ha_rhel_activation_key` | Red Hat activation key for RHEL VM subscription | `""` (secrets) |
+| `ocp4_workload_retail_edge_ha_rhel_org_id` | Red Hat organization ID for RHEL VM subscription | `""` (secrets) |
 
 See [ocp4_workload_retail_edge_ha/readme.adoc](ocp4_workload_retail_edge_ha/readme.adoc) for complete variable reference.
 

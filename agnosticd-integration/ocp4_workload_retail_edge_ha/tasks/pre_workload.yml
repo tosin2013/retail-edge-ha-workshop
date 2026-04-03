@@ -124,6 +124,39 @@
     msg: "OpenShift Virtualization operator found and ready"
   when: cnv_installed
 
+- name: Configure automatic RHEL VM subscription
+  when:
+    - cnv_installed
+    - ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length > 0
+    - ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length > 0
+  block:
+    - name: Patch kubevirt-ui-features with RHEL subscription credentials
+      kubernetes.core.k8s:
+        api_version: v1
+        kind: ConfigMap
+        name: kubevirt-ui-features
+        namespace: openshift-cnv
+        state: patched
+        definition:
+          data:
+            automaticSubscriptionActivationKey: "{{ ocp4_workload_retail_edge_ha_rhel_activation_key }}"
+            automaticSubscriptionOrganizationId: "{{ ocp4_workload_retail_edge_ha_rhel_org_id }}"
+            automaticSubscriptionType: "monitorAndManageSubscriptions"
+
+    - name: Confirm RHEL VM auto-subscription configured
+      ansible.builtin.debug:
+        msg: "RHEL VM auto-subscription enabled (activation key + org ID applied to kubevirt-ui-features)"
+
+- name: Warn if RHEL subscription credentials not provided
+  ansible.builtin.debug:
+    msg: >-
+      WARNING: RHEL subscription not configured. RHEL 9 VMs will not have yum repos.
+      Set ocp4_workload_retail_edge_ha_rhel_activation_key and
+      ocp4_workload_retail_edge_ha_rhel_org_id in your secrets file.
+  when: >-
+    ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length == 0
+    or ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length == 0
+
 - name: Get available storage classes
   kubernetes.core.k8s_info:
     api_version: storage.k8s.io/v1
