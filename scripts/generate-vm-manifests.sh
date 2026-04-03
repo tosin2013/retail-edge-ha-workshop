@@ -129,13 +129,15 @@ ENDOFSUB
 # Args: $1=role (node1|node2|gw-a|gw-b), $2=module (pacemaker|microshift)
 generate_flightctl_write_files() {
   local role="$1" module="$2"
-  local service_name trigger_script
+  local service_name trigger_script alias_name
   if [[ "$module" == "pacemaker" ]]; then
     service_name="edge-config-pacemaker"
     trigger_script="setup-pacemaker.sh"
+    alias_name="rhel-ha-${role}"
   else
     service_name="edge-config-microshift"
     trigger_script="setup-microshift.sh"
+    alias_name="microshift-${role}"
   fi
 
   ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
@@ -153,6 +155,7 @@ ${ENROLLMENT_CONTENT}
         content: |
           module: ${module}
           role: ${role}
+          alias: ${alias_name}
       - path: /etc/edge-config/device-role
         owner: root:root
         permissions: '0644'

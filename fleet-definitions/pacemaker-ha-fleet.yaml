@@ -2,11 +2,16 @@ apiVersion: flightctl.io/v1beta1
 kind: Fleet
 metadata:
   name: pacemaker-ha
+  labels:
+    version: "2"
 spec:
   selector:
     matchLabels:
       module: pacemaker
   template:
+    metadata:
+      labels:
+        configVersion: "2"
     spec:
       config:
         - name: pacemaker-setup
