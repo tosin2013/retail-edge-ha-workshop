@@ -20,6 +20,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 FLEET_DEFS_DIR="${REPO_ROOT}/fleet-definitions"
+FLEET_MGMT_DIR="${REPO_ROOT}/fleet-management"
 VALUES_FILE="${REPO_ROOT}/helm/retail-edge-ha/values.yaml"
 
 echo "=========================================="
@@ -60,17 +61,20 @@ fi
 flightctl login "https://${EDGE_MANAGER_API}" -k --token="${OC_TOKEN}"
 echo ""
 
-echo "Step 2: Apply fleet definitions"
+echo "Step 2: Apply repository"
+echo "  Applying: repository.yaml"
+flightctl apply -f "${FLEET_MGMT_DIR}/repository.yaml"
+echo ""
+
+echo "Step 3: Apply fleet definitions"
 for f in "${FLEET_DEFS_DIR}"/*.yaml; do
   fname=$(basename "$f")
-  # Skip resourcesync.yaml on initial bootstrap -- apply it last
-  [[ "$fname" == "resourcesync.yaml" ]] && continue
   echo "  Applying: ${fname}"
   flightctl apply -f "$f"
 done
 echo ""
 
-echo "Step 3: Verify resources"
+echo "Step 4: Verify resources"
 echo ""
 echo "Repositories:"
 flightctl get repositories
@@ -79,14 +83,12 @@ echo "Fleets:"
 flightctl get fleets
 echo ""
 
-echo "Step 4: Apply ResourceSync (optional -- enables GitOps for fleet definitions)"
-if [[ -f "${FLEET_DEFS_DIR}/resourcesync.yaml" ]]; then
-  echo "  Applying: resourcesync.yaml"
-  flightctl apply -f "${FLEET_DEFS_DIR}/resourcesync.yaml"
-  echo ""
-  echo "ResourceSyncs:"
-  flightctl get resourcesyncs
-fi
+echo "Step 5: Apply ResourceSync (enables GitOps for fleet definitions)"
+echo "  Applying: resourcesync.yaml"
+flightctl apply -f "${FLEET_MGMT_DIR}/resourcesync.yaml"
+echo ""
+echo "ResourceSyncs:"
+flightctl get resourcesyncs
 
 echo ""
 echo "=========================================="
@@ -96,6 +98,7 @@ echo ""
 echo "Fleets created:"
 echo "  - pacemaker-ha     (matches devices with label module=pacemaker)"
 echo "  - microshift-vrrp  (matches devices with label module=microshift)"
+echo "  - twonode-ocp      (matches devices with label module=twonode)"
 echo ""
 echo "When students start VMs, devices will:"
 echo "  1. Auto-enroll with Edge Manager"
