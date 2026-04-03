@@ -80,39 +80,22 @@ ${header}
 EOF
 }
 
-# Build the flightctl enrollment cloud-init fragments once (reused per VM)
-# When Edge Manager is enabled, cloud-init handles enrollment only. The actual
-# device configuration (hostname, /etc/hosts, services) is pushed by Fleet
-# Manager after enrollment. A systemd path unit triggers the setup script
-# when the flightctl agent delivers it.
-FLIGHTCTL_WRITE_FILES=""
-FLIGHTCTL_RUNCMD=""
+# Cloud-init does ALL infrastructure setup. Fleet Manager only delivers
+# the status dashboard applications after device enrollment.
 FLIGHTCTL_PACKAGES=""
 if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-  ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
-
   FLIGHTCTL_PACKAGES="      - flightctl-agent"
-
-  FLIGHTCTL_RUNCMD="      - systemctl enable --now flightctl-agent"
 fi
 
-# RHEL subscription: always generate rh_subscription blocks with placeholders.
-# Real credentials are injected at apply time by scripts/apply-vm-manifests.sh
-# which reads them from a Kubernetes Secret (rhel-subscription-creds) or
-# the kubevirt-ui-features ConfigMap.
 RHEL_SUB_ENABLED=true
 
 # Per-module repo lists (enabled after registration)
-M1_REPOS="rhel-9-for-x86_64-highavailability-rpms,edge-manager-1.0-for-rhel-9-x86_64-rpms"
+M1_REPOS="rhel-9-for-x86_64-highavailability-rpms,rhel-9-for-x86_64-resilientstorage-rpms,edge-manager-1.0-for-rhel-9-x86_64-rpms"
 M2_REPOS="rhocp-4.21-for-rhel-9-x86_64-rpms,fast-datapath-for-rhel-9-x86_64-rpms,edge-manager-1.0-for-rhel-9-x86_64-rpms"
 
-# Helper: generate rh_subscription cloud-init block
-# Args: $1=comma-separated repo list
 generate_rh_subscription() {
   local repos="$1"
-  if [[ "$RHEL_SUB_ENABLED" != "true" ]]; then
-    return
-  fi
+  if [[ "$RHEL_SUB_ENABLED" != "true" ]]; then return; fi
   cat <<ENDOFSUB
     rh_subscription:
       activation-key: 'REPLACE_ACTIVATION_KEY'
@@ -125,68 +108,325 @@ ENDOFSUB
   done
 }
 
-# Helper: generate flightctl write_files block with enrollment config + device role + trigger service
-# Args: $1=role (node1|node2|gw-a|gw-b), $2=module (pacemaker|microshift)
-generate_flightctl_write_files() {
-  local role="$1" module="$2"
-  local service_name trigger_script alias_name
-  if [[ "$module" == "pacemaker" ]]; then
-    service_name="edge-config-pacemaker"
-    trigger_script="setup-pacemaker.sh"
-    alias_name="rhel-ha-${role}"
+# Generate Module 1 (Pacemaker) cloud-init write_files + runcmd
+# Args: $1=role (node1|node2)
+generate_m1_cloudinit_config() {
+  local role="$1"
+  local hostname peer_hostname alias_name dashboard_script
+  if [[ "$role" == "node1" ]]; then
+    hostname="rhel-ha-node1"; peer_hostname="rhel-ha-node2"; alias_name="rhel-ha-node1"
   else
-    service_name="edge-config-microshift"
-    trigger_script="setup-microshift.sh"
-    alias_name="microshift-${role}"
+    hostname="rhel-ha-node2"; peer_hostname="rhel-ha-node1"; alias_name="rhel-ha-node2"
+  fi
+  dashboard_script="ha-status-web.py"
+
+  local ENROLLMENT_INDENT=""
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    ENROLLMENT_INDENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
   fi
 
-  ENROLLMENT_CONTENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
-
-  cat <<ENDOFWRITEFILES
+  # --- write_files ---
+  cat <<WFEOF
     write_files:
+WFEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<WFEOF
       - path: /etc/flightctl/config.yaml
         owner: root:root
         permissions: '0600'
         content: |
-${ENROLLMENT_CONTENT}
+${ENROLLMENT_INDENT}
       - path: /etc/flightctl/labels.yaml
         owner: root:root
         permissions: '0644'
         content: |
-          module: ${module}
+          module: pacemaker
           role: ${role}
           alias: ${alias_name}
+WFEOF
+  fi
+
+  cat <<'WFEOF'
+      - path: /etc/edge-config/update-hosts.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+          ROLE_FILE="/etc/edge-config/device-role"
+          [ ! -f "$ROLE_FILE" ] && exit 1
+          ROLE=$(cat "$ROLE_FILE")
+          case "$ROLE" in
+            node1) HOSTNAME="rhel-ha-node1"; PEER="rhel-ha-node2" ;;
+            node2) HOSTNAME="rhel-ha-node2"; PEER="rhel-ha-node1" ;;
+            *) exit 1 ;;
+          esac
+          for attempt in $(seq 1 30); do
+            MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+            [ -n "$MY_IP" ] && break
+            sleep 5
+          done
+          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
+          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
+          echo "$MY_IP $HOSTNAME" >> /etc/hosts
+          PEER_IP=""
+          for attempt in $(seq 1 60); do
+            for c in $(seq 2 254); do
+              CIP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$c/")
+              [ "$CIP" = "$MY_IP" ] && continue
+              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
+                PEER_IP="$CIP"; break 2
+              fi
+            done
+            sleep 5
+          done
+          if [ -n "$PEER_IP" ]; then
+            sed -i "/ ${PEER}\$/d" /etc/hosts
+            echo "$PEER_IP $PEER" >> /etc/hosts
+          fi
+      - path: /etc/systemd/system/update-cluster-hosts.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Discover cluster peer IPs and update /etc/hosts
+          After=network-online.target
+          Wants=network-online.target
+          Before=corosync.service pacemaker.service
+          [Service]
+          Type=oneshot
+          RemainAfterExit=true
+          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
+          StandardOutput=journal+console
+          [Install]
+          WantedBy=multi-user.target
+WFEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<WFEOF
+      - path: /etc/systemd/system/ha-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start HA dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/${dashboard_script}
+          [Install]
+          WantedBy=multi-user.target
+WFEOF
+  fi
+
+  cat <<WFEOF
       - path: /etc/edge-config/device-role
         owner: root:root
         permissions: '0644'
         content: "${role}"
-      - path: /etc/systemd/system/${service_name}.service
+WFEOF
+
+  # --- runcmd ---
+  cat <<RCEOF
+    runcmd:
+      - hostnamectl set-hostname ${hostname}
+      - echo "redhat" | passwd --stdin hacluster
+      - systemctl enable --now pcsd
+      - systemctl daemon-reload
+      - systemctl enable update-cluster-hosts.service
+      - systemctl start update-cluster-hosts.service
+RCEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<RCEOF
+      - systemctl enable --now flightctl-agent
+      - systemctl enable ha-status-web.path
+RCEOF
+  fi
+}
+
+# Generate Module 2 (MicroShift) cloud-init write_files + runcmd
+# Args: $1=role (gw-a|gw-b)
+generate_m2_cloudinit_config() {
+  local role="$1"
+  local hostname peer_hostname alias_name keepalived_state keepalived_priority
+  local dashboard_script="gateway-status-web.py"
+  local VIP="10.102.0.100"
+
+  if [[ "$role" == "gw-a" ]]; then
+    hostname="microshift-gw-a"; peer_hostname="microshift-gw-b"; alias_name="microshift-gw-a"
+    keepalived_state="MASTER"; keepalived_priority="100"
+  else
+    hostname="microshift-gw-b"; peer_hostname="microshift-gw-a"; alias_name="microshift-gw-b"
+    keepalived_state="BACKUP"; keepalived_priority="90"
+  fi
+
+  local ENROLLMENT_INDENT=""
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    ENROLLMENT_INDENT=$(sed 's/^/          /' "$ENROLLMENT_CONFIG")
+  fi
+
+  # --- write_files ---
+  cat <<WFEOF
+    write_files:
+WFEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<WFEOF
+      - path: /etc/flightctl/config.yaml
+        owner: root:root
+        permissions: '0600'
+        content: |
+${ENROLLMENT_INDENT}
+      - path: /etc/flightctl/labels.yaml
+        owner: root:root
+        permissions: '0644'
+        content: |
+          module: microshift
+          role: ${role}
+          alias: ${alias_name}
+WFEOF
+  fi
+
+  # update-hosts.sh for Module 2 (excludes VIP from peer scan)
+  cat <<WFEOF
+      - path: /etc/edge-config/update-hosts.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+          ROLE_FILE="/etc/edge-config/device-role"
+          VIP="${VIP}"
+          [ ! -f "\$ROLE_FILE" ] && exit 1
+          ROLE=\$(cat "\$ROLE_FILE")
+          case "\$ROLE" in
+            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
+            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
+            *) exit 1 ;;
+          esac
+          for attempt in \$(seq 1 30); do
+            MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+            [ -n "\$MY_IP" ] && break
+            sleep 5
+          done
+          [ -z "\$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
+          sed -i "/ \${HOSTNAME}\\\$/d" /etc/hosts
+          echo "\$MY_IP \$HOSTNAME" >> /etc/hosts
+          grep -q "\$VIP microshift-vip" /etc/hosts || echo "\$VIP microshift-vip" >> /etc/hosts
+          PEER_IP=""
+          for attempt in \$(seq 1 60); do
+            for c in \$(seq 2 254); do
+              CIP=\$(echo "\$MY_IP" | sed "s/\.[0-9]*\$/.\$c/")
+              [ "\$CIP" = "\$MY_IP" ] && continue
+              [ "\$CIP" = "\$VIP" ] && continue
+              if arping -c 1 -w 1 -I eth1 "\$CIP" &>/dev/null; then
+                PEER_IP="\$CIP"; break 2
+              fi
+            done
+            sleep 5
+          done
+          if [ -n "\$PEER_IP" ]; then
+            sed -i "/ \${PEER}\\\$/d" /etc/hosts
+            echo "\$PEER_IP \$PEER" >> /etc/hosts
+          fi
+      - path: /etc/systemd/system/update-cluster-hosts.service
         owner: root:root
         permissions: '0644'
         content: |
           [Unit]
-          Description=Run ${module} setup when fleet config arrives
-          ConditionPathExists=/etc/edge-config/${trigger_script}
-          ConditionPathExists=!/var/run/${service_name}.done
-          After=network-online.target flightctl-agent.service
+          Description=Discover cluster peer IPs and update /etc/hosts
+          After=network-online.target
           Wants=network-online.target
           [Service]
           Type=oneshot
-          ExecStart=/bin/bash /etc/edge-config/${trigger_script}
           RemainAfterExit=true
+          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
+          StandardOutput=journal+console
           [Install]
           WantedBy=multi-user.target
-      - path: /etc/systemd/system/${service_name}.path
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state ${keepalived_state}
+              interface eth1
+              virtual_router_id 1
+              priority ${keepalived_priority}
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  ${VIP}/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+WFEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<WFEOF
+      - path: /etc/systemd/system/gateway-status-web.path
         owner: root:root
         permissions: '0644'
         content: |
           [Unit]
-          Description=Watch for fleet config delivery
+          Description=Start gateway dashboard when Fleet Manager delivers it
           [Path]
-          PathExists=/etc/edge-config/${trigger_script}
+          PathExists=/etc/edge-config/${dashboard_script}
           [Install]
           WantedBy=multi-user.target
-ENDOFWRITEFILES
+WFEOF
+  fi
+
+  cat <<WFEOF
+      - path: /etc/edge-config/device-role
+        owner: root:root
+        permissions: '0644'
+        content: "${role}"
+WFEOF
+
+  # --- runcmd ---
+  cat <<RCEOF
+    runcmd:
+      - hostnamectl set-hostname ${hostname}
+      - systemctl daemon-reload
+      - systemctl enable update-cluster-hosts.service
+      - systemctl start update-cluster-hosts.service
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in \$(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
+RCEOF
+
+  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
+    cat <<RCEOF
+      - systemctl enable --now flightctl-agent
+      - systemctl enable gateway-status-web.path
+RCEOF
+  fi
 }
 
 # =============================================================================
@@ -412,18 +652,13 @@ ENDOFCLOUDINIT
       - fence-agents-kubevirt
       - corosync
       - fence-agents-all
+      - gfs2-utils
+      - dlm
+      - lvm2-lockd
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
-  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    generate_flightctl_write_files "node1" "pacemaker" >> "$M1_INIT1"
-  fi
-
-  cat >> "$M1_INIT1" <<ENDOFRUNCMD
-    runcmd:
-${FLIGHTCTL_RUNCMD}
-      - systemctl enable --now edge-config-pacemaker.path
-ENDOFRUNCMD
+  generate_m1_cloudinit_config "node1" >> "$M1_INIT1"
 done
 echo "  cloudinit-node1.yaml"
 
@@ -463,18 +698,13 @@ ENDOFCLOUDINIT
       - fence-agents-kubevirt
       - corosync
       - fence-agents-all
+      - gfs2-utils
+      - dlm
+      - lvm2-lockd
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
-  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    generate_flightctl_write_files "node2" "pacemaker" >> "$M1_INIT2"
-  fi
-
-  cat >> "$M1_INIT2" <<ENDOFRUNCMD
-    runcmd:
-${FLIGHTCTL_RUNCMD}
-      - systemctl enable --now edge-config-pacemaker.path
-ENDOFRUNCMD
+  generate_m1_cloudinit_config "node2" >> "$M1_INIT2"
 done
 echo "  cloudinit-node2.yaml"
 
@@ -705,15 +935,7 @@ ENDOFCLOUDINIT
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
-  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    generate_flightctl_write_files "gw-a" "microshift" >> "$M2_INIT_A"
-  fi
-
-  cat >> "$M2_INIT_A" <<ENDOFRUNCMD
-    runcmd:
-${FLIGHTCTL_RUNCMD}
-      - systemctl enable --now edge-config-microshift.path
-ENDOFRUNCMD
+  generate_m2_cloudinit_config "gw-a" >> "$M2_INIT_A"
 done
 echo "  cloudinit-gw-a.yaml"
 
@@ -756,15 +978,7 @@ ENDOFCLOUDINIT
 ${FLIGHTCTL_PACKAGES}
 ENDOFPACKAGES
 
-  if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
-    generate_flightctl_write_files "gw-b" "microshift" >> "$M2_INIT_B"
-  fi
-
-  cat >> "$M2_INIT_B" <<ENDOFRUNCMD
-    runcmd:
-${FLIGHTCTL_RUNCMD}
-      - systemctl enable --now edge-config-microshift.path
-ENDOFRUNCMD
+  generate_m2_cloudinit_config "gw-b" >> "$M2_INIT_B"
 done
 echo "  cloudinit-gw-b.yaml"
 

@@ -51,39 +51,126 @@ stringData:
           module: microshift
           role: gw-a
           alias: microshift-gw-a
+      - path: /etc/edge-config/update-hosts.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+          ROLE_FILE="/etc/edge-config/device-role"
+          VIP="10.102.0.100"
+          [ ! -f "$ROLE_FILE" ] && exit 1
+          ROLE=$(cat "$ROLE_FILE")
+          case "$ROLE" in
+            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
+            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
+            *) exit 1 ;;
+          esac
+          for attempt in $(seq 1 30); do
+            MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+            [ -n "$MY_IP" ] && break
+            sleep 5
+          done
+          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
+          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
+          echo "$MY_IP $HOSTNAME" >> /etc/hosts
+          grep -q "$VIP microshift-vip" /etc/hosts || echo "$VIP microshift-vip" >> /etc/hosts
+          PEER_IP=""
+          for attempt in $(seq 1 60); do
+            for c in $(seq 2 254); do
+              CIP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$c/")
+              [ "$CIP" = "$MY_IP" ] && continue
+              [ "$CIP" = "$VIP" ] && continue
+              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
+                PEER_IP="$CIP"; break 2
+              fi
+            done
+            sleep 5
+          done
+          if [ -n "$PEER_IP" ]; then
+            sed -i "/ ${PEER}\$/d" /etc/hosts
+            echo "$PEER_IP $PEER" >> /etc/hosts
+          fi
+      - path: /etc/systemd/system/update-cluster-hosts.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Discover cluster peer IPs and update /etc/hosts
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          RemainAfterExit=true
+          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
+          StandardOutput=journal+console
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state MASTER
+              interface eth1
+              virtual_router_id 1
+              priority 100
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+      - path: /etc/systemd/system/gateway-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start gateway dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/gateway-status-web.py
+          [Install]
+          WantedBy=multi-user.target
       - path: /etc/edge-config/device-role
         owner: root:root
         permissions: '0644'
         content: "gw-a"
-      - path: /etc/systemd/system/edge-config-microshift.service
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Run microshift setup when fleet config arrives
-          ConditionPathExists=/etc/edge-config/setup-microshift.sh
-          ConditionPathExists=!/var/run/edge-config-microshift.done
-          After=network-online.target flightctl-agent.service
-          Wants=network-online.target
-          [Service]
-          Type=oneshot
-          ExecStart=/bin/bash /etc/edge-config/setup-microshift.sh
-          RemainAfterExit=true
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/edge-config-microshift.path
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Watch for fleet config delivery
-          [Path]
-          PathExists=/etc/edge-config/setup-microshift.sh
-          [Install]
-          WantedBy=multi-user.target
     runcmd:
+      - hostnamectl set-hostname microshift-gw-a
+      - systemctl daemon-reload
+      - systemctl enable update-cluster-hosts.service
+      - systemctl start update-cluster-hosts.service
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in $(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
-      - systemctl enable --now edge-config-microshift.path
+      - systemctl enable gateway-status-web.path
 
 ---
 # Student 02 - Cloud-init for MicroShift Gateway A
@@ -135,36 +222,123 @@ stringData:
           module: microshift
           role: gw-a
           alias: microshift-gw-a
+      - path: /etc/edge-config/update-hosts.sh
+        owner: root:root
+        permissions: '0755'
+        content: |
+          #!/bin/bash
+          set -euo pipefail
+          ROLE_FILE="/etc/edge-config/device-role"
+          VIP="10.102.0.100"
+          [ ! -f "$ROLE_FILE" ] && exit 1
+          ROLE=$(cat "$ROLE_FILE")
+          case "$ROLE" in
+            gw-a) HOSTNAME="microshift-gw-a"; PEER="microshift-gw-b" ;;
+            gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
+            *) exit 1 ;;
+          esac
+          for attempt in $(seq 1 30); do
+            MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+            [ -n "$MY_IP" ] && break
+            sleep 5
+          done
+          [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
+          sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
+          echo "$MY_IP $HOSTNAME" >> /etc/hosts
+          grep -q "$VIP microshift-vip" /etc/hosts || echo "$VIP microshift-vip" >> /etc/hosts
+          PEER_IP=""
+          for attempt in $(seq 1 60); do
+            for c in $(seq 2 254); do
+              CIP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$c/")
+              [ "$CIP" = "$MY_IP" ] && continue
+              [ "$CIP" = "$VIP" ] && continue
+              if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
+                PEER_IP="$CIP"; break 2
+              fi
+            done
+            sleep 5
+          done
+          if [ -n "$PEER_IP" ]; then
+            sed -i "/ ${PEER}\$/d" /etc/hosts
+            echo "$PEER_IP $PEER" >> /etc/hosts
+          fi
+      - path: /etc/systemd/system/update-cluster-hosts.service
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Discover cluster peer IPs and update /etc/hosts
+          After=network-online.target
+          Wants=network-online.target
+          [Service]
+          Type=oneshot
+          RemainAfterExit=true
+          ExecStart=/bin/bash /etc/edge-config/update-hosts.sh
+          StandardOutput=journal+console
+          [Install]
+          WantedBy=multi-user.target
+      - path: /etc/keepalived/keepalived.conf
+        owner: root:root
+        permissions: '0644'
+        content: |
+          vrrp_script check_microshift {
+              script "/usr/bin/curl -k -s https://localhost:6443/readyz"
+              interval 3
+              weight -20
+              fall 2
+              rise 2
+          }
+          vrrp_instance MICROSHIFT_VIP {
+              state MASTER
+              interface eth1
+              virtual_router_id 1
+              priority 100
+              advert_int 1
+              authentication {
+                  auth_type PASS
+                  auth_pass microshift123
+              }
+              virtual_ipaddress {
+                  10.102.0.100/24 dev eth1
+              }
+              track_script {
+                  check_microshift
+              }
+          }
+      - path: /etc/systemd/system/gateway-status-web.path
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Start gateway dashboard when Fleet Manager delivers it
+          [Path]
+          PathExists=/etc/edge-config/gateway-status-web.py
+          [Install]
+          WantedBy=multi-user.target
       - path: /etc/edge-config/device-role
         owner: root:root
         permissions: '0644'
         content: "gw-a"
-      - path: /etc/systemd/system/edge-config-microshift.service
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Run microshift setup when fleet config arrives
-          ConditionPathExists=/etc/edge-config/setup-microshift.sh
-          ConditionPathExists=!/var/run/edge-config-microshift.done
-          After=network-online.target flightctl-agent.service
-          Wants=network-online.target
-          [Service]
-          Type=oneshot
-          ExecStart=/bin/bash /etc/edge-config/setup-microshift.sh
-          RemainAfterExit=true
-          [Install]
-          WantedBy=multi-user.target
-      - path: /etc/systemd/system/edge-config-microshift.path
-        owner: root:root
-        permissions: '0644'
-        content: |
-          [Unit]
-          Description=Watch for fleet config delivery
-          [Path]
-          PathExists=/etc/edge-config/setup-microshift.sh
-          [Install]
-          WantedBy=multi-user.target
     runcmd:
+      - hostnamectl set-hostname microshift-gw-a
+      - systemctl daemon-reload
+      - systemctl enable update-cluster-hosts.service
+      - systemctl start update-cluster-hosts.service
+      - systemctl enable --now firewalld
+      - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
+      - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
+      - firewall-cmd --permanent --zone=public --add-port=6443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=80/tcp
+      - firewall-cmd --permanent --zone=public --add-port=443/tcp
+      - firewall-cmd --permanent --zone=public --add-port=5353/udp
+      - firewall-cmd --permanent --add-protocol=vrrp
+      - firewall-cmd --reload
+      - systemctl enable --now microshift
+      - bash -c 'for i in $(seq 1 60); do curl -k -s https://localhost:6443/readyz &>/dev/null && break; sleep 5; done'
+      - mkdir -p /home/cloud-user/.kube
+      - cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/cloud-user/.kube/config
+      - chown -R cloud-user:cloud-user /home/cloud-user/.kube
+      - chmod 600 /home/cloud-user/.kube/config
+      - systemctl enable --now keepalived
       - systemctl enable --now flightctl-agent
-      - systemctl enable --now edge-config-microshift.path
+      - systemctl enable gateway-status-web.path

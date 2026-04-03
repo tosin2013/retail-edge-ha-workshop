@@ -250,9 +250,9 @@ Open this URL in your browser. The dashboard shows real-time status of cluster s
 
 NOTE: At this point, the dashboard will show Pacemaker and Corosync as **Inactive** and no resources configured -- that's expected! Watch the dashboard fill in as you complete each step. The single Route targets both VMs, so it stays up even during failover testing.
 
-== Step 3: Verify Network and Fleet Configuration
+== Step 3: Verify Network and Configuration
 
-SSH into node1 to verify that Fleet Manager configured everything correctly:
+SSH into node1 to verify that cloud-init configured everything correctly:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
@@ -261,47 +261,48 @@ virtctl ssh {vm-user}@{rhel-node1} -n {student-namespace}
 
 Password: `{vm-password}`
 
-Check the hostname (set by Fleet Manager):
+Check the hostname:
 
 [source,role="execute"]
 ----
 hostname
 ----
 
-Check the IP addresses (set by cloud-init on boot):
+Check the IP address on the UDN interface (assigned by OVN DHCP):
 
 [source,role="execute"]
 ----
-ip addr show eth1
+ip -4 addr show eth1
 ----
 
-You should see:
+NOTE: The IP is dynamically assigned by OVN DHCP. Note the address -- you will use it for cluster configuration.
 
-[source,text]
-----
-3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP>
-    inet 10.101.0.20/24 brd 10.101.0.255 scope global eth1
-----
-
-Verify `/etc/hosts` entries (set by Fleet Manager):
+Verify `/etc/hosts` entries (auto-discovered via the `update-cluster-hosts` service):
 
 [source,role="execute"]
 ----
 grep -E "rhel-ha-node[12]" /etc/hosts
 ----
 
-Verify `pcsd` is running (enabled by Fleet Manager):
+Verify `pcsd` is running:
 
 [source,role="execute"]
 ----
 systemctl is-active pcsd
 ----
 
-Verify connectivity to node2:
+Verify connectivity to node2 by hostname:
 
 [source,role="execute"]
 ----
-ping -c 3 10.101.0.21
+ping -c 3 rhel-ha-node2
+----
+
+Verify GFS2/DLM packages are pre-installed (used in Step 11):
+
+[source,role="execute"]
+----
+rpm -q gfs2-utils dlm lvm2-lockd
 ----
 
 Exit the SSH session:
@@ -311,7 +312,7 @@ Exit the SSH session:
 exit
 ----
 
-NOTE: Everything you just verified was configured automatically by Fleet Manager -- hostname, `/etc/hosts`, `hacluster` password, and `pcsd` service. In production, this same fleet configuration would be applied to hundreds of Pacemaker nodes simultaneously.
+NOTE: All infrastructure setup -- hostname, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. Fleet Manager will separately deliver the HA status dashboard for monitoring.
 
 == Step 4: Configure Pacemaker Cluster
 
@@ -809,11 +810,11 @@ vda    252:0    0  30G  0 disk
 vdb    252:16   0  10G  0 disk
 ----
 
-Install GFS2 utilities (pre-installed via cloud-init):
+Verify GFS2 utilities are available (pre-installed via cloud-init):
 
 [source,role="execute"]
 ----
-sudo dnf install -y gfs2-utils dlm
+rpm -q gfs2-utils dlm lvm2-lockd
 ----
 
 Create GFS2 filesystem on the shared disk:

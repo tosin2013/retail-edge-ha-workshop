@@ -3,7 +3,7 @@ kind: Fleet
 metadata:
   name: pacemaker-ha
   labels:
-    version: "3"
+    version: "4"
 spec:
   selector:
     matchLabels:
@@ -11,10 +11,10 @@ spec:
   template:
     metadata:
       labels:
-        configVersion: "3"
+        configVersion: "4"
     spec:
       config:
-        - name: pacemaker-setup
+        - name: pacemaker-dashboard
           gitRef:
             repository: retail-edge-ha-workshop
             targetRevision: main

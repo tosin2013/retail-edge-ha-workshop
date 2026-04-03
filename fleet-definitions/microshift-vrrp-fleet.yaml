@@ -2,14 +2,19 @@ apiVersion: flightctl.io/v1beta1
 kind: Fleet
 metadata:
   name: microshift-vrrp
+  labels:
+    version: "2"
 spec:
   selector:
     matchLabels:
       module: microshift
   template:
+    metadata:
+      labels:
+        configVersion: "2"
     spec:
       config:
-        - name: microshift-setup
+        - name: microshift-dashboard
           gitRef:
             repository: retail-edge-ha-workshop
             targetRevision: main
