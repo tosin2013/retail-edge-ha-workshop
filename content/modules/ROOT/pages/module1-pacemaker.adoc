@@ -77,7 +77,7 @@ image::module1-real-architecture.png[Real-World Architecture - Physical Servers,
 
 *Key Features:*
 
-* **Corosync**: Multicast heartbeat on 239.255.1.1
+* **Corosync**: Knet unicast heartbeat (default transport)
 * **STONITH**: fence_kubevirt for VM-level fencing
 * **Virtual IP**: Floats between nodes for application access
 
@@ -314,6 +314,11 @@ exit
 
 NOTE: All infrastructure setup -- hostname, `/etc/hosts`, `hacluster` password, `pcsd` service, and HA packages -- was handled automatically by cloud-init on first boot. Fleet Manager will separately deliver the HA status dashboard for monitoring.
 
+Check the HA Status Dashboard in your browser. At this point it should show *pcsd* active, but *Pacemaker* and *Corosync* inactive since the cluster has not been configured yet:
+
+.HA Status Dashboard -- before cluster configuration
+image::m1-dashboard-pre-cluster.png[HA Status Dashboard showing pcsd active but Pacemaker and Corosync inactive before cluster setup]
+
 == Step 4: Configure Pacemaker Cluster
 
 SSH into node1:
@@ -334,9 +339,7 @@ Create the cluster:
 
 [source,role="execute"]
 ----
-sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 \
-  transport udp \
-  --force
+sudo pcs cluster setup ha-cluster rhel-ha-node1 rhel-ha-node2 --force
 ----
 
 Start the cluster:

@@ -162,18 +162,26 @@ WFEOF
             node2) HOSTNAME="rhel-ha-node2"; PEER="rhel-ha-node1" ;;
             *) exit 1 ;;
           esac
-          for attempt in $(seq 1 30); do
-            MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-            [ -n "$MY_IP" ] && break
-            sleep 5
-          done
+          MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+          if [ -z "$MY_IP" ]; then
+            for attempt in $(seq 1 30); do
+              sleep 5
+              MY_IP=$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+              [ -n "$MY_IP" ] && break
+            done
+          fi
           [ -z "$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
           sed -i "/ ${HOSTNAME}\$/d" /etc/hosts
           echo "$MY_IP $HOSTNAME" >> /etc/hosts
+          KNOWN_PEER=$(grep " ${PEER}\$" /etc/hosts | awk '{print $1}' || true)
+          if [ -n "$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "$KNOWN_PEER" &>/dev/null; then
+            exit 0
+          fi
           PEER_IP=""
-          for attempt in $(seq 1 60); do
+          SUBNET=$(echo "$MY_IP" | sed 's/\.[0-9]*$//')
+          for attempt in $(seq 1 24); do
             for c in $(seq 2 254); do
-              CIP=$(echo "$MY_IP" | sed "s/\.[0-9]*$/.$c/")
+              CIP="${SUBNET}.$c"
               [ "$CIP" = "$MY_IP" ] && continue
               if arping -c 1 -w 1 -I eth1 "$CIP" &>/dev/null; then
                 PEER_IP="$CIP"; break 2
@@ -201,6 +209,17 @@ WFEOF
           StandardOutput=journal+console
           [Install]
           WantedBy=multi-user.target
+      - path: /etc/systemd/system/update-cluster-hosts.timer
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Periodically refresh cluster peer IPs in /etc/hosts
+          [Timer]
+          OnBootSec=60
+          OnUnitActiveSec=30
+          [Install]
+          WantedBy=timers.target
 WFEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
@@ -234,6 +253,7 @@ WFEOF
       - systemctl daemon-reload
       - systemctl enable update-cluster-hosts.service
       - systemctl start update-cluster-hosts.service
+      - systemctl enable --now update-cluster-hosts.timer
 RCEOF
 
   if [[ "$FLIGHTCTL_ENABLED" == "true" ]]; then
@@ -304,19 +324,27 @@ WFEOF
             gw-b) HOSTNAME="microshift-gw-b"; PEER="microshift-gw-a" ;;
             *) exit 1 ;;
           esac
-          for attempt in \$(seq 1 30); do
-            MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
-            [ -n "\$MY_IP" ] && break
-            sleep 5
-          done
+          MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+          if [ -z "\$MY_IP" ]; then
+            for attempt in \$(seq 1 30); do
+              sleep 5
+              MY_IP=\$(ip -4 addr show eth1 2>/dev/null | grep -oP 'inet \K[0-9.]+' || true)
+              [ -n "\$MY_IP" ] && break
+            done
+          fi
           [ -z "\$MY_IP" ] && { echo "ERROR: no IP on eth1"; exit 1; }
           sed -i "/ \${HOSTNAME}\\\$/d" /etc/hosts
           echo "\$MY_IP \$HOSTNAME" >> /etc/hosts
           grep -q "\$VIP microshift-vip" /etc/hosts || echo "\$VIP microshift-vip" >> /etc/hosts
+          KNOWN_PEER=\$(grep " \${PEER}\\\$" /etc/hosts | awk '{print \$1}' || true)
+          if [ -n "\$KNOWN_PEER" ] && arping -c 1 -w 1 -I eth1 "\$KNOWN_PEER" &>/dev/null; then
+            exit 0
+          fi
           PEER_IP=""
-          for attempt in \$(seq 1 60); do
+          SUBNET=\$(echo "\$MY_IP" | sed 's/\.[0-9]*\$//')
+          for attempt in \$(seq 1 24); do
             for c in \$(seq 2 254); do
-              CIP=\$(echo "\$MY_IP" | sed "s/\.[0-9]*\$/.\$c/")
+              CIP="\${SUBNET}.\$c"
               [ "\$CIP" = "\$MY_IP" ] && continue
               [ "\$CIP" = "\$VIP" ] && continue
               if arping -c 1 -w 1 -I eth1 "\$CIP" &>/dev/null; then
@@ -344,6 +372,17 @@ WFEOF
           StandardOutput=journal+console
           [Install]
           WantedBy=multi-user.target
+      - path: /etc/systemd/system/update-cluster-hosts.timer
+        owner: root:root
+        permissions: '0644'
+        content: |
+          [Unit]
+          Description=Periodically refresh cluster peer IPs in /etc/hosts
+          [Timer]
+          OnBootSec=60
+          OnUnitActiveSec=30
+          [Install]
+          WantedBy=timers.target
       - path: /etc/keepalived/keepalived.conf
         owner: root:root
         permissions: '0644'
@@ -403,6 +442,7 @@ WFEOF
       - systemctl daemon-reload
       - systemctl enable update-cluster-hosts.service
       - systemctl start update-cluster-hosts.service
+      - systemctl enable --now update-cluster-hosts.timer
       - systemctl enable --now firewalld
       - firewall-cmd --permanent --zone=trusted --add-source=10.42.0.0/16
       - firewall-cmd --permanent --zone=trusted --add-source=169.254.169.1
