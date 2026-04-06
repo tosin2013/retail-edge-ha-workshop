@@ -150,6 +150,13 @@ TIP: The VMs boot in ~30 seconds, but MicroShift takes an additional 3-4 minutes
 
 Your MicroShift VMs automatically enrolled with **Red Hat Edge Manager** on boot. Edge Manager matched them to the `microshift-vrrp` fleet via the `module=microshift` label, and is now pushing configuration from the workshop Git repository -- including hostname, `/etc/hosts`, firewall rules, keepalived.conf, MicroShift enablement, and kubeconfig setup.
 
+Log in to Edge Manager using your OpenShift token:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+flightctl login https://{edge-manager-api} -k --token=$(oc whoami -t)
+----
+
 [source,bash,role=execute]
 ----
 flightctl get enrollmentrequests
@@ -190,7 +197,7 @@ Watch for MicroShift to become ready on Gateway A:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -c "for i in \$(seq 1 30); do systemctl is-active microshift &>/dev/null && echo 'MicroShift is active' && break || echo 'Waiting for Fleet Manager config... ('\$i'/30)'; sleep 10; done"
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace} -c "for i in \$(seq 1 30); do systemctl is-active microshift &>/dev/null && echo 'MicroShift is active' && break || echo 'Waiting for Fleet Manager config... ('\$i'/30)'; sleep 10; done"
 ----
 
 Password: `{vm-password}`
@@ -233,7 +240,7 @@ SSH into Gateway A:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace}
 ----
 
 Password: `{vm-password}`
@@ -292,7 +299,7 @@ SSH back into Gateway A:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace}
 ----
 
 Check Keepalived status:
@@ -379,7 +386,7 @@ SSH into Gateway B:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-b}/{student-namespace}
 ----
 
 Check the VIP (should NOT be present):
@@ -432,7 +439,7 @@ Wait 10 seconds for VRRP failover, then SSH into Gateway B:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-b}/{student-namespace}
 ----
 
 Check if the VIP has migrated:
@@ -493,7 +500,7 @@ Wait 60 seconds for MicroShift and Keepalived to start, then SSH in:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace}
 ----
 
 Check if the VIP has migrated back (higher priority wins):
@@ -525,7 +532,7 @@ SSH into the active gateway (check which has the VIP):
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace}
 ----
 
 Create a test deployment:
@@ -593,7 +600,7 @@ SSH into Gateway B (now MASTER):
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-b}/{student-namespace}
 ----
 
 Stop MicroShift (simulating API failure):
@@ -687,7 +694,7 @@ Wait 60 seconds for MicroShift to be ready, then SSH in:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace}
 ----
 
 Create a StatefulSet with PostgreSQL:
@@ -813,7 +820,7 @@ SSH into Gateway B:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace}
+virtctl ssh {vm-user}@vm/{microshift-gw-b}/{student-namespace}
 ----
 
 Check pod status:
@@ -998,8 +1005,8 @@ Verify Keepalived is active on both:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-virtctl ssh {vm-user}@{microshift-gw-a} -n {student-namespace} -- sudo systemctl is-active keepalived
-virtctl ssh {vm-user}@{microshift-gw-b} -n {student-namespace} -- sudo systemctl is-active keepalived
+virtctl ssh {vm-user}@vm/{microshift-gw-a}/{student-namespace} -- sudo systemctl is-active keepalived
+virtctl ssh {vm-user}@vm/{microshift-gw-b}/{student-namespace} -- sudo systemctl is-active keepalived
 ----
 
 Both should return `active`.

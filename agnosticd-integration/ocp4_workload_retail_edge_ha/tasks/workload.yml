@@ -96,6 +96,43 @@
     path: "{{ r_workshop_temp_dir.path }}"
     state: absent
 
+- name: Create RHEL subscription credentials secret for PostSync Job
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: rhel-subscription-creds
+        namespace: openshift-cnv
+        labels:
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          app.kubernetes.io/managed-by: agnosticd
+      type: Opaque
+      stringData:
+        activation-key: "{{ ocp4_workload_retail_edge_ha_rhel_activation_key }}"
+        org-id: "{{ ocp4_workload_retail_edge_ha_rhel_org_id }}"
+  when:
+    - ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length > 0
+    - ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length > 0
+
+- name: Configure CNV RHEL auto-subscription (belt-and-suspenders)
+  kubernetes.core.k8s:
+    state: patched
+    api_version: v1
+    kind: ConfigMap
+    name: kubevirt-ui-features
+    namespace: openshift-cnv
+    definition:
+      data:
+        automaticSubscriptionActivationKey: "{{ ocp4_workload_retail_edge_ha_rhel_activation_key }}"
+        automaticSubscriptionOrganizationId: "{{ ocp4_workload_retail_edge_ha_rhel_org_id }}"
+        automaticSubscriptionType: "monitorAndManageSubscriptions"
+  when:
+    - ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length > 0
+    - ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length > 0
+  ignore_errors: true
+
 - name: Workload deployment complete
   ansible.builtin.debug:
     msg: "Workshop deployment initiated successfully. Resources are being synchronized by ArgoCD."
