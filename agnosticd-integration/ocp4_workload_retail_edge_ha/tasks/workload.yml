@@ -133,6 +133,122 @@
     - ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length > 0
   ignore_errors: true
 
+- name: Extract flightctl CA cert and generate enrollment keypair for ESO injection
+  when:
+    - ocp4_workload_retail_edge_ha_rhel_activation_key | default('') | length > 0
+    - ocp4_workload_retail_edge_ha_rhel_org_id | default('') | length > 0
+  block:
+    - name: Get flightctl CA secret from Edge Manager namespace
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: flightctl-ca
+        namespace: redhat-edge-manager
+      register: r_flightctl_ca
+
+    - name: Get flightctl client signer CA secret
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: Secret
+        name: flightctl-client-signer-ca
+        namespace: redhat-edge-manager
+      register: r_flightctl_client_signer_ca
+
+    - name: Get cluster ingress domain
+      kubernetes.core.k8s_info:
+        api_version: config.openshift.io/v1
+        kind: Ingress
+        name: cluster
+      register: r_cluster_ingress
+
+    - name: Build flightctl CA bundle PEM strings
+      ansible.builtin.set_fact:
+        _flightctl_ca_tls_pem: "{{ r_flightctl_ca.resources[0].data['tls.crt'] | b64decode }}"
+        _flightctl_ca_root_pem: "{{ r_flightctl_ca.resources[0].data['ca.crt'] | b64decode }}"
+
+    - name: Base64-encode the combined CA bundle
+      ansible.builtin.set_fact:
+        _flightctl_ca_bundle_b64: "{{ (_flightctl_ca_tls_pem + _flightctl_ca_root_pem) | b64encode }}"
+        _flightctl_ingress_domain: "{{ r_cluster_ingress.resources[0].spec.domain }}"
+
+    - name: Create temp directory for enrollment keypair generation
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: flightctl-enrollment-
+      register: r_flightctl_temp
+
+    - name: Write flightctl-client-signer-ca cert to temp file
+      ansible.builtin.copy:
+        content: "{{ r_flightctl_client_signer_ca.resources[0].data['tls.crt'] | b64decode }}"
+        dest: "{{ r_flightctl_temp.path }}/signer-ca.crt"
+        mode: '0600'
+
+    - name: Write flightctl-client-signer-ca key to temp file
+      ansible.builtin.copy:
+        content: "{{ r_flightctl_client_signer_ca.resources[0].data['tls.key'] | b64decode }}"
+        dest: "{{ r_flightctl_temp.path }}/signer-ca.key"
+        mode: '0600'
+
+    - name: Generate EC private key for enrollment client
+      ansible.builtin.command:
+        cmd: openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -out {{ r_flightctl_temp.path }}/client.key
+
+    - name: Generate CSR for enrollment client
+      ansible.builtin.command:
+        cmd: >
+          openssl req -new
+          -key {{ r_flightctl_temp.path }}/client.key
+          -subj "/CN=enrollment-client-agnosticd"
+          -out {{ r_flightctl_temp.path }}/client.csr
+
+    - name: Sign enrollment client certificate with signer CA
+      ansible.builtin.shell:
+        cmd: |
+          openssl x509 -req \
+            -in {{ r_flightctl_temp.path }}/client.csr \
+            -CA {{ r_flightctl_temp.path }}/signer-ca.crt \
+            -CAkey {{ r_flightctl_temp.path }}/signer-ca.key \
+            -CAcreateserial \
+            -days 365 \
+            -extfile <(printf "extendedKeyUsage=clientAuth\nkeyUsage=digitalSignature,keyAgreement") \
+            -out {{ r_flightctl_temp.path }}/client.crt
+        executable: /bin/bash
+
+    - name: Read generated enrollment client key
+      ansible.builtin.slurp:
+        src: "{{ r_flightctl_temp.path }}/client.key"
+      register: r_enrollment_client_key
+
+    - name: Read generated enrollment client certificate
+      ansible.builtin.slurp:
+        src: "{{ r_flightctl_temp.path }}/client.crt"
+      register: r_enrollment_client_cert
+
+    - name: Create flightctl-enrollment-creds Secret in openshift-cnv
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: flightctl-enrollment-creds
+            namespace: openshift-cnv
+            labels:
+              app.kubernetes.io/part-of: retail-edge-ha-workshop
+              app.kubernetes.io/managed-by: agnosticd
+          type: Opaque
+          stringData:
+            client-key-data: "{{ r_enrollment_client_key.content }}"
+            client-certificate-data: "{{ r_enrollment_client_cert.content }}"
+            certificate-authority-data: "{{ _flightctl_ca_bundle_b64 }}"
+            enrollment-ui-endpoint: "https://console-openshift-console.apps.{{ _flightctl_ingress_domain }}/edge"
+            agent-server: "https://agent-api.redhat-edge-manager.apps.{{ _flightctl_ingress_domain }}/"
+
+    - name: Remove temp directory
+      ansible.builtin.file:
+        path: "{{ r_flightctl_temp.path }}"
+        state: absent
+
 - name: Workload deployment complete
   ansible.builtin.debug:
     msg: "Workshop deployment initiated successfully. Resources are being synchronized by ArgoCD."

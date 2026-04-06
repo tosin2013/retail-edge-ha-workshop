@@ -6,6 +6,9 @@ resources:
   - operatorgroup.yaml
   - subscription.yaml
   - hyperconverged.yaml
+  - eso-subscription.yaml
+  - eso-rbac.yaml
+  - eso-cluster-secret-store.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop

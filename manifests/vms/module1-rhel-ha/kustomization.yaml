@@ -4,8 +4,8 @@ kind: Kustomization
 resources:
   - vm-rhel-node1.yaml
   - vm-rhel-node2.yaml
-  - cloudinit-node1.yaml
-  - cloudinit-node2.yaml
+  - externalsecret-node1.yaml
+  - externalsecret-node2.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop

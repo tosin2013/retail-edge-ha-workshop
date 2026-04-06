@@ -1,0 +1,42 @@
+# ServiceAccount used by ESO's Kubernetes provider to read rhel-subscription-creds
+# from the openshift-cnv namespace.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: eso-kubernetes-reader
+  namespace: openshift-operators
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+
+---
+# Role grants read access to only rhel-subscription-creds in openshift-cnv
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eso-kubernetes-reader
+  namespace: openshift-cnv
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+    resourceNames: ["rhel-subscription-creds", "flightctl-enrollment-creds"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: eso-kubernetes-reader
+  namespace: openshift-cnv
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: eso-kubernetes-reader
+subjects:
+  - kind: ServiceAccount
+    name: eso-kubernetes-reader
+    namespace: openshift-operators

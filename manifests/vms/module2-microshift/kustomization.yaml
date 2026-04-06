@@ -4,23 +4,10 @@ kind: Kustomization
 resources:
   - vm-microshift-gw-a.yaml
   - vm-microshift-gw-b.yaml
-  - cloudinit-gw-a.yaml
-  - cloudinit-gw-b.yaml
-  - jobs/inject-rhsm-creds.yaml
+  - externalsecret-gw-a.yaml
+  - externalsecret-gw-b.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
   app.kubernetes.io/component: virtualmachines
   module: module2
-
-# Move VMs to wave 2 so the credential-injection Job (wave 1) runs
-# after the cloud-init Secrets (wave 0) but before VMs block on health.
-# Stopped VMs have "Suspended" ArgoCD health, which blocks all higher waves.
-patches:
-  - target:
-      kind: VirtualMachine
-    patch: |
-      - op: add
-        path: /metadata/annotations
-        value:
-          argocd.argoproj.io/sync-wave: "2"
