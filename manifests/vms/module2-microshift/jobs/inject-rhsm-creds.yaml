@@ -100,6 +100,13 @@ spec:
       containers:
         - name: inject
           image: quay.io/openshift/origin-cli:latest
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
           command:
             - /bin/bash
             - -euo
