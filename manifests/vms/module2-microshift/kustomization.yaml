@@ -12,3 +12,15 @@ commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
   app.kubernetes.io/component: virtualmachines
   module: module2
+
+# Move VMs to wave 2 so the credential-injection Job (wave 1) runs
+# after the cloud-init Secrets (wave 0) but before VMs block on health.
+# Stopped VMs have "Suspended" ArgoCD health, which blocks all higher waves.
+patches:
+  - target:
+      kind: VirtualMachine
+    patch: |
+      - op: add
+        path: /metadata/annotations
+        value:
+          argocd.argoproj.io/sync-wave: "2"
