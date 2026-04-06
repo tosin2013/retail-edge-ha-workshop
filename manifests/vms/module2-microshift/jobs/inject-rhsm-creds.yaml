@@ -1,7 +1,7 @@
 # =============================================================================
-# RHSM Credential Injection — PostSync Hook Job
+# RHSM Credential Injection — Sync Hook Job (wave 5)
 # =============================================================================
-# Runs after every ArgoCD sync as a PostSync hook. Reads RHSM credentials
+# Runs as a Sync-phase hook (wave 5) during every ArgoCD sync. Reads RHSM credentials
 # from the 'rhel-subscription-creds' Secret (created by AgnosticD, not ArgoCD)
 # and patches the cloud-init Secrets in every student namespace so cloud-init
 # can register RHEL and install packages (pacemaker, microshift, etc.).
@@ -10,9 +10,16 @@
 #   Module 1 (Pacemaker HA):  rhel-ha-node1-cloudinit, rhel-ha-node2-cloudinit
 #   Module 2 (MicroShift):    cloudinit-microshift-gw-a, cloudinit-microshift-gw-b
 #
+# Why Sync hook (not PostSync):
+#   PostSync requires all resources to be "Healthy". Stopped VMs have
+#   "Suspended" health, so PostSync never fires. Sync hook wave 5 runs
+#   AFTER wave 0 resources (SA, ClusterRole, cloud-init Secrets) but
+#   before the sync completes, regardless of resource health.
+#
 # Why a Job vs. apply-vm-manifests.sh:
 #   ArgoCD selfHeal:true reverts any manual Secret patches on the next sync.
-#   This Job re-patches after every sync, making the fix self-sustaining.
+#   This Job re-patches during every sync (wave 5), making the fix self-sustaining.
+#   BeforeHookCreation ensures the Job re-runs on every ArgoCD sync.
 #
 # Prerequisite: AgnosticD workload.yml must create 'rhel-subscription-creds'
 # in the 'openshift-cnv' namespace before ArgoCD syncs.
@@ -76,7 +83,7 @@ metadata:
     app.kubernetes.io/part-of: retail-edge-ha-workshop
     app.kubernetes.io/component: rhsm-injection
   annotations:
-    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook: Sync
     argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
     argocd.argoproj.io/sync-wave: "5"
 spec:
