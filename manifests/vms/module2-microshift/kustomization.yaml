@@ -6,6 +6,7 @@ resources:
   - vm-microshift-gw-b.yaml
   - cloudinit-gw-a.yaml
   - cloudinit-gw-b.yaml
+  - jobs/inject-rhsm-creds.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop

@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - namespaces
   - quotas
-  - jobs/inject-rhsm-creds.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
