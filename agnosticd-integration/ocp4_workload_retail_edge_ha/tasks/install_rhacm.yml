@@ -96,6 +96,60 @@
     - r_mch.resources[0].status.phase is defined
     - r_mch.resources[0].status.phase == 'Running'
 
+- name: Wait for ManagedCluster CRD to be available
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: managedclusters.cluster.open-cluster-management.io
+  register: r_mc_crd
+  retries: 30
+  delay: 10
+  until:
+    - r_mc_crd.resources | length > 0
+    - r_mc_crd.resources[0].status.conditions | selectattr('type', 'equalto', 'Established') | selectattr('status', 'equalto', 'True') | list | length > 0
+
+- name: Create ManagedCluster placeholders for student Two-Node OCP sites
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: cluster.open-cluster-management.io/v1
+      kind: ManagedCluster
+      metadata:
+        name: "student-{{ '%02d' | format(item) }}-twonode"
+        labels:
+          student-id: "{{ '%02d' | format(item) }}"
+          module: "module3"
+          architecture: "two-node-openshift"
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+      spec:
+        hubAcceptsClient: true
+        leaseDurationSeconds: 60
+  loop: "{{ range(1, (num_users | int) + 1) | list }}"
+  when: ocp4_workload_retail_edge_ha_enable_module3 | default(true) | bool
+
+- name: Create student RHACM view RoleBindings
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: "student-{{ '%02d' | format(item) }}-rhacm-view"
+        namespace: open-cluster-management
+        labels:
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          student-id: "{{ '%02d' | format(item) }}"
+      subjects:
+        - kind: User
+          name: "student{{ '%02d' | format(item) }}"
+          apiGroup: rbac.authorization.k8s.io
+      roleRef:
+        kind: ClusterRole
+        name: open-cluster-management:view
+        apiGroup: rbac.authorization.k8s.io
+  loop: "{{ range(1, (num_users | int) + 1) | list }}"
+  ignore_errors: true
+
 - name: RHACM installation complete
   ansible.builtin.debug:
     msg: "Red Hat Advanced Cluster Management installed and ready ({{ rhacm_csv_name }})"
