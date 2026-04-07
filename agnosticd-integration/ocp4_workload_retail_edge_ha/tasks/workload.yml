@@ -71,7 +71,7 @@
   until:
     - r_argocd_app.resources | length > 0
 
-- name: Wait for ArgoCD child applications to sync
+- name: Wait for ArgoCD child applications to complete initial sync
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
     kind: Application
@@ -86,10 +86,9 @@
     - r_argocd_app_status.resources | length > 0
     - >-
       r_argocd_app_status.resources
-      | rejectattr('metadata.name', 'equalto', ocp4_workload_retail_edge_ha_release_name ~ '-operators')
-      | selectattr('status.sync.status', 'defined')
-      | selectattr('status.sync.status', 'equalto', 'OutOfSync')
-      | list | length == 0
+      | selectattr('status.operationState', 'defined')
+      | rejectattr('status.operationState.phase', 'equalto', 'Running')
+      | list | length == r_argocd_app_status.resources | length
 
 - name: Get child ArgoCD applications
   kubernetes.core.k8s_info:

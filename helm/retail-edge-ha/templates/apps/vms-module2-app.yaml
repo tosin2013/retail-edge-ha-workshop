@@ -32,6 +32,10 @@ spec:
     namespace: {{ .Values.infrastructure.namespace }}
 
   ignoreDifferences:
+    - group: external-secrets.io
+      kind: ExternalSecret
+      jsonPointers:
+        - /status
     - group: kubevirt.io
       kind: VirtualMachine
       jsonPointers:
