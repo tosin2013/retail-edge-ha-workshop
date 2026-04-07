@@ -68,6 +68,20 @@
     - r_hco_crd.resources[0].status.conditions is defined
     - r_hco_crd.resources[0].status.conditions | selectattr('type', 'equalto', 'Established') | selectattr('status', 'equalto', 'True') | list | length > 0
 
+- name: Wait for HCO webhook service to have endpoints before creating HyperConverged
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Endpoints
+    name: hco-webhook-service
+    namespace: openshift-cnv
+  register: r_hco_webhook
+  retries: 30
+  delay: 10
+  until:
+    - r_hco_webhook.resources | length > 0
+    - r_hco_webhook.resources[0].subsets is defined
+    - r_hco_webhook.resources[0].subsets | length > 0
+
 - name: Create HyperConverged instance
   kubernetes.core.k8s:
     state: present
