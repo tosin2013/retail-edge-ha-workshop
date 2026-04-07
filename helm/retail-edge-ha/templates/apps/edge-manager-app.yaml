@@ -53,6 +53,9 @@ spec:
             insecureSkipTlsVerify: true
             openshift:
               createAdminUser: true
+              authorizationUrl: "https://oauth-openshift.{{ .Values.global.clusterDomain }}/oauth/authorize"
+              tokenUrl: "https://oauth-openshift.{{ .Values.global.clusterDomain }}/oauth/token"
+              issuer: "https://oauth-openshift.{{ .Values.global.clusterDomain }}"
           exposeServicesMethod: "auto"
 
   destination:
