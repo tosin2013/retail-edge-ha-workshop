@@ -1,0 +1,12 @@
+---
+# Shared workshop build namespace (terminal image + jumpbox image builds)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.jumpbox.buildNamespace }}
+  labels:
+    workshop: retail-edge-ha
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    openshift.io/description: "Retail Edge HA Workshop - Shared Build Namespace"
+    argocd.argoproj.io/sync-wave: "-5"
