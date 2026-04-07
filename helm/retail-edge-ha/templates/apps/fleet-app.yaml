@@ -1,4 +1,4 @@
-{{- if and .Values.fleetManagement.enabled (.Values.fleetManagement.rhacm.argocdManaged | default true) }}
+{{- if and .Values.fleetManagement.enabled .Values.fleetManagement.rhacm.argocdManaged }}
 ---
 # =============================================================================
 # Fleet Management Child Application
