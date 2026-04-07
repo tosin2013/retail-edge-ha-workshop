@@ -40,6 +40,7 @@ spec:
     helm:
       valuesObject:
         global:
+          baseDomain: {{ .Values.global.clusterDomain }}
           enableOpenShiftExtensions: "auto"
           {{- if .Values.fleetManagement.rhacm.edgeManager.acmIntegration }}
           enableMulticlusterExtensions: "true"
