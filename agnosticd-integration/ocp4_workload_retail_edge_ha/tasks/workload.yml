@@ -71,19 +71,25 @@
   until:
     - r_argocd_app.resources | length > 0
 
-- name: Wait for ArgoCD application to sync
+- name: Wait for ArgoCD child applications to sync
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
     kind: Application
-    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
     namespace: openshift-gitops
+    label_selectors:
+      - "app.kubernetes.io/part-of=retail-edge-ha-workshop"
+      - "app.kubernetes.io/component=child-app"
   register: r_argocd_app_status
-  retries: 60
+  retries: 120
   delay: 10
   until:
     - r_argocd_app_status.resources | length > 0
-    - r_argocd_app_status.resources[0].status.sync.status is defined
-    - r_argocd_app_status.resources[0].status.sync.status == "Synced"
+    - >-
+      r_argocd_app_status.resources
+      | rejectattr('metadata.name', 'equalto', ocp4_workload_retail_edge_ha_release_name ~ '-operators')
+      | selectattr('status.sync.status', 'defined')
+      | selectattr('status.sync.status', 'equalto', 'OutOfSync')
+      | list | length == 0
 
 - name: Get child ArgoCD applications
   kubernetes.core.k8s_info:
@@ -131,11 +137,38 @@
       spec:
         provider:
           kubernetes:
+            server:
+              url: "https://kubernetes.default.svc"
+              caProvider:
+                type: ConfigMap
+                name: kube-root-ca.crt
+                key: ca.crt
+                namespace: openshift-cnv
             remoteNamespace: openshift-cnv
             auth:
               serviceAccount:
                 name: eso-kubernetes-reader
                 namespace: openshift-operators
+
+- name: Create placeholder flightctl-enrollment-creds secret (populated by AgnosticD when fleet is enabled)
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: flightctl-enrollment-creds
+        namespace: openshift-cnv
+        labels:
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          app.kubernetes.io/managed-by: agnosticd
+      type: Opaque
+      stringData:
+        client-certificate-data: "{{ flightctl_client_cert | default('') }}"
+        client-key-data: "{{ flightctl_client_key | default('') }}"
+        certificate-authority-data: "{{ flightctl_ca_data | default('') }}"
+        enrollment-ui-endpoint: "{{ flightctl_enrollment_ui | default('https://fleet-disabled.placeholder') }}"
+        agent-server: "{{ flightctl_agent_server | default('https://fleet-disabled.placeholder') }}"
 
 - name: Create RHEL subscription credentials secret for PostSync Job
   kubernetes.core.k8s:
