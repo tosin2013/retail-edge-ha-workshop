@@ -35,16 +35,25 @@
     verbosity: 1
 
 - name: Install workshop Helm chart
-  kubernetes.core.helm:
-    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
-    chart_ref: "{{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha"
-    release_namespace: "{{ ocp4_workload_retail_edge_ha_namespace }}"
-    create_namespace: true
-    values_files:
-      - "{{ r_workshop_temp_dir.path }}/custom-values.yaml"
-    wait: true
-    wait_timeout: "10m"
+  ansible.builtin.command:
+    cmd: >-
+      helm upgrade -i
+      --reset-values
+      --wait
+      --timeout 10m
+      --create-namespace
+      --take-ownership
+      --kube-insecure-skip-tls-verify
+      --namespace {{ ocp4_workload_retail_edge_ha_namespace }}
+      --values {{ r_workshop_temp_dir.path }}/custom-values.yaml
+      {{ ocp4_workload_retail_edge_ha_release_name }}
+      {{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha
+  environment:
+    HELM_KUBEAPISERVER: "{{ cluster_api_url }}"
+    HELM_KUBETOKEN: "{{ cluster_api_token }}"
+    HELM_KUBEINSECURE_SKIP_TLS_VERIFY: "true"
   register: r_helm_install
+  changed_when: r_helm_install.rc == 0
 
 - name: Print Helm installation status
   ansible.builtin.debug:
