@@ -122,8 +122,9 @@ fleetManagement:
 
     # Edge Manager capabilities
     edgeManager:
-      # Enable Red Hat Edge Manager 1.0 (standalone Helm chart deployment)
-      enabled: true
+      # redhat-rhem chart requires a pre-existing DB on fresh ArgoCD install.
+      # Disabled until we add a dedicated AgnosticD task (install_edge_manager.yml).
+      enabled: false
 
       # Namespace for Edge Manager deployment
       namespace: "redhat-edge-manager"
