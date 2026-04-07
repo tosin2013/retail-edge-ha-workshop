@@ -100,16 +100,17 @@ operators:
 # Fleet Management Configuration
 # -----------------------------------------------------------------------------
 fleetManagement:
-  # RHACM operator, MultiClusterHub, and ManagedClusters are managed by the
-  # AgnosticD workload role (install_rhacm.yml) to avoid circular dependencies
-  # with ArgoCD (ManagedCluster CRD is not available until MCH is running).
-  enabled: false
+  enabled: true
 
   # Sync wave (-2 = before CNV operator, establishes fleet management first)
   syncWave: "-2"
 
   # Red Hat Advanced Cluster Management (RHACM) configuration
   rhacm:
+    # When false, RHACM operator/MCH/ManagedClusters are managed by AgnosticD
+    # (install_rhacm.yml) to avoid circular dependencies in ArgoCD.
+    argocdManaged: false
+
     # RHACM version (2.16+ includes Edge Manager)
     version: "2.16"
 

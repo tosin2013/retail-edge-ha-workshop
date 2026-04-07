@@ -12,7 +12,10 @@ infrastructure:
 
 # Fleet Management configuration
 fleetManagement:
-  enabled: {{ ocp4_workload_retail_edge_ha_enable_fleet | default(false) | lower }}
+  enabled: {{ ocp4_workload_retail_edge_ha_enable_fleet | default(true) | lower }}
+  rhacm:
+    # RHACM is managed by AgnosticD (install_rhacm.yml) - not ArgoCD
+    argocdManaged: false
 
 # Cluster configuration (auto-discovered)
 global:
