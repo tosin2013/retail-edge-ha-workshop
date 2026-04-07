@@ -7,6 +7,7 @@ resources:
   - subscription.yaml
   - hyperconverged.yaml
   - eso-subscription.yaml
+  - eso-config.yaml
   - eso-rbac.yaml
   # eso-cluster-secret-store.yaml is managed by AgnosticD workload.yml
   # (applied after ArgoCD sync so ESO CRDs are guaranteed to exist)

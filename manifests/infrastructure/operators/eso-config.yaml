@@ -1,0 +1,11 @@
+# ExternalSecretsConfig deploys the ESO controller pods.
+# Required by the Red Hat ESO Operator (separate from the operator itself).
+# Without this, only CRDs are registered but no controller runs to reconcile
+# ExternalSecret and ClusterSecretStore objects.
+apiVersion: operator.openshift.io/v1alpha1
+kind: ExternalSecretsConfig
+metadata:
+  name: cluster
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec: {}
