@@ -105,6 +105,38 @@
     path: "{{ r_workshop_temp_dir.path }}"
     state: absent
 
+- name: Wait for External Secrets Operator CRD to be established
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: clustersecretstores.external-secrets.io
+  register: r_eso_crd
+  retries: 30
+  delay: 10
+  until:
+    - r_eso_crd.resources | length > 0
+    - r_eso_crd.resources[0].status.conditions | selectattr('type', 'equalto', 'Established') | selectattr('status', 'equalto', 'True') | list | length > 0
+
+- name: Create ESO ClusterSecretStore for RHEL subscription credentials
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: external-secrets.io/v1beta1
+      kind: ClusterSecretStore
+      metadata:
+        name: rhel-subscription-creds
+        labels:
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          app.kubernetes.io/managed-by: agnosticd
+      spec:
+        provider:
+          kubernetes:
+            remoteNamespace: openshift-cnv
+            auth:
+              serviceAccount:
+                name: eso-kubernetes-reader
+                namespace: openshift-operators
+
 - name: Create RHEL subscription credentials secret for PostSync Job
   kubernetes.core.k8s:
     state: present
