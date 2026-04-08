@@ -1,7 +1,8 @@
 # VirtualMachine - Module 3: Two-Node OpenShift twonode-arbiter
-# etcd arbiter node — boots from discovery ISO, 2 CPU / 8Gi during discovery phase.
-# RHCOS discovery agent requires >= 2 CPU and >= 8Gi RAM to load and register.
-# After OCP install completes the node only runs etcd and uses far fewer resources.
+# etcd arbiter node — boots from discovery ISO.
+# Official TNA minimums (Assisted Installer 2026): 2 CPU, 8 GiB RAM, 50 GiB disk.
+# After OCP install completes the node only runs etcd and uses fewer resources,
+# but must meet the Assisted Service hardware validation thresholds to register.
 # MAC address on twonode-net matches NMStateConfig for static IP 10.103.0.22.
 
 ---
@@ -11,6 +12,8 @@ kind: VirtualMachine
 metadata:
   name: twonode-arbiter
   namespace: retail-edge-student-01
+  annotations:
+    tna.openshift.io/role: arbiter
   labels:
     app: twonode-ocp
     module: module3
@@ -32,7 +35,7 @@ spec:
       storage:
         resources:
           requests:
-            storage: 20Gi
+            storage: 50Gi
         storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
@@ -95,6 +98,8 @@ kind: VirtualMachine
 metadata:
   name: twonode-arbiter
   namespace: retail-edge-student-02
+  annotations:
+    tna.openshift.io/role: arbiter
   labels:
     app: twonode-ocp
     module: module3
@@ -116,7 +121,7 @@ spec:
       storage:
         resources:
           requests:
-            storage: 20Gi
+            storage: 50Gi
         storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce

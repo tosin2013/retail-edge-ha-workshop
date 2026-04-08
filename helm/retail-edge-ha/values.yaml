@@ -368,15 +368,15 @@ virtualMachines:
         disk: "120Gi"
 
       # Resource specifications for arbiter node
-      # Minimum 2 CPU / 8Gi RAM required for RHCOS discovery agent to register.
-      # After install, etcd-arbiter only uses 1 CPU / 2Gi — but discovery phase needs more.
+      # TNA minimum (Assisted Installer 2026 docs): 2 CPU, 8 GiB RAM, 50 GiB disk.
+      # Disk validation by Assisted Service rejects anything below 50 GiB.
       arbiter:
         cpu:
           cores: 2
           sockets: 1
           threads: 1
         memory: "8Gi"
-        disk: "20Gi"
+        disk: "50Gi"
 
 # Showroom Workshop Configuration (Modern Platform)
 # -----------------------------------------------------------------------------
