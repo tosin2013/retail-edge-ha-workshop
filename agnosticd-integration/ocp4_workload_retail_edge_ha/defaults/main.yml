@@ -10,6 +10,9 @@ silent: false
 # Workshop repository settings
 ocp4_workload_retail_edge_ha_repo_url: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
 ocp4_workload_retail_edge_ha_repo_version: "main"
+ocp4_workload_retail_edge_ha_git_repo: "https://github.com/tosin2013/retail-edge-ha-workshop.git"
+ocp4_workload_retail_edge_ha_git_branch: "main"
+ocp4_workload_retail_edge_ha_build_namespace: "retail-edge-workshop-builds"
 
 # Deployment settings
 ocp4_workload_retail_edge_ha_namespace: "retail-edge-ha-gitops"
@@ -39,3 +42,13 @@ ocp4_workload_retail_edge_ha_rhel_org_id: ""
 # These are set dynamically and don't need to be overridden
 # ocp4_workload_retail_edge_ha_cluster_domain: ""
 # ocp4_workload_retail_edge_ha_cluster_api_url: ""
+
+# Multi-user workshop settings
+num_users: 1
+
+# RHDP resource tagging (required for cost management and automated cleanup)
+cloud_tags:
+  owner: "{{ owner | default('rhdp') }}"
+  guid: "{{ guid | default('') }}"
+  config: "ocp4_workload_retail_edge_ha"
+  env_type: "{{ env_type | default('openshift-workloads') }}"

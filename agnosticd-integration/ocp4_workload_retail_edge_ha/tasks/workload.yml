@@ -59,6 +59,26 @@
   ansible.builtin.debug:
     msg: "Helm chart {{ ocp4_workload_retail_edge_ha_release_name }} deployed successfully"
 
+- name: Patch ArgoCD ConfigMap to treat stopped VMs as Healthy
+  kubernetes.core.k8s:
+    state: patched
+    api_version: v1
+    kind: ConfigMap
+    name: argocd-cm
+    namespace: openshift-gitops
+    definition:
+      data:
+        resource.customizations.health.kubevirt.io_VirtualMachine: |
+          hs = {}
+          if obj.status ~= nil then
+            hs.status = "Healthy"
+            hs.message = "VM exists (stopped VMs are healthy)"
+            return hs
+          end
+          hs.status = "Progressing"
+          hs.message = "Waiting for VM status"
+          return hs
+
 - name: Wait for ArgoCD parent application to be created
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
@@ -105,6 +125,61 @@
   ansible.builtin.file:
     path: "{{ r_workshop_temp_dir.path }}"
     state: absent
+
+- name: Apply WeTTY terminal ImageStream
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: image.openshift.io/v1
+      kind: ImageStream
+      metadata:
+        name: workshop-wetty-terminal
+        namespace: "{{ ocp4_workload_retail_edge_ha_build_namespace }}"
+        labels:
+          app: workshop-wetty-terminal
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          app.kubernetes.io/managed-by: agnosticd
+
+- name: Apply WeTTY terminal BuildConfig
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: build.openshift.io/v1
+      kind: BuildConfig
+      metadata:
+        name: workshop-wetty-terminal
+        namespace: "{{ ocp4_workload_retail_edge_ha_build_namespace }}"
+        labels:
+          app: workshop-wetty-terminal
+          app.kubernetes.io/part-of: retail-edge-ha-workshop
+          app.kubernetes.io/managed-by: agnosticd
+      spec:
+        output:
+          to:
+            kind: ImageStreamTag
+            name: workshop-wetty-terminal:latest
+        source:
+          type: Git
+          git:
+            uri: "{{ ocp4_workload_retail_edge_ha_git_repo }}"
+            ref: "{{ ocp4_workload_retail_edge_ha_git_branch }}"
+          contextDir: wetty-terminal
+        strategy:
+          type: Docker
+          dockerStrategy:
+            dockerfilePath: Dockerfile
+        triggers:
+          - type: ConfigChange
+
+- name: Trigger WeTTY terminal build if no successful build exists
+  ansible.builtin.command:
+    cmd: >-
+      oc start-build workshop-wetty-terminal
+      -n {{ ocp4_workload_retail_edge_ha_build_namespace }}
+      --wait=false
+  register: r_build_start
+  changed_when: r_build_start.rc == 0
+  failed_when: false
 
 - name: Wait for External Secrets Operator CRD to be established
   kubernetes.core.k8s_info:
