@@ -1,5 +1,6 @@
 # VirtualMachine - Module 3: Two-Node OpenShift twonode-arbiter
-# Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
+# etcd arbiter node — boots from discovery ISO, smaller footprint (1 CPU / 2Gi).
+# MAC address on twonode-net matches NMStateConfig for static IP 10.103.0.22.
 
 ---
 # Student 01 - Two-Node Arbiter
@@ -25,9 +26,7 @@ spec:
       name: twonode-arbiter-disk
     spec:
       source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
+        blank: {}
       storage:
         resources:
           requests:
@@ -52,14 +51,18 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
+            bootOrder: 2
+          - cdrom:
+              bus: sata
+              readonly: true
+            name: discovery-iso
+            bootOrder: 1
           interfaces:
           - name: default
             masquerade: {}
           - name: twonode-net
             bridge: {}
+            macAddress: "02:01:01:00:00:03"
           networkInterfaceMultiqueue: true
           rng: {}
         firmware:
@@ -79,9 +82,9 @@ spec:
       - dataVolume:
           name: twonode-arbiter-disk
         name: rootdisk
-      - secret:
-          secretName: ignition-twonode-arbiter
-        name: ignitiondisk
+      - name: discovery-iso
+        dataVolume:
+          name: twonode-arbiter-discovery-iso
 
 ---
 # Student 02 - Two-Node Arbiter
@@ -107,9 +110,7 @@ spec:
       name: twonode-arbiter-disk
     spec:
       source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
+        blank: {}
       storage:
         resources:
           requests:
@@ -134,14 +135,18 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
+            bootOrder: 2
+          - cdrom:
+              bus: sata
+              readonly: true
+            name: discovery-iso
+            bootOrder: 1
           interfaces:
           - name: default
             masquerade: {}
           - name: twonode-net
             bridge: {}
+            macAddress: "02:02:01:00:00:03"
           networkInterfaceMultiqueue: true
           rng: {}
         firmware:
@@ -161,6 +166,6 @@ spec:
       - dataVolume:
           name: twonode-arbiter-disk
         name: rootdisk
-      - secret:
-          secretName: ignition-twonode-arbiter
-        name: ignitiondisk
+      - name: discovery-iso
+        dataVolume:
+          name: twonode-arbiter-discovery-iso

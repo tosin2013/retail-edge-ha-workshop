@@ -41,6 +41,23 @@ spec:
       jsonPointers:
         - /spec/running
         - /spec/runStrategy
+    # RHACM Assisted Installer resources — status fields populated post-sync
+    - group: agent-install.openshift.io
+      kind: InfraEnv
+      jsonPointers:
+        - /status
+    - group: agent-install.openshift.io
+      kind: NMStateConfig
+      jsonPointers:
+        - /status
+    - group: hive.openshift.io
+      kind: ClusterDeployment
+      jsonPointers:
+        - /status
+    - group: extensions.hive.openshift.io
+      kind: AgentClusterInstall
+      jsonPointers:
+        - /status
 
   syncPolicy:
     {{- toYaml .Values.argocd.syncPolicy | nindent 4 }}

@@ -38,6 +38,25 @@ ocp4_workload_retail_edge_ha_enable_module3: true
 ocp4_workload_retail_edge_ha_rhel_activation_key: ""
 ocp4_workload_retail_edge_ha_rhel_org_id: ""
 
+# Module 3: RHACM Assisted Installer (Two-Node OCP on KubeVirt)
+# Set ocp4_workload_retail_edge_ha_pull_secret in agnosticd-v2-secrets/<account>.yml
+ocp4_workload_retail_edge_ha_assisted_installer_enabled: true
+ocp4_workload_retail_edge_ha_twonode_ocp_version: "4.21"
+ocp4_workload_retail_edge_ha_storage_class: "ocs-external-storagecluster-ceph-rbd-immediate"
+
+# Assisted Service PVC sizes (hub cluster storage)
+ocp4_workload_retail_edge_ha_assisted_db_storage: "10Gi"
+ocp4_workload_retail_edge_ha_assisted_fs_storage: "50Gi"
+ocp4_workload_retail_edge_ha_assisted_image_storage: "50Gi"
+
+# Pull secret for Assisted Installer (set in secrets file — never hard-code)
+# Format: stringified dockerconfigjson {"auths": {...}}
+ocp4_workload_retail_edge_ha_pull_secret: ""
+
+# SSH public key injected into the discovery ISO and cluster nodes
+# Set in agnosticd-v2-secrets/<account>.yml or as extra-var
+ocp4_workload_retail_edge_ha_ssh_public_key: ""
+
 # Cluster information (auto-discovered in pre_workload.yml)
 # These are set dynamically and don't need to be overridden
 # ocp4_workload_retail_edge_ha_cluster_domain: ""

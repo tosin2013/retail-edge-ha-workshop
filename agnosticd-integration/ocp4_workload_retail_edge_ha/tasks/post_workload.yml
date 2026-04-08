@@ -150,6 +150,115 @@
       ansible.builtin.debug:
         msg: "All VMs started successfully and reached Running state"
 
+- name: Inject Module 3 Assisted Installer resources into student cluster namespaces
+  when:
+    - ocp4_workload_retail_edge_ha_enable_module3 | default(true) | bool
+    - ocp4_workload_retail_edge_ha_assisted_installer_enabled | default(true) | bool
+  block:
+    - name: Create pull-secret in student cluster namespaces
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: pull-secret
+            namespace: "student-{{ '%02d' | format(item) }}-twonode"
+            labels:
+              student-id: "{{ '%02d' | format(item) }}"
+              module: module3
+              app.kubernetes.io/part-of: retail-edge-ha-workshop
+              app.kubernetes.io/managed-by: agnosticd
+          type: kubernetes.io/dockerconfigjson
+          stringData:
+            .dockerconfigjson: "{{ ocp4_workload_retail_edge_ha_pull_secret }}"
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      no_log: true
+
+    - name: Patch AgentClusterInstall with SSH public key
+      kubernetes.core.k8s:
+        state: patched
+        api_version: extensions.hive.openshift.io/v1beta1
+        kind: AgentClusterInstall
+        name: "student-{{ '%02d' | format(item) }}-twonode"
+        namespace: "student-{{ '%02d' | format(item) }}-twonode"
+        definition:
+          spec:
+            sshPublicKey: "{{ ocp4_workload_retail_edge_ha_ssh_public_key | default('') }}"
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      when: ocp4_workload_retail_edge_ha_ssh_public_key is defined and ocp4_workload_retail_edge_ha_ssh_public_key | length > 0
+
+    - name: Patch InfraEnv with SSH authorized key
+      kubernetes.core.k8s:
+        state: patched
+        api_version: agent-install.openshift.io/v1beta1
+        kind: InfraEnv
+        name: "student-{{ '%02d' | format(item) }}-twonode"
+        namespace: "student-{{ '%02d' | format(item) }}-twonode"
+        definition:
+          spec:
+            sshAuthorizedKey: "{{ ocp4_workload_retail_edge_ha_ssh_public_key | default('') }}"
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      when: ocp4_workload_retail_edge_ha_ssh_public_key is defined and ocp4_workload_retail_edge_ha_ssh_public_key | length > 0
+
+    - name: Wait for InfraEnv discovery ISO to be generated
+      kubernetes.core.k8s_info:
+        api_version: agent-install.openshift.io/v1beta1
+        kind: InfraEnv
+        name: "student-{{ '%02d' | format(item) }}-twonode"
+        namespace: "student-{{ '%02d' | format(item) }}-twonode"
+      register: r_infraenv
+      retries: 30
+      delay: 10
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      until:
+        - r_infraenv.resources | length > 0
+        - r_infraenv.resources[0].status is defined
+        - r_infraenv.resources[0].status.isoDownloadURL is defined
+        - r_infraenv.resources[0].status.isoDownloadURL | length > 0
+
+    - name: Create discovery ISO DataVolumes for Module 3 VMs
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: cdi.kubevirt.io/v1beta1
+          kind: DataVolume
+          metadata:
+            name: "{{ item.vm }}-discovery-iso"
+            namespace: "retail-edge-student-{{ item.student }}"
+            labels:
+              student-id: "{{ item.student }}"
+              module: module3
+              app.kubernetes.io/part-of: retail-edge-ha-workshop
+              app.kubernetes.io/managed-by: agnosticd
+          spec:
+            source:
+              http:
+                url: "{{ (r_infraenv.results[item.student_idx].resources[0].status.isoDownloadURL) }}"
+            storage:
+              resources:
+                requests:
+                  storage: 1Gi
+              storageClassName: "{{ ocp4_workload_retail_edge_ha_storage_class }}"
+              accessModes:
+                - ReadWriteOnce
+      loop:
+        - { student: "01", student_idx: 0, vm: "twonode-master1" }
+        - { student: "01", student_idx: 0, vm: "twonode-master2" }
+        - { student: "01", student_idx: 0, vm: "twonode-arbiter" }
+        - { student: "02", student_idx: 1, vm: "twonode-master1" }
+        - { student: "02", student_idx: 1, vm: "twonode-master2" }
+        - { student: "02", student_idx: 1, vm: "twonode-arbiter" }
+      when: (item.student_idx | int) < (num_users | int)
+
+    - name: Print Module 3 Assisted Installer status
+      ansible.builtin.debug:
+        msg:
+          - "Module 3 Assisted Installer resources configured"
+          - "Discovery ISOs generated for {{ num_users }} student cluster(s)"
+          - "Start VMs to begin agent discovery: virtctl start twonode-master1 -n retail-edge-student-NN"
+          - "Monitor agent registration in RHACM console: Clusters > student-NN-twonode"
+
 - name: Save cluster-level deployment summary to agnosticd_user_info
   agnosticd.core.agnosticd_user_info:
     msg: |

@@ -1,0 +1,72 @@
+---
+# AgentClusterInstall - Module 3: Two-Node OpenShift (Student 01)
+# Defines installation parameters for the two-node OCP cluster.
+# controlPlaneAgents: 3 = 2 masters + 1 etcd arbiter
+apiVersion: extensions.hive.openshift.io/v1beta1
+kind: AgentClusterInstall
+metadata:
+  name: student-01-twonode
+  namespace: student-01-twonode
+  labels:
+    student-id: "01"
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  clusterDeploymentRef:
+    name: student-01-twonode
+  imageSetRef:
+    name: openshift-v4.21
+  # Two control-plane nodes + 1 etcd arbiter = 3 total control-plane agents
+  # The arbiter is designated via RHACM role label during agent approval
+  controlPlaneAgents: 3
+  workerAgents: 0
+  networking:
+    # Non-overlapping with hub cluster ranges
+    clusterNetwork:
+      - cidr: 10.201.0.0/16
+        hostPrefix: 23
+    serviceNetwork:
+      - 172.31.0.0/16
+    machineNetwork:
+      - cidr: 10.103.0.0/24
+  sshPublicKey: ""
+  apiVIPs:
+    - 10.103.0.10
+  ingressVIPs:
+    - 10.103.0.11
+
+---
+# AgentClusterInstall - Module 3: Two-Node OpenShift (Student 02)
+apiVersion: extensions.hive.openshift.io/v1beta1
+kind: AgentClusterInstall
+metadata:
+  name: student-02-twonode
+  namespace: student-02-twonode
+  labels:
+    student-id: "02"
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  clusterDeploymentRef:
+    name: student-02-twonode
+  imageSetRef:
+    name: openshift-v4.21
+  controlPlaneAgents: 3
+  workerAgents: 0
+  networking:
+    clusterNetwork:
+      - cidr: 10.202.0.0/16
+        hostPrefix: 23
+    serviceNetwork:
+      - 172.32.0.0/16
+    machineNetwork:
+      - cidr: 10.103.0.0/24
+  sshPublicKey: ""
+  apiVIPs:
+    - 10.103.0.10
+  ingressVIPs:
+    - 10.103.0.11

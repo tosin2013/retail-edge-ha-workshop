@@ -159,6 +159,24 @@ fleetManagement:
         grc: true             # Governance, risk, and compliance
         search: true          # Fleet inventory search
 
+    # Assisted Installer configuration (Module 3: two-node OCP via KubeVirt)
+    # AgentServiceConfig is created by AgnosticD (install_rhacm.yml) after MCH is ready.
+    assistedInstaller:
+      enabled: true
+      # PVC sizes for the Assisted Service on the hub
+      databaseStorageSize: 10Gi
+      filesystemStorageSize: 50Gi
+      imageStorageSize: 50Gi
+      # Storage class for Assisted Service PVCs
+      storageClass: ocs-external-storagecluster-ceph-rbd-immediate
+      # Target OCP version for the two-node edge cluster
+      ocpVersion: "4.21"
+      # baseDomain is auto-filled by AgnosticD from cluster ingress discovery
+      baseDomain: ""
+      # Pull secret and SSH key injected into student-NN-twonode namespaces by AgnosticD
+      pullSecret: ""
+      sshKey: ""
+
 # Infrastructure Configuration
 # -----------------------------------------------------------------------------
 infrastructure:
@@ -320,8 +338,9 @@ virtualMachines:
         - keepalived
 
   # Module 3: OpenShift Two-Node with Arbiter (3 VMs per student)
+  # Uses RHACM Assisted Installer — VMs boot from InfraEnv discovery ISO
   module3:
-    enabled: false
+    enabled: true
     name: "twonode-ocp"
     vmCount: 3
     controlPlaneNodes: 2

@@ -2,10 +2,15 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
+  # RHACM Assisted Installer resources (provisioned in student-NN-twonode namespaces)
+  - cluster-deployment.yaml
+  - agent-cluster-install.yaml
+  - infra-env.yaml
+  - nmstate-config.yaml
+  # KubeVirt VMs (in retail-edge-student-NN namespaces, boot from InfraEnv ISO)
   - vm-twonode-master1.yaml
   - vm-twonode-master2.yaml
   - vm-twonode-arbiter.yaml
-  - ignition-placeholder.yaml
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop

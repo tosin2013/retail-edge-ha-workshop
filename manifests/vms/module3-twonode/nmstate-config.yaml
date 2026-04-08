@@ -1,0 +1,214 @@
+---
+# NMStateConfig - Module 3: Two-Node OpenShift
+# Provides static IP configuration for twonode-net (Multus bridge) on each VM.
+# MAC addresses are deterministic in KubeVirt (set explicitly in VM specs).
+# IPs match the module3 network values: 10.103.0.20-22 per student.
+#
+# Student 01 - master1 (10.103.0.20)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-01-master1
+  namespace: student-01-twonode
+  labels:
+    infraenv: student-01-twonode
+    student-id: "01"
+    node: master1
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:01:01:00:00:01"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.20
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1
+
+---
+# Student 01 - master2 (10.103.0.21)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-01-master2
+  namespace: student-01-twonode
+  labels:
+    infraenv: student-01-twonode
+    student-id: "01"
+    node: master2
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:01:01:00:00:02"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.21
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1
+
+---
+# Student 01 - arbiter (10.103.0.22)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-01-arbiter
+  namespace: student-01-twonode
+  labels:
+    infraenv: student-01-twonode
+    student-id: "01"
+    node: arbiter
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:01:01:00:00:03"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.22
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1
+
+---
+# Student 02 - master1 (10.103.0.20)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-02-master1
+  namespace: student-02-twonode
+  labels:
+    infraenv: student-02-twonode
+    student-id: "02"
+    node: master1
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:02:01:00:00:01"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.20
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1
+
+---
+# Student 02 - master2 (10.103.0.21)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-02-master2
+  namespace: student-02-twonode
+  labels:
+    infraenv: student-02-twonode
+    student-id: "02"
+    node: master2
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:02:01:00:00:02"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.21
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1
+
+---
+# Student 02 - arbiter (10.103.0.22)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: NMStateConfig
+metadata:
+  name: student-02-arbiter
+  namespace: student-02-twonode
+  labels:
+    infraenv: student-02-twonode
+    student-id: "02"
+    node: arbiter
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  interfaces:
+    - name: eth1
+      macAddress: "02:02:01:00:00:03"
+  config:
+    interfaces:
+      - name: eth1
+        type: ethernet
+        state: up
+        ipv4:
+          enabled: true
+          dhcp: false
+          address:
+            - ip: 10.103.0.22
+              prefix-length: 24
+    routes:
+      config:
+        - destination: 10.103.0.0/24
+          next-hop-interface: eth1

@@ -1,5 +1,7 @@
 # VirtualMachine - Module 3: Two-Node OpenShift twonode-master1
-# Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
+# Boots from RHACM Assisted Installer discovery ISO (InfraEnv CDROM).
+# After booting, registers as an Agent in the student-NN-twonode namespace.
+# MAC address on twonode-net matches NMStateConfig for static IP 10.103.0.20.
 
 ---
 # Student 01 - Two-Node Master 1
@@ -25,9 +27,7 @@ spec:
       name: twonode-master1-disk
     spec:
       source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
+        blank: {}
       storage:
         resources:
           requests:
@@ -52,14 +52,18 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
+            bootOrder: 2
+          - cdrom:
+              bus: sata
+              readonly: true
+            name: discovery-iso
+            bootOrder: 1
           interfaces:
           - name: default
             masquerade: {}
           - name: twonode-net
             bridge: {}
+            macAddress: "02:01:01:00:00:01"
           networkInterfaceMultiqueue: true
           rng: {}
         firmware:
@@ -79,9 +83,9 @@ spec:
       - dataVolume:
           name: twonode-master1-disk
         name: rootdisk
-      - secret:
-          secretName: ignition-twonode-master1
-        name: ignitiondisk
+      - name: discovery-iso
+        dataVolume:
+          name: twonode-master1-discovery-iso
 
 ---
 # Student 02 - Two-Node Master 1
@@ -107,9 +111,7 @@ spec:
       name: twonode-master1-disk
     spec:
       source:
-        pvc:
-          namespace: retail-edge-infrastructure
-          name: rhcos-image
+        blank: {}
       storage:
         resources:
           requests:
@@ -134,14 +136,18 @@ spec:
           - disk:
               bus: virtio
             name: rootdisk
-          - disk:
-              bus: virtio
-            name: ignitiondisk
+            bootOrder: 2
+          - cdrom:
+              bus: sata
+              readonly: true
+            name: discovery-iso
+            bootOrder: 1
           interfaces:
           - name: default
             masquerade: {}
           - name: twonode-net
             bridge: {}
+            macAddress: "02:02:01:00:00:01"
           networkInterfaceMultiqueue: true
           rng: {}
         firmware:
@@ -161,6 +167,6 @@ spec:
       - dataVolume:
           name: twonode-master1-disk
         name: rootdisk
-      - secret:
-          secretName: ignition-twonode-master1
-        name: ignitiondisk
+      - name: discovery-iso
+        dataVolume:
+          name: twonode-master1-discovery-iso

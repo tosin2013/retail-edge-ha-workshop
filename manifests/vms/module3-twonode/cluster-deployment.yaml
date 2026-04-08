@@ -1,0 +1,55 @@
+---
+# ClusterDeployment - Module 3: Two-Node OpenShift (Student 01)
+# RHACM Assisted Installer provisions a real two-node OCP cluster via KubeVirt VMs.
+# Namespace matches the ManagedCluster name for proper RHACM registration.
+apiVersion: hive.openshift.io/v1
+kind: ClusterDeployment
+metadata:
+  name: student-01-twonode
+  namespace: student-01-twonode
+  labels:
+    student-id: "01"
+    module: module3
+    architecture: two-node-openshift
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  baseDomain: twonode.edge.example.com
+  clusterName: student-01-twonode
+  platform:
+    agentBareMetal:
+      agentSelector:
+        matchLabels:
+          student-id: "01"
+          module: module3
+  pullSecretRef:
+    name: pull-secret
+  installed: false
+
+---
+# ClusterDeployment - Module 3: Two-Node OpenShift (Student 02)
+apiVersion: hive.openshift.io/v1
+kind: ClusterDeployment
+metadata:
+  name: student-02-twonode
+  namespace: student-02-twonode
+  labels:
+    student-id: "02"
+    module: module3
+    architecture: two-node-openshift
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  baseDomain: twonode.edge.example.com
+  clusterName: student-02-twonode
+  platform:
+    agentBareMetal:
+      agentSelector:
+        matchLabels:
+          student-id: "02"
+          module: module3
+  pullSecretRef:
+    name: pull-secret
+  installed: false

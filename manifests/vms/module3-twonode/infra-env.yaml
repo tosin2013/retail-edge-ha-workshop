@@ -1,0 +1,51 @@
+---
+# InfraEnv - Module 3: Two-Node OpenShift (Student 01)
+# The Assisted Service generates a bootable discovery ISO from this resource.
+# VMs in retail-edge-student-01 are configured to boot from this ISO via CDROM.
+# Once booted, they register as Agents in the student-01-twonode namespace.
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: student-01-twonode
+  namespace: student-01-twonode
+  labels:
+    student-id: "01"
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  clusterRef:
+    name: student-01-twonode
+    namespace: student-01-twonode
+  pullSecretRef:
+    name: pull-secret
+  sshAuthorizedKey: ""
+  # Static IP config via NMStateConfig for twonode-net (Multus bridge)
+  nmStateConfigLabelSelector:
+    matchLabels:
+      infraenv: student-01-twonode
+
+---
+# InfraEnv - Module 3: Two-Node OpenShift (Student 02)
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: student-02-twonode
+  namespace: student-02-twonode
+  labels:
+    student-id: "02"
+    module: module3
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  clusterRef:
+    name: student-02-twonode
+    namespace: student-02-twonode
+  pullSecretRef:
+    name: pull-secret
+  sshAuthorizedKey: ""
+  nmStateConfigLabelSelector:
+    matchLabels:
+      infraenv: student-02-twonode
