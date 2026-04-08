@@ -59,25 +59,28 @@
   ansible.builtin.debug:
     msg: "Helm chart {{ ocp4_workload_retail_edge_ha_release_name }} deployed successfully"
 
-- name: Patch ArgoCD ConfigMap to treat stopped VMs as Healthy
+- name: Patch ArgoCD CR to treat stopped VMs as Healthy (resourceHealthChecks)
   kubernetes.core.k8s:
     state: patched
-    api_version: v1
-    kind: ConfigMap
-    name: argocd-cm
+    api_version: argoproj.io/v1alpha1
+    kind: ArgoCD
+    name: openshift-gitops
     namespace: openshift-gitops
     definition:
-      data:
-        resource.customizations.health.kubevirt.io_VirtualMachine: |
-          hs = {}
-          if obj.status ~= nil then
-            hs.status = "Healthy"
-            hs.message = "VM exists (stopped VMs are healthy)"
-            return hs
-          end
-          hs.status = "Progressing"
-          hs.message = "Waiting for VM status"
-          return hs
+      spec:
+        resourceHealthChecks:
+          - group: kubevirt.io
+            kind: VirtualMachine
+            check: |
+              hs = {}
+              if obj.status ~= nil then
+                hs.status = "Healthy"
+                hs.message = "VM exists (stopped VMs are healthy)"
+                return hs
+              end
+              hs.status = "Progressing"
+              hs.message = "Waiting for VM status"
+              return hs
 
 - name: Wait for ArgoCD parent application to be created
   kubernetes.core.k8s_info:

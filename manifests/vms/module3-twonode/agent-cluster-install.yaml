@@ -18,10 +18,11 @@ spec:
     name: student-01-twonode
   imageSetRef:
     name: openshift-v4.21
-  # Two control-plane nodes + 1 etcd arbiter = 3 total control-plane agents
-  # The arbiter is designated via RHACM role label during agent approval
-  controlPlaneAgents: 3
-  workerAgents: 0
+  # provisionRequirements: 2 masters + 1 etcd arbiter
+  provisionRequirements:
+    controlPlaneAgents: 2
+    arbiterAgents: 1
+    workerAgents: 0
   networking:
     # Non-overlapping with hub cluster ranges
     clusterNetwork:
@@ -55,8 +56,10 @@ spec:
     name: student-02-twonode
   imageSetRef:
     name: openshift-v4.21
-  controlPlaneAgents: 3
-  workerAgents: 0
+  provisionRequirements:
+    controlPlaneAgents: 2
+    arbiterAgents: 1
+    workerAgents: 0
   networking:
     clusterNetwork:
       - cidr: 10.202.0.0/16
