@@ -1,0 +1,60 @@
+---
+# Stop workload tasks
+# Stops VirtualMachines in all student namespaces for RHDP cost management
+
+- name: Get all student namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: r_all_namespaces
+
+- name: Set student namespace list
+  ansible.builtin.set_fact:
+    workshop_student_namespaces: >-
+      {{
+        r_all_namespaces.resources
+        | selectattr('metadata.name', 'match', '^retail-edge-student-[0-9]+$')
+        | map(attribute='metadata.name')
+        | sort
+        | list
+      }}
+
+- name: Stop all VirtualMachines in each student namespace
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    namespace: "{{ item }}"
+  register: r_ns_vms
+  loop: "{{ workshop_student_namespaces }}"
+
+- name: Set combined VM list
+  ansible.builtin.set_fact:
+    workshop_all_vms: >-
+      {{ r_ns_vms.results | map(attribute='resources') | flatten | list }}
+
+- name: Stop each VirtualMachine
+  kubernetes.core.k8s:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: "{{ item.metadata.name }}"
+    namespace: "{{ item.metadata.namespace }}"
+    state: present
+    definition:
+      spec:
+        running: false
+  loop: "{{ workshop_all_vms }}"
+  loop_control:
+    label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+- name: Report stop status via agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    msg: >-
+      Workshop VirtualMachines stopped ({{ workshop_all_vms | length }} VMs across
+      {{ workshop_student_namespaces | length }} student namespaces).
+  when: not silent | bool
+
+- name: Stop workload tasks complete
+  ansible.builtin.debug:
+    msg:
+      - "VMs stopped: {{ workshop_all_vms | length }}"
+      - "Student namespaces: {{ workshop_student_namespaces }}"

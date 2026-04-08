@@ -36,7 +36,7 @@
         kind: Pod
         namespace: "showroom-student-{{ '%02d' | format(item) }}"
         label_selectors:
-          - "app=showroom"
+          - "app.kubernetes.io/name=showroom"
       register: r_showroom_pods
       retries: 60
       delay: 10
@@ -69,15 +69,21 @@
       ansible.builtin.debug:
         msg: "{{ workshop_showroom_urls }}"
 
-    # AgnosticD user info integration disabled for standalone testing
-    # Uncomment when running in full AgnosticD environment
-    # - name: Save workshop URLs to user info
-    #   agnosticd.core.agnosticd_user_info:
-    #     msg: "Workshop URL for student {{ '%02d' | format(item.0 + 1) }}: {{ item.1 }}"
-    #   loop: "{{ workshop_showroom_urls | zip(range(num_users | int)) | list }}"
-    #   loop_control:
-    #     index_var: idx
-    #   when: not silent | bool
+    - name: Save per-student Showroom URL and cluster info to agnosticd_user_info
+      agnosticd.core.agnosticd_user_info:
+        user: "student{{ '%02d' | format(item) }}"
+        msg: |
+          Workshop Showroom URL: {{ workshop_showroom_urls[item - 1] }}
+          OpenShift Console: https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}
+          OpenShift API: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
+          Student Namespace: retail-edge-student-{{ '%02d' | format(item) }}
+        data:
+          showroom_url: "{{ workshop_showroom_urls[item - 1] }}"
+          openshift_console_url: "https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
+          openshift_api_url: "{{ ocp4_workload_retail_edge_ha_cluster_api_url }}"
+          student_namespace: "retail-edge-student-{{ '%02d' | format(item) }}"
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
+      when: not silent | bool
 
 - name: Wait for VirtualMachines to be created (not necessarily running)
   kubernetes.core.k8s_info:
@@ -143,6 +149,21 @@
     - name: Print auto-start status
       ansible.builtin.debug:
         msg: "All VMs started successfully and reached Running state"
+
+- name: Save cluster-level deployment summary to agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    msg: |
+      Retail Edge HA Workshop deployed successfully.
+      Students: {{ num_users }}
+      OpenShift Console: https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}
+      OpenShift API: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
+      Showroom enabled: {{ ocp4_workload_retail_edge_ha_enable_showroom }}
+    data:
+      openshift_cluster_ingress_domain: "{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
+      openshift_console_url: "https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
+      openshift_api_url: "{{ ocp4_workload_retail_edge_ha_cluster_api_url }}"
+      num_users: "{{ num_users }}"
+  when: not silent | bool
 
 - name: Post-workload tasks complete
   ansible.builtin.debug:

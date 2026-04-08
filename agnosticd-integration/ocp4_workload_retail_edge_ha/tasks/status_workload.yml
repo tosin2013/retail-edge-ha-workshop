@@ -1,0 +1,83 @@
+---
+# Status workload tasks
+# Reports the health of VMs, Showroom instances, and ArgoCD applications
+
+- name: Get all student namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: r_all_namespaces
+
+- name: Set student namespace list
+  ansible.builtin.set_fact:
+    workshop_student_namespaces: >-
+      {{
+        r_all_namespaces.resources
+        | selectattr('metadata.name', 'match', '^retail-edge-student-[0-9]+$')
+        | map(attribute='metadata.name')
+        | sort
+        | list
+      }}
+
+- name: Get VirtualMachineInstances in each student namespace
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachineInstance
+    namespace: "{{ item }}"
+  register: r_ns_vmis
+  loop: "{{ workshop_student_namespaces }}"
+
+- name: Set combined VMI list
+  ansible.builtin.set_fact:
+    workshop_all_vmis: >-
+      {{ r_ns_vmis.results | map(attribute='resources') | flatten | list }}
+
+- name: Get ArgoCD parent application status
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
+    namespace: openshift-gitops
+  register: r_argocd_status
+  failed_when: false
+
+- name: Get cluster ingress domain
+  kubernetes.core.k8s_info:
+    api_version: config.openshift.io/v1
+    kind: Ingress
+    name: cluster
+  register: r_cluster_ingress_status
+
+- name: Set cluster domain fact
+  ansible.builtin.set_fact:
+    _status_cluster_domain: "{{ r_cluster_ingress_status.resources[0].spec.domain }}"
+
+- name: Build VM status summary
+  ansible.builtin.set_fact:
+    _running_vms: >-
+      {{ workshop_all_vmis | selectattr('status.phase', 'equalto', 'Running') | list | length }}
+    _total_vms: "{{ workshop_all_vmis | length }}"
+
+- name: Report environment status via agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    msg: |
+      Workshop Status Report
+      ----------------------
+      Student namespaces: {{ workshop_student_namespaces | length }}
+      VMs running: {{ _running_vms }}/{{ _total_vms }}
+      ArgoCD sync: {{ r_argocd_status.resources[0].status.sync.status | default('unknown') }}
+      OpenShift Console: https://console-openshift-console.apps.{{ _status_cluster_domain }}
+    data:
+      workshop_student_namespace_count: "{{ workshop_student_namespaces | length }}"
+      workshop_vms_running: "{{ _running_vms }}"
+      workshop_vms_total: "{{ _total_vms }}"
+      argocd_sync_status: "{{ r_argocd_status.resources[0].status.sync.status | default('unknown') }}"
+      openshift_console_url: "https://console-openshift-console.apps.{{ _status_cluster_domain }}"
+  when: not silent | bool
+
+- name: Status workload tasks complete
+  ansible.builtin.debug:
+    msg:
+      - "Student namespaces: {{ workshop_student_namespaces | length }}"
+      - "VMs running: {{ _running_vms }}/{{ _total_vms }}"
+      - "ArgoCD sync: {{ r_argocd_status.resources[0].status.sync.status | default('unknown') }}"

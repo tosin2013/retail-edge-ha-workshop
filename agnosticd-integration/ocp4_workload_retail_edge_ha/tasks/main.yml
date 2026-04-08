@@ -21,3 +21,18 @@
   ansible.builtin.import_tasks: remove_workload.yml
   become: "{{ become_override | bool }}"
   when: ACTION == "destroy" or ACTION == "remove"
+
+- name: Running Stop Tasks
+  ansible.builtin.import_tasks: stop_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "stop"
+
+- name: Running Start Tasks
+  ansible.builtin.import_tasks: start_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "start"
+
+- name: Running Status Tasks
+  ansible.builtin.import_tasks: status_workload.yml
+  become: "{{ become_override | bool }}"
+  when: ACTION == "status"

@@ -1,0 +1,86 @@
+---
+# Start workload tasks
+# Starts VirtualMachines in all student namespaces and waits for them to reach Running state
+
+- name: Get all student namespaces
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Namespace
+  register: r_all_namespaces
+
+- name: Set student namespace list
+  ansible.builtin.set_fact:
+    workshop_student_namespaces: >-
+      {{
+        r_all_namespaces.resources
+        | selectattr('metadata.name', 'match', '^retail-edge-student-[0-9]+$')
+        | map(attribute='metadata.name')
+        | sort
+        | list
+      }}
+
+- name: Get VirtualMachines in each student namespace
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    namespace: "{{ item }}"
+  register: r_ns_vms
+  loop: "{{ workshop_student_namespaces }}"
+
+- name: Set combined VM list
+  ansible.builtin.set_fact:
+    workshop_all_vms: >-
+      {{ r_ns_vms.results | map(attribute='resources') | flatten | list }}
+
+- name: Start each VirtualMachine
+  kubernetes.core.k8s:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachine
+    name: "{{ item.metadata.name }}"
+    namespace: "{{ item.metadata.namespace }}"
+    state: present
+    definition:
+      spec:
+        running: true
+  loop: "{{ workshop_all_vms }}"
+  loop_control:
+    label: "{{ item.metadata.namespace }}/{{ item.metadata.name }}"
+
+- name: Wait for VirtualMachineInstances to reach Running state
+  kubernetes.core.k8s_info:
+    api_version: kubevirt.io/v1
+    kind: VirtualMachineInstance
+    namespace: "{{ item }}"
+  register: r_ns_vmis
+  retries: 30
+  delay: 10
+  until:
+    - r_ns_vmis.resources | length > 0
+    - r_ns_vmis.resources | selectattr('status.phase', 'equalto', 'Running') | list | length > 0
+  loop: "{{ workshop_student_namespaces }}"
+  when: workshop_all_vms | length > 0
+
+- name: Get cluster ingress domain for console URL
+  kubernetes.core.k8s_info:
+    api_version: config.openshift.io/v1
+    kind: Ingress
+    name: cluster
+  register: r_cluster_ingress_start
+
+- name: Set cluster domain fact
+  ansible.builtin.set_fact:
+    _start_cluster_domain: "{{ r_cluster_ingress_start.resources[0].spec.domain }}"
+
+- name: Report start status via agnosticd_user_info
+  agnosticd.core.agnosticd_user_info:
+    msg: >-
+      Workshop VirtualMachines started ({{ workshop_all_vms | length }} VMs across
+      {{ workshop_student_namespaces | length }} student namespaces).
+      OpenShift Console: https://console-openshift-console.apps.{{ _start_cluster_domain }}
+  when: not silent | bool
+
+- name: Start workload tasks complete
+  ansible.builtin.debug:
+    msg:
+      - "VMs started: {{ workshop_all_vms | length }}"
+      - "Student namespaces: {{ workshop_student_namespaces }}"
