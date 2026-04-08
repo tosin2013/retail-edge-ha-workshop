@@ -71,24 +71,20 @@
   until:
     - r_argocd_app.resources | length > 0
 
-- name: Wait for ArgoCD child applications to complete initial sync
+- name: Wait for ArgoCD parent application sync to complete
   kubernetes.core.k8s_info:
     api_version: argoproj.io/v1alpha1
     kind: Application
+    name: "{{ ocp4_workload_retail_edge_ha_release_name }}"
     namespace: openshift-gitops
-    label_selectors:
-      - "app.kubernetes.io/part-of=retail-edge-ha-workshop"
-      - "app.kubernetes.io/component=child-app"
   register: r_argocd_app_status
   retries: 120
   delay: 10
   until:
     - r_argocd_app_status.resources | length > 0
-    - >-
-      r_argocd_app_status.resources
-      | selectattr('status.operationState', 'defined')
-      | rejectattr('status.operationState.phase', 'equalto', 'Running')
-      | list | length == r_argocd_app_status.resources | length
+    - r_argocd_app_status.resources[0].status is defined
+    - r_argocd_app_status.resources[0].status.operationState is defined
+    - r_argocd_app_status.resources[0].status.operationState.phase in ['Succeeded', 'Failed']
 
 - name: Get child ArgoCD applications
   kubernetes.core.k8s_info:
