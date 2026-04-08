@@ -26,6 +26,13 @@ spec:
   pullSecretRef:
     name: pull-secret
   installed: false
+  # provisioning required by Hive admission webhook when installed=false
+  # Actual install parameters are in AgentClusterInstall
+  provisioning:
+    imageSetRef:
+      name: openshift-v4.21
+    installConfigSecretRef:
+      name: student-01-twonode-install-config
 
 ---
 # ClusterDeployment - Module 3: Two-Node OpenShift (Student 02)
@@ -53,3 +60,8 @@ spec:
   pullSecretRef:
     name: pull-secret
   installed: false
+  provisioning:
+    imageSetRef:
+      name: openshift-v4.21
+    installConfigSecretRef:
+      name: student-02-twonode-install-config
