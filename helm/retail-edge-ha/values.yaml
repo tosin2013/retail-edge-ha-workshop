@@ -48,7 +48,7 @@ students:
     enabled: true
     cpu: "16"           # CPU cores (enough for 9 VMs)
     memory: "32Gi"      # Memory (enough for 9 VMs)
-    pvcs: "10"          # Persistent Volume Claims
+    pvcs: "15"          # Persistent Volume Claims (7 VM disks + 3 discovery ISOs + headroom)
     storage: "500Gi"    # Total storage (must cover DVs + CDI prime/scratch PVCs during import)
     pods: "20"          # Maximum pods
 

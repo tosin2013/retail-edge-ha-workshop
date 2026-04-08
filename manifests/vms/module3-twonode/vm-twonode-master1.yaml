@@ -31,7 +31,7 @@ spec:
       storage:
         resources:
           requests:
-            storage: 120Gi
+            storage: 40Gi
         storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
@@ -115,7 +115,7 @@ spec:
       storage:
         resources:
           requests:
-            storage: 120Gi
+            storage: 40Gi
         storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
         accessModes:
           - ReadWriteOnce
