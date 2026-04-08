@@ -42,7 +42,14 @@ ocp4_workload_retail_edge_ha_rhel_org_id: ""
 # Set ocp4_workload_retail_edge_ha_pull_secret in agnosticd-v2-secrets/<account>.yml
 ocp4_workload_retail_edge_ha_assisted_installer_enabled: true
 ocp4_workload_retail_edge_ha_twonode_ocp_version: "4.21"
+# Use -immediate storage class: OpenShift formats node disks during install,
+# WaitForFirstConsumer would deadlock (no consumer pod starts before PVC binds).
 ocp4_workload_retail_edge_ha_storage_class: "ocs-external-storagecluster-ceph-rbd-immediate"
+
+# When true, provision automatically starts twonode VMs, waits for agents to
+# register, labels/approves/binds them, and kicks off RHACM installation.
+# Set false (default) so students walk through the discovery flow themselves.
+ocp4_workload_retail_edge_ha_module3_auto_provision: false
 
 # Assisted Service PVC sizes (hub cluster storage)
 ocp4_workload_retail_edge_ha_assisted_db_storage: "10Gi"

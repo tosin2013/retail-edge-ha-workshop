@@ -280,6 +280,122 @@
           - "Start VMs to begin agent discovery: virtctl start twonode-master1 -n retail-edge-student-NN"
           - "Monitor agent registration in RHACM console: Clusters > student-NN-twonode"
 
+    # ----------------------------------------------------------------
+    # Auto-provision block: start VMs, bind agents, kick off install.
+    # Disabled by default so students complete the discovery flow
+    # themselves as a Module 3 exercise.  Set
+    # ocp4_workload_retail_edge_ha_module3_auto_provision: true
+    # to fully automate (e.g. for deploy-test runs).
+    # ----------------------------------------------------------------
+    - name: Auto-provision Module 3 twonode cluster via RHACM Assisted Installer
+      when: ocp4_workload_retail_edge_ha_module3_auto_provision | default(false) | bool
+      block:
+
+        - name: Wait for discovery ISO DataVolumes to be Succeeded before starting VMs
+          kubernetes.core.k8s_info:
+            api_version: cdi.kubevirt.io/v1beta1
+            kind: DataVolume
+            name: "{{ item.vm }}-discovery-iso"
+            namespace: "retail-edge-student-{{ item.student }}"
+          register: r_iso_dv_ready
+          retries: 30
+          delay: 20
+          loop:
+            - { student: "01", student_idx: 0, vm: "twonode-master1" }
+            - { student: "01", student_idx: 0, vm: "twonode-master2" }
+            - { student: "01", student_idx: 0, vm: "twonode-arbiter" }
+            - { student: "02", student_idx: 1, vm: "twonode-master1" }
+            - { student: "02", student_idx: 1, vm: "twonode-master2" }
+            - { student: "02", student_idx: 1, vm: "twonode-arbiter" }
+          until:
+            - r_iso_dv_ready.resources | length > 0
+            - r_iso_dv_ready.resources[0].status.phase == "Succeeded"
+          when: (item.student_idx | int) < (num_users | int)
+          ignore_errors: true
+
+        - name: Start twonode VMs (boot from discovery ISO CDROM)
+          kubernetes.core.k8s:
+            state: patched
+            api_version: kubevirt.io/v1
+            kind: VirtualMachine
+            name: "{{ item.vm }}"
+            namespace: "retail-edge-student-{{ item.student }}"
+            definition:
+              spec:
+                running: true
+          loop:
+            - { student: "01", student_idx: 0, vm: "twonode-master1" }
+            - { student: "01", student_idx: 0, vm: "twonode-master2" }
+            - { student: "01", student_idx: 0, vm: "twonode-arbiter" }
+            - { student: "02", student_idx: 1, vm: "twonode-master1" }
+            - { student: "02", student_idx: 1, vm: "twonode-master2" }
+            - { student: "02", student_idx: 1, vm: "twonode-arbiter" }
+          when: (item.student_idx | int) < (num_users | int)
+          ignore_errors: true
+
+        - name: Wait for 3 agents per student to register with Assisted Service
+          kubernetes.core.k8s_info:
+            api_version: agent-install.openshift.io/v1beta1
+            kind: Agent
+            namespace: "student-{{ '%02d' | format(item) }}-twonode"
+          register: r_agents
+          retries: 90
+          delay: 10
+          loop: "{{ range(1, (num_users | int) + 1) | list }}"
+          until: r_agents.resources | length >= 3
+          ignore_errors: true
+
+        # Build a flat list: each agent dict gets an injected _student_num key.
+        # This avoids nested loops which Ansible doesn't support natively.
+        - name: Build flat agent list with student assignment
+          ansible.builtin.set_fact:
+            module3_all_agents: >-
+              {{
+                module3_all_agents | default([]) +
+                (r_agents.results[item - 1].resources | default([])
+                 | map('combine', {'_student_num': item}) | list)
+              }}
+          loop: "{{ range(1, (num_users | int) + 1) | list }}"
+
+        - name: Label agents to match ClusterDeployment agentSelector
+          kubernetes.core.k8s:
+            state: patched
+            api_version: agent-install.openshift.io/v1beta1
+            kind: Agent
+            name: "{{ item.metadata.name }}"
+            namespace: "student-{{ '%02d' | format(item._student_num) }}-twonode"
+            definition:
+              metadata:
+                labels:
+                  student-id: "{{ '%02d' | format(item._student_num) }}"
+                  module: module3
+          loop: "{{ module3_all_agents | default([]) }}"
+          ignore_errors: true
+
+        - name: Approve agents and set master role (Assisted Service requires explicit approval)
+          kubernetes.core.k8s:
+            state: patched
+            api_version: agent-install.openshift.io/v1beta1
+            kind: Agent
+            name: "{{ item.metadata.name }}"
+            namespace: "student-{{ '%02d' | format(item._student_num) }}-twonode"
+            definition:
+              spec:
+                approved: true
+                role: master
+                clusterDeploymentName:
+                  name: "student-{{ '%02d' | format(item._student_num) }}-twonode"
+                  namespace: "student-{{ '%02d' | format(item._student_num) }}-twonode"
+          loop: "{{ module3_all_agents | default([]) }}"
+          ignore_errors: true
+
+        - name: Report agent registration status
+          ansible.builtin.debug:
+            msg: >-
+              Student {{ '%02d' | format(item) }}: {{ r_agents.results[item - 1].resources | default([]) | length }} agent(s) registered
+              (need 3 for twonode+arbiter install)
+          loop: "{{ range(1, (num_users | int) + 1) | list }}"
+
 - name: Save cluster-level deployment summary to agnosticd_user_info
   agnosticd.core.agnosticd_user_info:
     msg: |
