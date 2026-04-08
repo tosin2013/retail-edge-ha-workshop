@@ -174,6 +174,7 @@
             .dockerconfigjson: "{{ ocp4_workload_retail_edge_ha_pull_secret }}"
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
       no_log: true
+      ignore_errors: true
 
     - name: Patch AgentClusterInstall with SSH public key
       kubernetes.core.k8s:
@@ -208,7 +209,7 @@
         name: "student-{{ '%02d' | format(item) }}-twonode"
         namespace: "student-{{ '%02d' | format(item) }}-twonode"
       register: r_infraenv
-      retries: 30
+      retries: 60
       delay: 10
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
       until:
@@ -216,6 +217,20 @@
         - r_infraenv.resources[0].status is defined
         - r_infraenv.resources[0].status.isoDownloadURL is defined
         - r_infraenv.resources[0].status.isoDownloadURL | length > 0
+      ignore_errors: true
+
+    - name: Report InfraEnv ISO generation status
+      ansible.builtin.debug:
+        msg: >-
+          InfraEnv student-{{ '%02d' | format(item) }}-twonode ISO status:
+          {% if r_infraenv.results[item - 1].resources | default([]) | length > 0
+             and r_infraenv.results[item - 1].resources[0].status is defined
+             and r_infraenv.results[item - 1].resources[0].status.isoDownloadURL is defined %}
+          READY — {{ r_infraenv.results[item - 1].resources[0].status.isoDownloadURL }}
+          {% else %}
+          PENDING — ISO not yet generated (Assisted Service may still be initializing)
+          {% endif %}
+      loop: "{{ range(1, (num_users | int) + 1) | list }}"
 
     - name: Create discovery ISO DataVolumes for Module 3 VMs
       kubernetes.core.k8s:
@@ -249,7 +264,13 @@
         - { student: "02", student_idx: 1, vm: "twonode-master1" }
         - { student: "02", student_idx: 1, vm: "twonode-master2" }
         - { student: "02", student_idx: 1, vm: "twonode-arbiter" }
-      when: (item.student_idx | int) < (num_users | int)
+      when:
+        - (item.student_idx | int) < (num_users | int)
+        - r_infraenv.results[item.student_idx].resources | default([]) | length > 0
+        - r_infraenv.results[item.student_idx].resources[0].status is defined
+        - r_infraenv.results[item.student_idx].resources[0].status.isoDownloadURL is defined
+        - r_infraenv.results[item.student_idx].resources[0].status.isoDownloadURL | length > 0
+      ignore_errors: true
 
     - name: Print Module 3 Assisted Installer status
       ansible.builtin.debug:

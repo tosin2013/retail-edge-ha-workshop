@@ -62,17 +62,26 @@
   ansible.builtin.set_fact:
     rhacm_installed: "{{ r_rhacm_operator.resources | length > 0 and r_rhacm_operator.resources[0].status.phase == 'Succeeded' }}"
 
+- name: Set RHACM required flag (fleet management or Module 3 Assisted Installer)
+  ansible.builtin.set_fact:
+    rhacm_required: >-
+      {{
+        (ocp4_workload_retail_edge_ha_enable_fleet | default(false) | bool) or
+        (ocp4_workload_retail_edge_ha_enable_module3 | default(false) | bool and
+         ocp4_workload_retail_edge_ha_assisted_installer_enabled | default(true) | bool)
+      }}
+
 - name: Install RHACM if not present and auto-install enabled
   ansible.builtin.include_tasks: install_rhacm.yml
   when:
     - not rhacm_installed
-    - ocp4_workload_retail_edge_ha_enable_fleet | default(false) | bool
+    - rhacm_required | bool
     - ocp4_workload_retail_edge_ha_auto_install_rhacm | default(true) | bool
 
 - name: Verify RHACM operator is installed when fleet management is enabled
   ansible.builtin.fail:
     msg: |
-      RHACM operator is not installed but fleet management is enabled.
+      RHACM operator is not installed but fleet management or Module 3 Assisted Installer is enabled.
 
       To install it automatically, set: ocp4_workload_retail_edge_ha_auto_install_rhacm=true
 
@@ -80,7 +89,7 @@
         oc create -f https://raw.githubusercontent.com/open-cluster-management-io/multiclusterhub-operator/main/examples/multiclusterhub/example-multiclusterhub-cr.yaml
   when:
     - not rhacm_installed
-    - ocp4_workload_retail_edge_ha_enable_fleet | default(false) | bool
+    - rhacm_required | bool
     - not ocp4_workload_retail_edge_ha_auto_install_rhacm | default(true) | bool
 
 - name: Confirm RHACM operator is ready
