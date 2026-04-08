@@ -3,7 +3,6 @@ kind: Kustomization
 
 resources:
   # RHACM Assisted Installer resources (provisioned in student-NN-twonode namespaces)
-  - install-config-secrets.yaml
   - cluster-deployment.yaml
   - agent-cluster-install.yaml
   - infra-env.yaml

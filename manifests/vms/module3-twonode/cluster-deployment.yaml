@@ -26,18 +26,12 @@ spec:
   pullSecretRef:
     name: pull-secret
   installed: false
-  # Link to the AgentClusterInstall (Assisted Installer specific)
+  # clusterInstallRef links to AgentClusterInstall (mutually exclusive with spec.provisioning)
   clusterInstallRef:
     group: extensions.hive.openshift.io
     kind: AgentClusterInstall
     name: student-01-twonode
     version: v1beta1
-  # provisioning required by Hive admission webhook when installed=false
-  provisioning:
-    imageSetRef:
-      name: openshift-v4.21
-    installConfigSecretRef:
-      name: student-01-twonode-install-config
 
 ---
 # ClusterDeployment - Module 3: Two-Node OpenShift (Student 02)
@@ -70,8 +64,3 @@ spec:
     kind: AgentClusterInstall
     name: student-02-twonode
     version: v1beta1
-  provisioning:
-    imageSetRef:
-      name: openshift-v4.21
-    installConfigSecretRef:
-      name: student-02-twonode-install-config
