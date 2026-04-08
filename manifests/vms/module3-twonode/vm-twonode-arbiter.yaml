@@ -1,5 +1,7 @@
 # VirtualMachine - Module 3: Two-Node OpenShift twonode-arbiter
-# etcd arbiter node — boots from discovery ISO, smaller footprint (1 CPU / 2Gi).
+# etcd arbiter node — boots from discovery ISO, 2 CPU / 8Gi during discovery phase.
+# RHCOS discovery agent requires >= 2 CPU and >= 8Gi RAM to load and register.
+# After OCP install completes the node only runs etcd and uses far fewer resources.
 # MAC address on twonode-net matches NMStateConfig for static IP 10.103.0.22.
 
 ---
@@ -43,7 +45,7 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 1
+          cores: 2
           sockets: 1
           threads: 1
         devices:
@@ -71,7 +73,7 @@ spec:
               secureBoot: false
         resources:
           requests:
-            memory: 2Gi
+            memory: 8Gi
       networks:
       - name: default
         pod: {}
@@ -127,7 +129,7 @@ spec:
     spec:
       domain:
         cpu:
-          cores: 1
+          cores: 2
           sockets: 1
           threads: 1
         devices:
@@ -155,7 +157,7 @@ spec:
               secureBoot: false
         resources:
           requests:
-            memory: 2Gi
+            memory: 8Gi
       networks:
       - name: default
         pod: {}

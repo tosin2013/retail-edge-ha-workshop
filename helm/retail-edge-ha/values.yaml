@@ -47,9 +47,9 @@ students:
   quotas:
     enabled: true
     cpu: "16"           # CPU cores (enough for 9 VMs)
-    memory: "32Gi"      # Memory (enough for 9 VMs)
+    memory: "56Gi"      # Memory: 16+16+8Gi twonode VMs + 4×4Gi module VMs + virt-launcher overhead
     pvcs: "15"          # Persistent Volume Claims (7 VM disks + 3 discovery ISOs + headroom)
-    storage: "500Gi"    # Total storage (must cover DVs + CDI prime/scratch PVCs during import)
+    storage: "650Gi"    # Total storage: 403Gi steady-state + 120Gi CDI prime PVC during blank disk import + buffer
     pods: "20"          # Maximum pods
 
 # ArgoCD Configuration
@@ -368,12 +368,14 @@ virtualMachines:
         disk: "120Gi"
 
       # Resource specifications for arbiter node
+      # Minimum 2 CPU / 8Gi RAM required for RHCOS discovery agent to register.
+      # After install, etcd-arbiter only uses 1 CPU / 2Gi — but discovery phase needs more.
       arbiter:
         cpu:
-          cores: 1
+          cores: 2
           sockets: 1
           threads: 1
-        memory: "2Gi"
+        memory: "8Gi"
         disk: "20Gi"
 
 # Showroom Workshop Configuration (Modern Platform)
@@ -457,13 +459,13 @@ resourceQuotas:
     cpu: "16"
 
     # Total memory across all VMs
-    memory: "32Gi"
+    memory: "56Gi"
 
     # Maximum number of PVCs
     persistentvolumeclaims: "10"
 
     # Total storage requests
-    requests.storage: "500Gi"
+    requests.storage: "650Gi"
 
 # Monitoring and Observability
 # -----------------------------------------------------------------------------
