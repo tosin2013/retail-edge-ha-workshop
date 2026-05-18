@@ -49,6 +49,17 @@ data:
   PACEMAKER_IP2: "10.101.0.21"
   PACEMAKER_VIP: "10.101.0.100"
 
+  # Module 2 - MicroShift VRRP
+  MICROSHIFT_GWA: "microshift-gw-a"
+  MICROSHIFT_GWB: "microshift-gw-b"
+  MICROSHIFT_NET: "microshift-net"
+  MICROSHIFT_GWA_IP: "10.102.0.20"
+  MICROSHIFT_GWB_IP: "10.102.0.21"
+  MICROSHIFT_VIP: "10.102.0.100"
+
+  # Module 3 - Two-Node OCP (AWS, managed via RHACM)
+  MODULE3_CLUSTER: "student-01-twonode"
+
 ---
 # Student 02 Environment Variables
 apiVersion: v1
@@ -86,3 +97,14 @@ data:
   PACEMAKER_IP1: "10.101.0.20"
   PACEMAKER_IP2: "10.101.0.21"
   PACEMAKER_VIP: "10.101.0.100"
+
+  # Module 2 - MicroShift VRRP
+  MICROSHIFT_GWA: "microshift-gw-a"
+  MICROSHIFT_GWB: "microshift-gw-b"
+  MICROSHIFT_NET: "microshift-net"
+  MICROSHIFT_GWA_IP: "10.102.0.20"
+  MICROSHIFT_GWB_IP: "10.102.0.21"
+  MICROSHIFT_VIP: "10.102.0.100"
+
+  # Module 3 - Two-Node OCP (AWS, managed via RHACM)
+  MODULE3_CLUSTER: "student-02-twonode"

@@ -36,7 +36,7 @@ spec:
         resources:
           requests:
             storage: 50Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+        storageClassName: gp3-csi
         accessModes:
           - ReadWriteOnce
   template:
@@ -122,7 +122,7 @@ spec:
         resources:
           requests:
             storage: 50Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+        storageClassName: gp3-csi
         accessModes:
           - ReadWriteOnce
   template:

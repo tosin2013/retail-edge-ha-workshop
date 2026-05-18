@@ -167,7 +167,7 @@ fleetManagement:
       filesystemStorageSize: 50Gi
       imageStorageSize: 50Gi
       # Storage class for Assisted Service PVCs
-      storageClass: ocs-external-storagecluster-ceph-rbd-immediate
+      storageClass: gp3-csi
       # Target OCP version for the two-node edge cluster
       ocpVersion: "4.21"
       # baseDomain is auto-filled by AgnosticD from cluster ingress discovery
@@ -260,7 +260,7 @@ virtualMachines:
   autoStart: true
 
   # Storage class for VM disks
-  storageClass: "ocs-external-storagecluster-ceph-rbd-immediate"
+  storageClass: "gp3-csi"
 
   # Default VM credentials
   defaultUser: "cloud-user"

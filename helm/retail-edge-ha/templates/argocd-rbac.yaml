@@ -1,0 +1,130 @@
+{{- /*
+ArgoCD Service Account RBAC Grants
+Grants the ArgoCD application controller the specific permissions it needs to
+manage resources in namespaces where the default admin ClusterRole is insufficient.
+
+These are applied as part of the parent Helm chart so they exist before ArgoCD
+attempts to sync child applications. On fresh deploys, the workload role applies
+these imperatively before the Helm install runs.
+*/}}
+
+{{- $argocdSA := "openshift-gitops-argocd-application-controller" }}
+{{- $argocdNS := .Values.argocd.namespace }}
+
+{{- /* ResourceQuota patch permission in each student namespace */}}
+{{- if and .Values.students.enabled .Values.students.quotas.enabled }}
+{{- range $i := until (int .Values.students.count) }}
+{{- $studentNum := add1 $i }}
+{{- $studentId := printf "%02d" $studentNum }}
+{{- $ns := printf "retail-edge-student-%s" $studentId }}
+---
+# Allow ArgoCD to patch ResourceQuotas in student namespace {{ $ns }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-quota-patcher
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+rules:
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-quota-patcher
+  namespace: {{ $ns }}
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-quota-patcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ $argocdSA }}
+    namespace: {{ $argocdNS }}
+{{- end }}
+{{- end }}
+
+{{- /* ServiceAccount patch permission in openshift-operators for ESO SA management */}}
+---
+# Allow ArgoCD to patch ServiceAccounts in openshift-operators (for eso-kubernetes-reader)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-eso-sa-patcher
+  namespace: openshift-operators
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-eso-sa-patcher
+  namespace: openshift-operators
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-eso-sa-patcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ $argocdSA }}
+    namespace: {{ $argocdNS }}
+
+{{- /* HyperConverged patch permission in openshift-cnv for CNV operator management */}}
+---
+# Allow ArgoCD to patch HyperConverged in openshift-cnv (for CNV/kubevirt-hyperconverged)
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: argocd-cnv-patcher
+  namespace: openshift-cnv
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+rules:
+  - apiGroups: ["hco.kubevirt.io"]
+    resources: ["hyperconvergeds"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: argocd-cnv-patcher
+  namespace: openshift-cnv
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: argocd-rbac
+  annotations:
+    argocd.argoproj.io/sync-wave: "-10"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: argocd-cnv-patcher
+subjects:
+  - kind: ServiceAccount
+    name: {{ $argocdSA }}
+    namespace: {{ $argocdNS }}

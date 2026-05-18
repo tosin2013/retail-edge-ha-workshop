@@ -34,12 +34,12 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Pod
-        namespace: "showroom-{{ guid }}-student{{ '%02d' | format(item) }}"
+        namespace: "showroom-student-{{ '%02d' | format(item) }}"
         label_selectors:
           - "app.kubernetes.io/name=showroom"
       register: r_showroom_pods
-      retries: 60
-      delay: 10
+      retries: 120
+      delay: 15
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
       until:
         - r_showroom_pods.resources | length > 0
@@ -49,7 +49,7 @@
       kubernetes.core.k8s_info:
         api_version: route.openshift.io/v1
         kind: Route
-        namespace: "showroom-{{ guid }}-student{{ '%02d' | format(item) }}"
+        namespace: "showroom-student-{{ '%02d' | format(item) }}"
       register: r_showroom_routes
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
 

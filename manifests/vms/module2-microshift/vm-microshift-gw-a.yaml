@@ -1,5 +1,5 @@
 # VirtualMachine - Module 2: MicroShift Gateway A
-# Generated for 2 students | Storage: ocs-external-storagecluster-ceph-rbd-immediate
+# Generated for 2 students | Storage: gp3-csi
 # Base image: RHEL 9 DataSource
 
 ---
@@ -32,7 +32,7 @@ spec:
         resources:
           requests:
             storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+        storageClassName: gp3-csi
         accessModes:
           - ReadWriteOnce
   template:
@@ -115,7 +115,7 @@ spec:
         resources:
           requests:
             storage: 40Gi
-        storageClassName: ocs-external-storagecluster-ceph-rbd-immediate
+        storageClassName: gp3-csi
         accessModes:
           - ReadWriteOnce
   template:
