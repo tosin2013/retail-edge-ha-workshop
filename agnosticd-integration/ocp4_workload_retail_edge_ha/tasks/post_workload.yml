@@ -34,7 +34,7 @@
       kubernetes.core.k8s_info:
         api_version: v1
         kind: Pod
-        namespace: "showroom-student-{{ '%02d' | format(item) }}"
+        namespace: "showroom-{{ guid }}-student{{ '%02d' | format(item) }}"
         label_selectors:
           - "app.kubernetes.io/name=showroom"
       register: r_showroom_pods
@@ -49,7 +49,7 @@
       kubernetes.core.k8s_info:
         api_version: route.openshift.io/v1
         kind: Route
-        namespace: "showroom-student-{{ '%02d' | format(item) }}"
+        namespace: "showroom-{{ guid }}-student{{ '%02d' | format(item) }}"
       register: r_showroom_routes
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
 
@@ -77,11 +77,42 @@
           OpenShift Console: https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}
           OpenShift API: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
           Student Namespace: retail-edge-student-{{ '%02d' | format(item) }}
+          Cluster Admin Username: {{ openshift_cluster_admin_username }}
+
+          Module 1 — RHEL HA (Pacemaker)
+            SSH:      virtctl ssh cloud-user@rhel-ha-node1 -n retail-edge-student-{{ '%02d' | format(item) }}
+                      virtctl ssh cloud-user@rhel-ha-node2 -n retail-edge-student-{{ '%02d' | format(item) }}
+            Password: redhat
+            Node IPs: 10.101.0.20 / 10.101.0.21  VIP: 10.101.0.100
+
+          Module 2 — MicroShift VRRP
+            SSH:      virtctl ssh cloud-user@microshift-gw-a -n retail-edge-student-{{ '%02d' | format(item) }}
+                      virtctl ssh cloud-user@microshift-gw-b -n retail-edge-student-{{ '%02d' | format(item) }}
+            Password: redhat
+            GW IPs:   10.102.0.20 / 10.102.0.21  VIP: 10.102.0.100
+
+          Module 3 — Two-Node OCP (AWS)
+            RHACM Cluster: student-{{ '%02d' | format(item) }}-twonode
         data:
           showroom_url: "{{ workshop_showroom_urls[item - 1] }}"
           openshift_console_url: "https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
           openshift_api_url: "{{ ocp4_workload_retail_edge_ha_cluster_api_url }}"
           student_namespace: "retail-edge-student-{{ '%02d' | format(item) }}"
+          openshift_cluster_admin_username: "{{ openshift_cluster_admin_username }}"
+          openshift_cluster_admin_password: "{{ openshift_cluster_admin_password }}"
+          vm_user: "cloud-user"
+          vm_password: "redhat"
+          module1_node1_vm: "rhel-ha-node1"
+          module1_node2_vm: "rhel-ha-node2"
+          module1_node1_ip: "10.101.0.20"
+          module1_node2_ip: "10.101.0.21"
+          module1_vip: "10.101.0.100"
+          module2_gwa_vm: "microshift-gw-a"
+          module2_gwb_vm: "microshift-gw-b"
+          module2_gwa_ip: "10.102.0.20"
+          module2_gwb_ip: "10.102.0.21"
+          module2_vip: "10.102.0.100"
+          module3_cluster_name: "student-{{ '%02d' | format(item) }}-twonode"
       loop: "{{ range(1, (num_users | int) + 1) | list }}"
       when: not silent | bool
 
@@ -403,11 +434,14 @@
       Students: {{ num_users }}
       OpenShift Console: https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}
       OpenShift API: {{ ocp4_workload_retail_edge_ha_cluster_api_url }}
+      Cluster Admin Username: {{ openshift_cluster_admin_username }}
       Showroom enabled: {{ ocp4_workload_retail_edge_ha_enable_showroom }}
     data:
       openshift_cluster_ingress_domain: "{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
       openshift_console_url: "https://console-openshift-console.apps.{{ ocp4_workload_retail_edge_ha_cluster_domain }}"
       openshift_api_url: "{{ ocp4_workload_retail_edge_ha_cluster_api_url }}"
+      openshift_cluster_admin_username: "{{ openshift_cluster_admin_username }}"
+      openshift_cluster_admin_password: "{{ openshift_cluster_admin_password }}"
       num_users: "{{ num_users }}"
   when: not silent | bool
 

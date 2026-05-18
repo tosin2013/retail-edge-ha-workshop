@@ -1,38 +1,20 @@
 ---
-# Entry point for the ocp4_workload_retail_edge_ha role
-# This role deploys the Retail Edge HA Workshop using the existing Helm chart
+- name: Running workload provision tasks
+  when: ACTION == "provision"
+  ansible.builtin.include_tasks: workload.yml
 
-- name: Running Pre Workload Tasks
-  ansible.builtin.import_tasks: pre_workload.yml
-  become: "{{ become_override | bool }}"
-  when: ACTION == "create" or ACTION == "provision"
+- name: Running workload removal tasks
+  when: ACTION == "destroy"
+  ansible.builtin.include_tasks: remove_workload.yml
 
-- name: Running Workload Tasks
-  ansible.builtin.import_tasks: workload.yml
-  become: "{{ become_override | bool }}"
-  when: ACTION == "create" or ACTION == "provision"
-
-- name: Running Post Workload Tasks
-  ansible.builtin.import_tasks: post_workload.yml
-  become: "{{ become_override | bool }}"
-  when: ACTION == "create" or ACTION == "provision"
-
-- name: Running Workload Removal Tasks
-  ansible.builtin.import_tasks: remove_workload.yml
-  become: "{{ become_override | bool }}"
-  when: ACTION == "destroy" or ACTION == "remove"
-
-- name: Running Stop Tasks
-  ansible.builtin.import_tasks: stop_workload.yml
-  become: "{{ become_override | bool }}"
+- name: Running workload stop tasks
   when: ACTION == "stop"
+  ansible.builtin.include_tasks: stop_workload.yml
 
-- name: Running Start Tasks
-  ansible.builtin.import_tasks: start_workload.yml
-  become: "{{ become_override | bool }}"
+- name: Running workload start tasks
   when: ACTION == "start"
+  ansible.builtin.include_tasks: start_workload.yml
 
-- name: Running Status Tasks
-  ansible.builtin.import_tasks: status_workload.yml
-  become: "{{ become_override | bool }}"
+- name: Running workload status tasks
   when: ACTION == "status"
+  ansible.builtin.include_tasks: status_workload.yml

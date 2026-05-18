@@ -1,0 +1,43 @@
+---
+- name: Install OpenShift GitOps operator
+  ansible.builtin.include_role:
+    name: install_operator
+  vars:
+    install_operator_name: openshift-gitops-operator
+    install_operator_namespace: openshift-operators
+    install_operator_channel: latest
+    install_operator_catalog: redhat-operators
+    install_operator_packagemanifest_name: openshift-gitops-operator
+    install_operator_automatic_install_plan_approval: true
+    install_operator_csv_nameprefix: openshift-gitops-operator
+    install_operator_manage_namespaces:
+      - openshift-operators
+
+- name: Wait for OpenShift GitOps ArgoCD instance to be ready
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: ArgoCD
+    name: openshift-gitops
+    namespace: openshift-gitops
+  register: r_argocd
+  until:
+    - r_argocd.resources | length > 0
+    - r_argocd.resources[0].status is defined
+    - r_argocd.resources[0].status.phase is defined
+    - r_argocd.resources[0].status.phase == "Available"
+  retries: 40
+  delay: 15
+
+- name: Wait for ArgoCD Application CRD to be established
+  kubernetes.core.k8s_info:
+    api_version: apiextensions.k8s.io/v1
+    kind: CustomResourceDefinition
+    name: applications.argoproj.io
+  register: r_argocd_crd
+  until:
+    - r_argocd_crd.resources | length > 0
+    - r_argocd_crd.resources[0].status.conditions |
+      selectattr('type', 'equalto', 'Established') |
+      selectattr('status', 'equalto', 'True') | list | length > 0
+  retries: 20
+  delay: 15

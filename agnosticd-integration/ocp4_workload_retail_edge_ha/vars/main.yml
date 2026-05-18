@@ -1,18 +1,15 @@
 ---
-# Role-specific variables for ocp4_workload_retail_edge_ha
-# These are constants and should not be overridden
+# Internal constants — not overridable by external callers.
+# Named with leading underscore per AgnosticD v2 convention.
 
-# Workload metadata
-ocp4_workload_retail_edge_ha_workload_name: "Retail Edge HA Workshop"
-ocp4_workload_retail_edge_ha_workload_version: "1.0.0"
-ocp4_workload_retail_edge_ha_workload_description: >-
+_ocp4_workload_retail_edge_ha_workload_name: "Retail Edge HA Workshop"
+_ocp4_workload_retail_edge_ha_workload_version: "1.0.0"
+_ocp4_workload_retail_edge_ha_workload_description: >-
   Multi-user workshop teaching high availability architectures for retail edge environments
 
-# Required OpenShift version
-ocp4_workload_retail_edge_ha_min_openshift_version: "4.21.0"
+_ocp4_workload_retail_edge_ha_min_openshift_version: "4.21.0"
 
-# Required operators
-ocp4_workload_retail_edge_ha_required_operators:
+_ocp4_workload_retail_edge_ha_required_operators:
   - name: "OpenShift Virtualization"
     namespace: "openshift-cnv"
     csv_prefix: "kubevirt-hyperconverged-operator"

@@ -5,7 +5,7 @@
 This workshop deploys **one Showroom instance per student** to provide proper terminal isolation and student-specific environment variables.
 
 Each student gets:
-- Unique URL: `https://showroom-proxy-showroom-student-XX.apps...`
+- Unique URL: `https://showroom-proxy-showroom-student-XX.apps.<cluster-domain>`
 - Dedicated terminal with student-specific environment variables
 - Isolated namespace: `showroom-student-XX`
 - Access to their student namespace: `retail-edge-student-XX`
@@ -28,114 +28,116 @@ Each student gets:
 │             VM_USER=cloud-user                              │
 │             RHEL_NODE1=rhel-ha-node1                        │
 │             PACEMAKER_IP1=10.101.0.20                       │
-│             ... (14 total variables)                        │
+│             ... (full list below)                           │
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │ Student 02                                                   │
 │ https://showroom-proxy-showroom-student-02.apps...          │
 │                                                              │
-│ (Same structure, different environment variables)            │
+│ (Same structure, student-specific environment variables)    │
 │   STUDENT_ID=02                                             │
 │   STUDENT_NAMESPACE=retail-edge-student-02                  │
 │   ...                                                        │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Deployment Steps
+## Deployment
 
-### 1. Deploy via ArgoCD (Recommended)
+Showroom instances are deployed automatically by the AgnosticD workload role as part of the hub cluster provisioning. No manual Helm commands are needed.
 
-The parent ArgoCD application will create child applications for each student:
+### One-Command Deployment
 
 ```bash
-# Sync parent application
-oc patch application retail-edge-ha -n openshift-gitops \
-  --type=merge -p '{"operation":{"initiatedBy":{"username":"admin"},"sync":{"revision":"HEAD"}}}'
-
-# Wait for child applications to be created
-oc get applications -n openshift-gitops | grep showroom
-# Should show: retail-edge-ha-showroom-01 through -05
+cd ~/Development/agnosticd-v2-vars/retail-edge-ha
+NUM_STUDENTS=2 ./cluster-deploy.sh
 ```
 
-**Note:** ArgoCD sync may be slow. If applications remain in "OutOfSync/Missing" for >10 minutes, use manual deployment below.
+This single script:
+1. Provisions the hub OCP cluster on AWS
+2. Installs OpenShift Virtualization, RHACM, cert-manager, OpenShift GitOps
+3. Deploys the Helm app-of-apps via ArgoCD (which creates all Showroom instances)
+4. Waits for all Showroom pods to be ready
 
-### 2. Manual Deployment (Faster, for Development)
-
-Deploy Showroom instances directly using Helm:
-
-```bash
-# Deploy all 5 student instances
-for i in 01 02 03 04 05; do
-  echo "Deploying showroom-student-$i..."
-  helm template showroom-$i showroom/showroom --version 0.4.9 \
-    --set namespace.name=showroom-student-$i \
-    --set content.repoUrl=https://github.com/tosin2013/retail-edge-ha-workshop.git \
-    --set content.repoRef=main \
-    --set content.antoraPlaybook=site.yml \
-    --set deployer.domain=apps.cluster-cfz7p.dynamic.redhatworkshops.io \
-    --set deployer.ingress.name=showroom-student-$i \
-    --set terminal.image=docker.io/wettyoss/wetty:latest \
-    | oc apply -f -
-done
-```
-
-### 3. Patch Terminal Deployments (Required)
-
-After deployment, inject student environment variables into terminal pods:
+### Verify Showroom is Running
 
 ```bash
-# Run the patch script
-./scripts/patch-showroom-terminals.sh 5
+KC=~/Development/agnosticd-v2-output/retail-ha/openshift-cluster_retail-ha_kubeconfig
 
-# Verify environment variables are available
-oc exec -n showroom-student-01 deployment/showroom-terminal -- env | grep STUDENT_
-```
+# Check ArgoCD Showroom applications
+oc --kubeconfig="$KC" get applications -n openshift-gitops | grep showroom
 
-**Why is this needed?**
-The Showroom 0.4.9 chart doesn't natively support injecting custom environment variables into the terminal pod. Our script patches each terminal deployment to mount the `student-env` ConfigMap as environment variables.
-
-## Verification
-
-### Check Deployment Status
-
-```bash
-# Check all Showroom namespaces
-oc get namespaces | grep showroom-student
-
-# Check pods in each namespace
-for i in 01 02 03 04 05; do
+# Check pods per student
+for i in 01 02; do
   echo "=== Student $i ==="
-  oc get pods -n showroom-student-$i
+  oc --kubeconfig="$KC" get pods -n showroom-student-$i
 done
 ```
 
-Expected output: 4/4 pods running per student (showroom, showroom-content, showroom-proxy, showroom-terminal)
+Expected: 4/4 pods running per student (showroom, showroom-content, showroom-proxy, showroom-terminal).
 
-### Verify Environment Variables
+### Get Student URLs
 
 ```bash
-# Student 01
-oc exec -n showroom-student-01 deployment/showroom-terminal -- sh -c 'echo "Student: $STUDENT_ID, Namespace: $STUDENT_NAMESPACE"'
-# Output: Student: 01, Namespace: retail-edge-student-01
+KC=~/Development/agnosticd-v2-output/retail-ha/openshift-cluster_retail-ha_kubeconfig
 
-# Student 02
-oc exec -n showroom-student-02 deployment/showroom-terminal -- sh -c 'echo "Student: $STUDENT_ID, Namespace: $STUDENT_NAMESPACE"'
-# Output: Student: 02, Namespace: retail-edge-student-02
+# Print all Showroom URLs
+oc --kubeconfig="$KC" get routes -A \
+  -o jsonpath='{range .items[*]}{.metadata.namespace}{": https://"}{.spec.host}{"\n"}{end}' \
+  | grep showroom-student | sort
 ```
 
-### Access Workshop URLs
+Or use the access info script (see below).
+
+## Instructor Access Info Script
+
+The `print-access-info.sh` script collects all environment credentials, URLs, and module-specific access details for every student and saves them to a single file.
 
 ```bash
-# Get all student URLs
-for i in 01 02 03 04 05; do
-  echo "Student $i: https://$(oc get route -n showroom-student-$i -o jsonpath='{.items[0].spec.host}')"
-done
+cd ~/Development/agnosticd-v2-vars/retail-edge-ha
+HUB_GUID=retail-ha NUM_STUDENTS=2 ./print-access-info.sh
+```
+
+Output is printed to stdout and saved to:
+```
+~/Development/agnosticd-v2-output/retail-ha/access-info.txt
+```
+
+Sample output:
+```
+============================================================
+  Retail Edge HA Workshop — Environment Access Info
+  Hub GUID:  retail-ha | Students: 2
+============================================================
+
+HUB CLUSTER
+  Console:  https://console-openshift-console.apps.retail-ha...
+  API:      https://api.retail-ha...:6443
+  Login:    oc login ... -u kubeadmin -p <password>
+
+------------------------------------------------------------
+STUDENT 01
+  Showroom:  https://showroom-proxy-showroom-student-01.apps...
+  Namespace: retail-edge-student-01
+
+  Module 1 — RHEL HA (Pacemaker)
+    SSH node1: virtctl ssh cloud-user@rhel-ha-node1 -n retail-edge-student-01
+    SSH node2: virtctl ssh cloud-user@rhel-ha-node2 -n retail-edge-student-01
+    Password:  redhat
+
+  Module 2 — MicroShift (VRRP)
+    SSH gw-a:  virtctl ssh cloud-user@microshift-gw-a -n retail-edge-student-01
+    SSH gw-b:  virtctl ssh cloud-user@microshift-gw-b -n retail-edge-student-01
+    Password:  redhat
+
+  Module 3 — Two-Node OCP (AWS)
+    RHACM Cluster: student-01-twonode
+    ...
 ```
 
 ## Available Environment Variables
 
-Each terminal has access to these variables (automatically different per student):
+Each Showroom terminal has access to these variables (automatically different per student):
 
 ```bash
 STUDENT_ID              # 01, 02, 03, etc.
@@ -144,99 +146,112 @@ STUDENT_UDN_NAMESPACE   # retail-edge-student-XX-udn
 STUDENT_USER            # student-XX
 
 # Cluster info
-CLUSTER_DOMAIN          # apps.cluster-cfz7p.dynamic.redhatworkshops.io
-CLUSTER_API             # https://api.cluster-cfz7p.dynamic.redhatworkshops.io:6443
+CLUSTER_DOMAIN          # apps.<cluster-ingress-domain>
+CLUSTER_API             # https://api.<cluster-domain>:6443
 
-# VM credentials
+# VM credentials (shared across modules)
 VM_USER                 # cloud-user
 VM_PASSWORD             # redhat
 
 # Module 1: Pacemaker HA
-RHEL_NODE1             # rhel-ha-node1
-RHEL_NODE2             # rhel-ha-node2
-PACEMAKER_NET          # pacemaker-net
-PACEMAKER_IP1          # 10.101.0.20
-PACEMAKER_IP2          # 10.101.0.21
-PACEMAKER_VIP          # 10.101.0.100
+RHEL_NODE1              # rhel-ha-node1
+RHEL_NODE2              # rhel-ha-node2
+PACEMAKER_NET           # pacemaker-net
+PACEMAKER_IP1           # 10.101.0.20
+PACEMAKER_IP2           # 10.101.0.21
+PACEMAKER_VIP           # 10.101.0.100
+
+# Module 2: MicroShift VRRP
+MICROSHIFT_GWA          # microshift-gw-a
+MICROSHIFT_GWB          # microshift-gw-b
+MICROSHIFT_NET          # microshift-net
+MICROSHIFT_GWA_IP       # 10.102.0.20
+MICROSHIFT_GWB_IP       # 10.102.0.21
+MICROSHIFT_VIP          # 10.102.0.100
+
+# Module 3: Two-Node OCP (AWS)
+MODULE3_CLUSTER         # student-XX-twonode  (RHACM managed cluster name)
 ```
 
 ## Usage in Workshop Instructions
 
-Students can use these variables in terminal commands:
+Students use these variables in terminal commands:
 
 ```bash
-# Connect to VM (when VMs are deployed)
+# Module 1 — SSH into Pacemaker node
 virtctl ssh $VM_USER@$RHEL_NODE1 -n $STUDENT_NAMESPACE
 
-# Check student namespace resources
-oc get vms -n $STUDENT_NAMESPACE
+# Module 1 — Check Pacemaker status
+virtctl ssh $VM_USER@$RHEL_NODE1 -n $STUDENT_NAMESPACE -- sudo pcs status
 
-# View pacemaker cluster status
-virtctl ssh $VM_USER@$RHEL_NODE1 -n $STUDENT_NAMESPACE -- \
-  sudo pcs status
+# Module 2 — SSH into MicroShift gateway
+virtctl ssh $VM_USER@$MICROSHIFT_GWA -n $STUDENT_NAMESPACE
+
+# Module 3 — Access two-node cluster via RHACM console
+# Navigate to RHACM → Infrastructure → Clusters → student-XX-twonode
 ```
 
 ## Scaling to More Students
 
-To deploy for more students (e.g., 25):
+Update `NUM_STUDENTS` in `cluster-deploy.sh` or pass it as an environment variable:
 
 ```bash
-# Update values.yaml
-students:
-  count: 25
-
-# Redeploy via ArgoCD or manually deploy 25 instances
-# Then patch all 25 terminals
-./scripts/patch-showroom-terminals.sh 25
+NUM_STUDENTS=25 ./cluster-deploy.sh
 ```
+
+The Helm chart creates one Showroom app and one student namespace per student automatically based on `students.count` in `helm/retail-edge-ha/values.yaml`.
+
+**Resource requirements per student (Showroom only):**
+- Pods: 4
+- Memory: ~1 GB
+- CPU: ~1.2 cores
+
+For 25 students: ~100 Showroom pods, ~25 GB memory, ~30 CPU cores (Showroom only; VM resources are additional).
 
 ## Troubleshooting
 
-### Terminal doesn't have environment variables
+### Showroom pods not starting
 
 ```bash
-# Check if ConfigMap exists
-oc get configmap student-env -n showroom-student-01
+KC=~/Development/agnosticd-v2-output/retail-ha/openshift-cluster_retail-ha_kubeconfig
 
-# Re-run patch script
-./scripts/patch-showroom-terminals.sh 5
-
-# Verify patch was applied
-oc get deployment showroom-terminal -n showroom-student-01 \
-  -o jsonpath='{.spec.template.spec.containers[0].envFrom}'
-```
-
-### Pods not starting
-
-```bash
 # Check events
-oc get events -n showroom-student-01 --sort-by='.lastTimestamp'
+oc --kubeconfig="$KC" get events -n showroom-student-01 --sort-by='.lastTimestamp'
 
 # Check pod logs
-oc logs -n showroom-student-01 deployment/showroom-content
+oc --kubeconfig="$KC" logs -n showroom-student-01 deployment/showroom-content
 ```
 
-### ArgoCD applications stuck "OutOfSync"
+### ArgoCD Showroom applications stuck "OutOfSync" or "Missing"
+
+The most common cause is the ArgoCD service account lacking RBAC on the Showroom namespaces. Verify the namespace label:
 
 ```bash
-# Delete and recreate applications
-oc delete application retail-edge-ha-showroom-01 -n openshift-gitops
-helm template retail-edge-ha ./helm/retail-edge-ha --show-only templates/apps/showroom-app.yaml | oc apply -f -
+KC=~/Development/agnosticd-v2-output/retail-ha/openshift-cluster_retail-ha_kubeconfig
+
+oc --kubeconfig="$KC" get namespace showroom-student-01 \
+  -o jsonpath='{.metadata.labels.argocd\.argoproj\.io/managed-by}'
+# Should output: openshift-gitops
 ```
 
-## Resource Usage
+If the label is missing, re-run the workload:
 
-Per student (5 students total = 20 pods, ~5GB memory):
-- **Pods:** 4 (showroom, content, proxy, terminal)
-- **Memory:** ~1GB total
-  - showroom: 64Mi
-  - showroom-content: 64Mi
-  - showroom-proxy: 256Mi
-  - showroom-terminal: 256Mi
-- **CPU:** ~1.2 cores total
-  - showroom: 100m
-  - showroom-content: 100m
-  - showroom-proxy: 500m
-  - showroom-terminal: 500m
+```bash
+cd ~/Development/agnosticd-v2-vars/retail-edge-ha
+./deploy.sh
+```
 
-For 50 students: ~200 pods, ~50GB memory, ~60 CPU cores (requires large cluster).
+### Environment variables not in terminal
+
+Environment variables are injected by the Showroom Helm chart via a ConfigMap. If a terminal is missing variables, check the ArgoCD Showroom config application:
+
+```bash
+KC=~/Development/agnosticd-v2-output/retail-ha/openshift-cluster_retail-ha_kubeconfig
+
+oc --kubeconfig="$KC" get application retail-edge-ha-showroom-config -n openshift-gitops
+oc --kubeconfig="$KC" get configmap student-env -n showroom-student-01
+```
+
+### Terminal CLI tools
+
+The Showroom terminal image (`wetty`) includes standard shell utilities. OpenShift CLI tools (`oc`, `virtctl`) are pre-installed in the terminal image configured by the workshop Helm chart. If a tool is missing, check the terminal image in `helm/retail-edge-ha/values.yaml`.

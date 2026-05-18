@@ -47,6 +47,59 @@ For 50 students (max): ~900 CPU cores, 1.8 TiB RAM, 10 TiB storage
 * Git (included in AgnosticD v2 EE)
 * kubernetes.core Ansible collection
 
+== Role Structure and Deviations from Canonical AgnosticD Pattern
+
+=== Task File Layout
+
+The role `tasks/` directory contains the following files:
+
+[cols="1,2",options="header"]
+|===
+| File | Purpose
+
+| `main.yml`
+| Canonical ACTION dispatcher — routes to one of the five task files below based on `ACTION`.
+
+| `workload.yml`
+| Provision tasks: calls `pre_workload.yml`, deploys the Helm chart, waits for ArgoCD sync, then calls `post_workload.yml`.
+
+| `pre_workload.yml`
+| Pre-provision validation: verifies OCP version, discovers cluster domain and API URL, auto-installs RHACM and CNV when required.
+
+| `post_workload.yml`
+| Post-provision validation and reporting: waits for student namespaces and Showroom pods, then writes all access URLs to `agnosticd_user_info`.
+
+| `remove_workload.yml`
+| Destroy tasks: uninstalls the Helm release and removes all student and Showroom namespaces.
+
+| `stop_workload.yml`
+| Stop lifecycle: sets `spec.running: false` on all student VirtualMachines.
+
+| `start_workload.yml`
+| Start lifecycle: sets `spec.running: true` on all student VirtualMachines and waits for Running state.
+
+| `status_workload.yml`
+| Status lifecycle: reports VM, Showroom, and ArgoCD state via `agnosticd_user_info`.
+
+| `install_rhacm.yml`
+| Helper (not dispatched from `main.yml`): installs the RHACM operator. Included by `pre_workload.yml` when RHACM is absent and auto-install is enabled.
+
+| `install_virtualization.yml`
+| Helper (not dispatched from `main.yml`): installs the OpenShift Virtualization operator. Included by `pre_workload.yml` when CNV is absent and auto-install is enabled.
+|===
+
+=== Intentional Deviations from Canonical Structure
+
+The following intentional deviations from the AgnosticD v2 canonical workload pattern are documented here for RHDP catalog review:
+
+. *`pre_workload.yml` and `post_workload.yml` as separate files* — The provision flow is split into three files (`pre_workload.yml` → `workload.yml` → `post_workload.yml`) to keep each file focused on a single concern (validation, deploy, and reporting). `workload.yml` includes both at its start and end via `include_tasks`.
+
+. *Helper task files (`install_rhacm.yml`, `install_virtualization.yml`)* — These are included conditionally by `pre_workload.yml` and are never dispatched directly from `main.yml`. They exist as separate files because operator installation is a substantial sub-task with its own retry loops and is reused in different contexts.
+
+. *No `bastion_*` keys in `agnosticd_user_info`* — This is a workload-on-existing-OCP role; there is no bastion host. Showroom's Wetty terminal connects to VMs inside the OpenShift cluster using `oc rsh` / `virtctl console`, not via external SSH. The `bastion_public_hostname`, `bastion_ssh_user_name`, and `bastion_ssh_password` keys are intentionally omitted and do not need to appear in `provision-user-data.yaml`.
+
+. *Showroom namespace pattern* — Showroom namespaces follow `showroom-{{ guid }}-student{{ '%02d' | format(item) }}`, matching the AgnosticD v2 standard of `showroom-<guid>-<username>` where `<username>` matches the `user:` key passed to `agnosticd_user_info`.
+
 == Variables
 
 === Required Variables
@@ -120,6 +173,23 @@ For 50 students (max): ~900 CPU cores, 1.8 TiB RAM, 10 TiB storage
 |===
 
 NOTE: Module 3 is disabled by default due to high resource consumption (9 CPU + 18 GiB RAM per student).
+
+==== Cluster Admin Credentials
+
+[cols="1,2,1",options="header"]
+|===
+| Variable | Description | Default
+
+| `openshift_cluster_admin_username`
+| Admin username reported to students in `agnosticd_user_info`. Defaults to `ocp_username`.
+| `"{{ ocp_username }}"`
+
+| `openshift_cluster_admin_password`
+| Admin password reported to students in `agnosticd_user_info`. Must be set in `agnosticd-v2-secrets/<account>.yml` — never hard-coded.
+| `""`
+|===
+
+NOTE: Set `openshift_cluster_admin_password` in your secrets file: `agnosticd-v2-secrets/<account>.yml`.
 
 ==== Auto-Discovered Variables
 
@@ -218,8 +288,8 @@ oc get namespaces | grep retail-edge-student
 # Check VirtualMachines
 oc get vm -n retail-edge-student-01
 
-# Check Showroom routes
-oc get routes -n showroom-student-01
+# Check Showroom routes (replace <guid> with your deployment GUID)
+oc get routes -n showroom-<guid>-student01
 ----
 
 === Access Workshop URLs
@@ -228,8 +298,8 @@ Workshop URLs are automatically provided via AgnosticD user_info and displayed i
 
 [source]
 ----
-Workshop URL for student 01: https://showroom-student-01.apps.cluster.example.com
-Workshop URL for student 02: https://showroom-student-02.apps.cluster.example.com
+Workshop URL for student 01: https://showroom-<guid>-student01.apps.cluster.example.com
+Workshop URL for student 02: https://showroom-<guid>-student02.apps.cluster.example.com
 ...
 ----
 

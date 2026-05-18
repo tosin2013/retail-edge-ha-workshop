@@ -50,7 +50,7 @@
     remaining_student_namespaces: >-
       {{
         r_all_namespaces.resources
-        | selectattr('metadata.name', 'match', '^retail-edge-student-|^showroom-student-')
+        | selectattr('metadata.name', 'match', '^retail-edge-student-|^showroom-' + guid + '-')
         | map(attribute='metadata.name')
         | list
       }}

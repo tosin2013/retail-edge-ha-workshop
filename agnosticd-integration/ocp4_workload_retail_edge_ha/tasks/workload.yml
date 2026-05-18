@@ -1,6 +1,6 @@
 ---
-# Core workload deployment tasks
-# Deploys the Retail Edge HA Workshop using Helm
+- name: Running pre-workload validation tasks
+  ansible.builtin.include_tasks: pre_workload.yml
 
 - name: Create temporary directory for workshop files
   ansible.builtin.tempfile:
@@ -34,6 +34,19 @@
     msg: "{{ lookup('file', r_workshop_temp_dir.path + '/custom-values.yaml') }}"
     verbosity: 1
 
+- name: Fetch cluster-admin token from service account secret
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Secret
+    name: cluster-admin-token
+    namespace: openshift-config
+  register: r_cluster_admin_secret
+
+- name: Set cluster admin token fact
+  ansible.builtin.set_fact:
+    _ocp4_workload_retail_edge_ha_admin_token: >-
+      {{ r_cluster_admin_secret.resources[0].data.token | b64decode }}
+
 - name: Install workshop Helm chart
   ansible.builtin.command:
     cmd: >-
@@ -49,8 +62,8 @@
       {{ ocp4_workload_retail_edge_ha_release_name }}
       {{ r_workshop_temp_dir.path }}/retail-edge-ha-workshop/helm/retail-edge-ha
   environment:
-    HELM_KUBEAPISERVER: "{{ cluster_api_url }}"
-    HELM_KUBETOKEN: "{{ cluster_api_token }}"
+    HELM_KUBEAPISERVER: "{{ openshift_api_url }}"
+    HELM_KUBETOKEN: "{{ _ocp4_workload_retail_edge_ha_admin_token }}"
     HELM_KUBEINSECURE_SKIP_TLS_VERIFY: "true"
   register: r_helm_install
   changed_when: r_helm_install.rc == 0
@@ -58,6 +71,44 @@
 - name: Print Helm installation status
   ansible.builtin.debug:
     msg: "Helm chart {{ ocp4_workload_retail_edge_ha_release_name }} deployed successfully"
+
+- name: Build list of all workshop namespaces to label for ArgoCD access
+  ansible.builtin.set_fact:
+    _argocd_managed_namespaces: >-
+      {{
+        ['retail-edge-ha-gitops', 'retail-edge-infrastructure', 'retail-edge-workshop-builds']
+        + range(1, (num_users | int) + 1)
+          | map('int') | list
+          | map('string')
+          | map('zfill', 2)
+          | map('regex_replace', '^(.+)$', 'showroom-student-\1')
+          | list
+        + range(1, (num_users | int) + 1)
+          | map('int') | list
+          | map('string')
+          | map('zfill', 2)
+          | map('regex_replace', '^(.+)$', 'retail-edge-student-\1')
+          | list
+        + range(1, (num_users | int) + 1)
+          | map('int') | list
+          | map('string')
+          | map('zfill', 2)
+          | map('regex_replace', '^(.+)$', 'retail-edge-student-\1-udn')
+          | list
+      }}
+
+- name: Label workshop namespaces as managed by openshift-gitops (grants ArgoCD SA admin access)
+  kubernetes.core.k8s:
+    state: patched
+    api_version: v1
+    kind: Namespace
+    name: "{{ item }}"
+    definition:
+      metadata:
+        labels:
+          argocd.argoproj.io/managed-by: openshift-gitops
+  loop: "{{ _argocd_managed_namespaces }}"
+  ignore_errors: true
 
 - name: Patch ArgoCD CR to treat stopped VMs as Healthy (resourceHealthChecks)
   kubernetes.core.k8s:
@@ -403,3 +454,6 @@
 - name: Workload deployment complete
   ansible.builtin.debug:
     msg: "Workshop deployment initiated successfully. Resources are being synchronized by ArgoCD."
+
+- name: Running post-workload validation tasks
+  ansible.builtin.include_tasks: post_workload.yml

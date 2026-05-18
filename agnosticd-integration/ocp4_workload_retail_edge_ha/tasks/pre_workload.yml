@@ -133,6 +133,9 @@
     msg: "OpenShift Virtualization operator found and ready"
   when: cnv_installed
 
+- name: Install OpenShift GitOps operator and wait for ArgoCD CRDs
+  ansible.builtin.include_tasks: install_gitops.yml
+
 - name: Configure RHEL VM subscription credentials
   when:
     - cnv_installed
