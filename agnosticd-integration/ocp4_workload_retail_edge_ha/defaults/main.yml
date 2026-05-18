@@ -25,12 +25,11 @@ ocp4_workload_retail_edge_ha_auto_install_virtualization: true
 ocp4_workload_retail_edge_ha_cnv_channel: "stable"
 
 # Module selection
-# All modules enabled by default for full workshop experience
-# Module 3: Two-Node OpenShift requires 3 VMs (2×4CPU/16GB + 1×1CPU/2GB) per student
-# Total per student with all modules: 17 CPU, 50 GiB RAM, 7 VMs
+# Module 3 (Two-Node OCP) is deployed as per-student AWS clusters by AgnosticD,
+# not as KubeVirt VMs on the hub. Set to false to skip the KubeVirt/Assisted Installer path.
 ocp4_workload_retail_edge_ha_enable_module1: true
 ocp4_workload_retail_edge_ha_enable_module2: true
-ocp4_workload_retail_edge_ha_enable_module3: true
+ocp4_workload_retail_edge_ha_enable_module3: false
 
 # RHEL VM Subscription (required for RHEL 9 VMs to get yum repos)
 # These values should be set in agnosticd-v2-secrets/<account>.yml
@@ -38,36 +37,31 @@ ocp4_workload_retail_edge_ha_enable_module3: true
 ocp4_workload_retail_edge_ha_rhel_activation_key: ""
 ocp4_workload_retail_edge_ha_rhel_org_id: ""
 
-# Module 3: RHACM Assisted Installer (Two-Node OCP on KubeVirt)
-# Set ocp4_workload_retail_edge_ha_pull_secret in agnosticd-v2-secrets/<account>.yml
-ocp4_workload_retail_edge_ha_assisted_installer_enabled: true
+# Module 3: Per-student two-node OCP clusters provisioned on AWS by AgnosticD.
+# Students interact with their cluster via RHACM on the hub.
+# The hub workload imports each student cluster as a ManagedCluster after provisioning.
 ocp4_workload_retail_edge_ha_twonode_ocp_version: "4.21"
-# Use -immediate storage class: OpenShift formats node disks during install,
-# WaitForFirstConsumer would deadlock (no consumer pod starts before PVC binds).
+
+# Storage class for hub PVCs (modules 1 and 2 only)
 ocp4_workload_retail_edge_ha_storage_class: "ocs-external-storagecluster-ceph-rbd-immediate"
 
-# When true, provision automatically starts twonode VMs, waits for agents to
-# register, labels/approves/binds them, and kicks off RHACM installation.
-# Set false (default) so students walk through the discovery flow themselves.
-ocp4_workload_retail_edge_ha_module3_auto_provision: false
-
-# Assisted Service PVC sizes (hub cluster storage)
-ocp4_workload_retail_edge_ha_assisted_db_storage: "10Gi"
-ocp4_workload_retail_edge_ha_assisted_fs_storage: "50Gi"
-ocp4_workload_retail_edge_ha_assisted_image_storage: "50Gi"
-
-# Pull secret for Assisted Installer (set in secrets file — never hard-code)
-# Format: stringified dockerconfigjson {"auths": {...}}
-ocp4_workload_retail_edge_ha_pull_secret: ""
-
-# SSH public key injected into the discovery ISO and cluster nodes
-# Set in agnosticd-v2-secrets/<account>.yml or as extra-var
+# SSH public key for student cluster nodes (set in secrets file)
 ocp4_workload_retail_edge_ha_ssh_public_key: ""
+
+# Pull secret (set in secrets file — never hard-code)
+ocp4_workload_retail_edge_ha_pull_secret: ""
 
 # Cluster information (auto-discovered in pre_workload.yml)
 # These are set dynamically and don't need to be overridden
 # ocp4_workload_retail_edge_ha_cluster_domain: ""
 # ocp4_workload_retail_edge_ha_cluster_api_url: ""
+
+# Cluster admin credentials reported to students via agnosticd_user_info.
+# openshift_cluster_admin_username defaults to ocp_username.
+# openshift_cluster_admin_password must be set in agnosticd-v2-secrets/<account>.yml
+# or passed as an extra-var; it is never hard-coded here.
+openshift_cluster_admin_username: "{{ ocp_username }}"
+openshift_cluster_admin_password: ""
 
 # Multi-user workshop settings
 num_users: 1

@@ -46,10 +46,10 @@ students:
   # Resource quotas per student namespace
   quotas:
     enabled: true
-    cpu: "16"           # CPU cores (enough for 9 VMs)
-    memory: "56Gi"      # Memory: 16+16+8Gi twonode VMs + 4×4Gi module VMs + virt-launcher overhead
-    pvcs: "15"          # Persistent Volume Claims (7 VM disks + 3 discovery ISOs + headroom)
-    storage: "650Gi"    # Total storage: 403Gi steady-state + 120Gi CDI prime PVC during blank disk import + buffer
+    cpu: "8"            # CPU cores (Modules 1+2: 4 VMs × 2 CPU)
+    memory: "20Gi"      # Memory: Modules 1+2 VMs (4×4Gi) + virt-launcher overhead
+    pvcs: "8"           # Persistent Volume Claims: 4 VM disks + headroom
+    storage: "200Gi"    # Total storage: Module 1+2 VM disks
     pods: "20"          # Maximum pods
 
 # ArgoCD Configuration
@@ -159,10 +159,9 @@ fleetManagement:
         grc: true             # Governance, risk, and compliance
         search: true          # Fleet inventory search
 
-    # Assisted Installer configuration (Module 3: two-node OCP via KubeVirt)
-    # AgentServiceConfig is created by AgnosticD (install_rhacm.yml) after MCH is ready.
+    # Assisted Installer configuration (disabled — Module 3 now uses per-student AWS clusters)
     assistedInstaller:
-      enabled: true
+      enabled: false
       # PVC sizes for the Assisted Service on the hub
       databaseStorageSize: 10Gi
       filesystemStorageSize: 50Gi
@@ -337,10 +336,10 @@ virtualMachines:
         - microshift-networking
         - keepalived
 
-  # Module 3: OpenShift Two-Node with Arbiter (3 VMs per student)
-  # Uses RHACM Assisted Installer — VMs boot from InfraEnv discovery ISO
+  # Module 3: OpenShift Two-Node with Arbiter
+  # KubeVirt-based approach disabled; per-student clusters provisioned on AWS by AgnosticD
   module3:
-    enabled: true
+    enabled: false
     name: "twonode-ocp"
     vmCount: 3
     controlPlaneNodes: 2

@@ -116,136 +116,99 @@ By the end of this module, you will:
 
 == Step 1: Understanding the Environment
 
-*IMPORTANT*: Due to the complexity of OpenShift installation, the VMs in this module are **pre-configured with placeholder ignition files**.
+Your Module 3 environment is a **real two-node OpenShift cluster running on AWS EC2**, provisioned by your instructor using AgnosticD. It uses the **two-node with fencing** topology introduced in OCP 4.21:
 
-For production deployment, you would:
+* **Two schedulable control-plane nodes** — run both etcd and user workloads
+* **featureSet: TechPreviewNoUpgrade** — enables the two-node topology
+* **No dedicated worker nodes** — control-plane nodes carry the `worker` label
+* **Managed by RHACM** on the hub cluster as `{student-id}-twonode`
 
-1. Generate install-config.yaml
-2. Run `openshift-install create ignition-configs`
-3. Customize ignition for static IPs
-4. Create Kubernetes Secrets with ignition data
+This is a real cluster — all `oc` commands run against a live API server.
 
-See `/manifests/vms/module3-twonode/IGNITION-GENERATION.md` for the full process.
+== Step 2: Access Your Two-Node Cluster via RHACM
 
-== Step 2: Verify VirtualMachines
-
-Check your two-node cluster VMs:
+Your cluster is registered as a Managed Cluster in RHACM. Log in via the hub and switch context to your student cluster:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-oc get vm -n {student-namespace} | grep twonode
+# Download your student cluster kubeconfig from the hub
+oc get secret {student-id}-twonode-admin-kubeconfig \
+  -n {student-id}-twonode \
+  -o jsonpath='{.data.kubeconfig}' | base64 -d > /tmp/student-twonode-kubeconfig
 ----
 
-You should see:
+Verify you can reach the cluster:
+
+[source,bash,role=execute,subs="attributes+"]
+----
+KUBECONFIG=/tmp/student-twonode-kubeconfig oc get nodes
+----
+
+You should see two nodes, both with roles `control-plane,master,worker`:
 
 [source,text]
 ----
-twonode-master1   AGE   Stopped   False
-twonode-master2   AGE   Stopped   False
-twonode-arbiter   AGE   Stopped   False
+NAME                          STATUS   ROLES                         AGE
+ip-10-0-xxx-xx.ec2.internal   Ready    control-plane,master,worker   Xm
+ip-10-0-yyy-yy.ec2.internal   Ready    control-plane,master,worker   Xm
 ----
 
-== Step 3: Simulated Cluster State
+Both nodes run etcd AND are schedulable for workloads — the two-node with fencing topology.
 
-For this workshop, we'll simulate the two-node OpenShift cluster behavior using the VMs' network configuration and demonstrate the **concepts** of etcd quorum management.
+== Step 3: Explore the Two-Node Cluster
 
-Start the VMs in sequence (Bootstrap-in-Place order):
+Confirm both nodes are `Ready` and note the roles:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-# Master1 acts as bootstrap node
-virtctl start {twonode-master1} -n {student-namespace}
+KUBECONFIG=/tmp/student-twonode-kubeconfig oc get nodes -o wide
 ----
 
-Wait 2 minutes for initialization.
+Check the etcd pods running on each node:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-# Master2 joins the cluster
-virtctl start {twonode-master2} -n {student-namespace}
+KUBECONFIG=/tmp/student-twonode-kubeconfig \
+  oc get pods -n openshift-etcd -l app=etcd -o wide
 ----
 
-Wait 1 minute.
+You should see one etcd pod per node — two etcd members form the cluster (quorum = 2/2 = 1 failure tolerated when using a pre-leader election tiebreaker).
+
+Check cluster operators are all available:
 
 [source,bash,role=execute,subs="attributes+"]
 ----
-# Arbiter joins etcd only
-virtctl start {twonode-arbiter} -n {student-namespace}
+KUBECONFIG=/tmp/student-twonode-kubeconfig oc get co
 ----
 
-Monitor VM status:
+Set the kubeconfig for the rest of this module:
 
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-oc get vmi -n {student-namespace} | grep twonode
-----
-
-=== Deploy the Cluster Status Dashboard
-
-Unlike Modules 1 and 2 (where dashboards are delivered by Fleet Manager to RHEL devices), Module 3 VMs run RHCOS. The status dashboard runs as an OpenShift pod that queries the Kubernetes API for VM state:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc create configmap cluster-status-web -n {student-namespace} \
-  --from-file=cluster-status-web.py=manifests/dashboards/cluster-status-web.py \
-  --dry-run=client -o yaml | oc apply -f -
-oc apply -f manifests/dashboards/module3-dashboard.yaml -n {student-namespace}
-oc expose svc/cluster-status-twonode -n {student-namespace} 2>/dev/null || true
+export KUBECONFIG=/tmp/student-twonode-kubeconfig
 ----
 
-Get the dashboard URL:
+== Step 4: Verify Node Roles and Schedulability
 
-[source,bash,role=execute,subs="attributes+"]
+In the two-node with fencing topology, control-plane nodes also run workloads:
+
+[source,bash,role=execute]
 ----
-echo "Dashboard: http://$(oc get route cluster-status-twonode -n {student-namespace} -o jsonpath='{.spec.host}')"
-----
-
-Open this URL in your browser. The dashboard shows VM running state, network connectivity between nodes, etcd quorum status, and storage. It auto-refreshes every 15 seconds.
-
-== Step 4: Verify Network Configuration
-
-SSH into master1:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-virtctl ssh core@{twonode-master1} -n {student-namespace}
+oc describe nodes | grep -E "^Name:|Roles:|Taints:"
 ----
 
-Note: The default user for RHCOS is `core`.
+Confirm there are no `NoSchedule` taints on either node — both are fully schedulable:
 
-Check the static IP on eth1:
-
-[source,role="execute"]
+[source,bash,role=execute]
 ----
-ip addr show eth1
+oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.taints}{"\n"}{end}'
 ----
 
-Expected:
+Check node-to-node IP connectivity via the cluster network (ETH interface IPs):
 
-[source,text]
+[source,bash,role=execute]
 ----
-inet 10.103.0.20/24 brd 10.103.0.255 scope global eth1
-----
-
-Verify connectivity to master2:
-
-[source,role="execute",subs="attributes+"]
-----
-ping -c 3 {twonode-ip2}
-----
-
-Verify connectivity to arbiter:
-
-[source,role="execute",subs="attributes+"]
-----
-ping -c 3 {twonode-ip-arbiter}
-----
-
-Exit:
-
-[source,role="execute"]
-----
-exit
+oc get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.addresses[?(@.type=="InternalIP")].address}{"\n"}{end}'
 ----
 
 == Step 5: Understanding etcd Quorum
@@ -304,49 +267,64 @@ oc rsh -n openshift-etcd \
 # https://10.103.0.22:2379 is healthy: ...
 ----
 
-== Step 7: Simulate Node Failure (Conceptual)
+== Step 7: Simulate Node Failure
 
-**Test 1: Lose one control-plane node**
+**Test 1: Cordon one control-plane node (simulate unavailability)**
 
-If we stopped master2:
+Cordon the second node to mark it unschedulable (simulates a node going offline):
 
-[source,role="execute",subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl stop {twonode-master2} -n {student-namespace}
-----
-
-The cluster would:
-
-* Still have quorum (2/3: master1 + arbiter)
-* Continue serving API requests
-* Mark master2 as `NotReady` after ~40 seconds
-* Continue scheduling workloads on master1
-
-Workloads on master2 would be rescheduled to master1.
-
-**Test 2: Lose the arbiter**
-
-[source,role="execute",subs="attributes+"]
-----
-virtctl stop {twonode-arbiter} -n {student-namespace}
+NODE2=$(oc get nodes -o name | tail -1 | cut -d/ -f2)
+oc adm cordon "$NODE2"
+oc get nodes
 ----
 
-The cluster would:
+The cluster continues with one schedulable node. Observe that existing workloads continue:
 
-* Still have quorum (2/3: master1 + master2)
-* Function normally (arbiter has no workloads)
-* etcd continues serving reads/writes
-* Cluster operators remain `Available`
-
-**Test 3: Lose quorum (both master2 and arbiter)**
-
-[source,role="execute",subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl stop {twonode-master2} -n {student-namespace}
-virtctl stop {twonode-arbiter} -n {student-namespace}
+oc get pods -n openshift-etcd -o wide
+oc get co | grep -v Available
 ----
 
-The cluster would:
+Uncordon to restore:
+
+[source,bash,role=execute]
+----
+oc adm uncordon "$NODE2"
+----
+
+**Test 2: Drain a node (simulate maintenance)**
+
+Drain the second node, evicting all pods to node 1:
+
+[source,bash,role=execute]
+----
+oc adm drain "$NODE2" --ignore-daemonsets --delete-emptydir-data --force --timeout=60s
+----
+
+Observe pods redistributing to node 1:
+
+[source,bash,role=execute]
+----
+oc get pods -A -o wide | grep "$NODE2"
+----
+
+Restore node to service:
+
+[source,bash,role=execute]
+----
+oc adm uncordon "$NODE2"
+----
+
+**Test 3: Quorum failure (conceptual)**
+
+In this two-node topology, losing both nodes would cause:
+
+[source,text]
+----
+# Conceptual — DO NOT RUN in lab
 
 * Lose quorum (only 1/3 nodes: master1)
 * Enter read-only mode
@@ -361,54 +339,37 @@ oc create namespace test
 # Error: The connection to the server ... was refused
 ----
 
-== Step 8: Observe VM Behavior
+== Step 8: Node Debugging
 
-Let's actually test the failure scenarios with the VMs:
+Open a debug shell on a cluster node to inspect the host-level configuration:
 
-Stop master2:
-
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl stop {twonode-master2} -n {student-namespace}
-----
-
-Check VM status:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc get vmi -n {student-namespace} | grep twonode
+NODE1=$(oc get nodes -o name | head -1 | cut -d/ -f2)
+oc debug node/"$NODE1" -- chroot /host bash -c "
+  echo '=== Hostname ===' && hostname
+  echo '=== IP addresses ===' && ip addr show | grep 'inet '
+  echo '=== Kernel ===' && uname -r
+  echo '=== CPU/Memory ===' && nproc && free -h
+"
 ----
 
-You should see master2 absent (stopped).
+Check the etcd data directory location and disk type:
 
-SSH into master1:
-
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl ssh core@{twonode-master1} -n {student-namespace}
-----
-
-Verify arbiter is still reachable:
-
-[source,role="execute",subs="attributes+"]
-----
-ping -c 3 {twonode-ip-arbiter}
+oc debug node/"$NODE1" -- chroot /host bash -c "
+  echo '=== etcd mount ===' && findmnt /var/lib/etcd 2>/dev/null || echo 'etcd on root volume'
+  echo '=== Root disk ===' && lsblk -d | grep -v loop
+"
 ----
 
-This demonstrates that 2 of 3 nodes are online (simulating quorum).
+Check node-to-node connectivity from the host network:
 
-Exit:
-
-[source,role="execute"]
+[source,bash,role=execute]
 ----
-exit
-----
-
-Restart master2:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-virtctl start {twonode-master2} -n {student-namespace}
+NODE2_IP=$(oc get nodes -o jsonpath='{.items[1].status.addresses[?(@.type=="InternalIP")].address}')
+oc debug node/"$NODE1" -- chroot /host ping -c 3 "$NODE2_IP"
 ----
 
 == Step 9: Understanding Bootstrap-in-Place
@@ -435,59 +396,42 @@ Advantages:
 * Faster installation
 * Ideal for edge environments
 
-== Step 10: Arbiter Node Taints
+== Step 10: Node Roles in Two-Node with Fencing
 
-SSH into the arbiter node:
+In the two-node with fencing topology both nodes carry `control-plane,master,worker` roles with no `NoSchedule` taint — unlike the arbiter-based topology where the arbiter has a `NoSchedule` taint and runs no workloads.
 
-[source,bash,role=execute,subs="attributes+"]
+Confirm the roles and taints on your cluster:
+
+[source,bash,role=execute]
 ----
-virtctl ssh core@{twonode-arbiter} -n {student-namespace}
-----
-
-Check the hostname:
-
-[source,role="execute"]
-----
-hostname
+oc get nodes -o custom-columns=NAME:.metadata.name,ROLES:.metadata.labels,TAINTS:.spec.taints
 ----
 
-Expected: `twonode-arbiter`
+Check that both etcd pods are co-located with control-plane nodes:
 
-In a real cluster, check node taints:
-
-[source,role="execute"]
+[source,bash,role=execute]
 ----
-# This would show (in production):
-oc describe node twonode-arbiter | grep Taints
-
-# Expected:
-# Taints: node-role.kubernetes.io/master:NoSchedule
+oc get pods -n openshift-etcd -l app=etcd \
+  -o custom-columns=POD:.metadata.name,NODE:.spec.nodeName,STATUS:.status.phase
 ----
 
-The `NoSchedule` taint prevents workloads from running on the arbiter.
+== Step 11: Resource Inspection
 
-Exit:
+Inspect the actual EC2 instance resources backing each node:
 
-[source,role="execute"]
+[source,bash,role=execute]
 ----
-exit
-----
-
-== Step 11: Resource Comparison
-
-Compare VM resources:
-
-[source,bash,role=execute,subs="attributes+"]
-----
-oc get vmi -n {student-namespace} -o custom-columns=NAME:.metadata.name,CPU:.spec.domain.cpu.cores,MEMORY:.spec.domain.resources.requests.memory
+oc get nodes -o custom-columns=\
+NAME:.metadata.name,\
+CPU:.status.allocatable.cpu,\
+MEMORY:.status.allocatable.memory,\
+STORAGE:.status.allocatable.ephemeral-storage
 ----
 
-Note the difference:
+In this workshop, both nodes are `m5.2xlarge` (8 vCPU / 32 GiB RAM). In a real edge deployment:
 
-* **Control-plane nodes**: 4 cores, 16Gi RAM (run workloads)
-* **Arbiter node**: 1 core, 2Gi RAM (etcd only)
-
-This demonstrates the arbiter's efficiency for remote datacenter placement.
+* **Control-plane nodes**: 64+ cores, 256 GiB RAM (Dell R660 / HP DL360)
+* **Arbiter (datacenter VM)**: 2–4 cores, 8 GiB RAM (etcd only, no workloads)
 
 == Step 12: etcd Storage Requirements
 
@@ -534,49 +478,39 @@ OpenShift requires:
 |NFS adds latency and does not guarantee fsync
 |===
 
-=== Test Disk Performance (Simulated)
+=== Test Disk Performance on a Cluster Node
 
-SSH into master1:
+Use `oc debug` to run the fsync latency test on the actual node:
 
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl ssh core@{twonode-master1} -n {student-namespace}
-----
-
-In production, etcd data is stored in `/var/lib/etcd`. Test disk latency:
-
-[source,role="execute"]
-----
-# Test fsync latency (simulated on root filesystem)
-sudo dd if=/dev/zero of=/var/tmp/test-etcd bs=4k count=10000 oflag=dsync 2>&1 | grep -E 'copied|MB'
+NODE1=$(oc get nodes -o name | head -1 | cut -d/ -f2)
+oc debug node/"$NODE1" -- chroot /host bash -c "
+  echo '=== Disk fsync latency test ==='
+  dd if=/dev/zero of=/var/tmp/test-etcd bs=4k count=5000 oflag=dsync 2>&1 | grep -E 'copied|MB'
+  rm -f /var/tmp/test-etcd
+"
 ----
 
-Expected output (good performance):
+Expected output (gp3 EBS on AWS — adequate for workshop):
 
 [source,text]
 ----
-40960000 bytes (41 MB, 39 MiB) copied, 8.5 s, 4.8 MB/s
+20480000 bytes (20 MB) copied, 4.1 s, 5.0 MB/s
 ----
 
 Calculate latency:
 
 [source,text]
 ----
-10000 writes in 8.5 seconds = 0.85 ms per write ✓
+5000 writes in 4.1 seconds = 0.82 ms per write ✓
 ----
 
 **Good**: < 10ms per write
 **Warning**: 10-50ms (cluster will be slow)
 **Critical**: > 50ms (cluster may become unstable)
 
-In this lab, we're using Ceph RBD storage which has network overhead. Production two-node clusters use local NVMe for etcd.
-
-Exit:
-
-[source,role="execute"]
-----
-exit
-----
+In this lab, EBS gp3 provides adequate performance. Production two-node clusters use local NVMe for etcd.
 
 === Why NOT Use ODF on Two-Node Clusters
 
@@ -759,50 +693,60 @@ the server was unable to return a response
 
 == Verification
 
-Check that all three VMs are running:
+Check both cluster nodes are `Ready` and etcd is healthy:
 
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-oc get vmi -n {student-namespace} | grep twonode
+oc get nodes
+oc get pods -n openshift-etcd -l app=etcd
+oc get co | grep -v "True.*False.*False"
 ----
 
-All should show `Running` and `True`.
+All cluster operators should show `Available=True, Progressing=False, Degraded=False`.
 
 == Troubleshooting
 
 [%collapsible]
 ====
-*Problem:* VMs not starting
+*Problem:* Cannot download kubeconfig from hub
 
 *Solution:*
 [source,role="execute",subs="attributes+"]
 ----
-oc describe vm {twonode-master1} -n {student-namespace}
-# Check for DataVolume issues with RHCOS image
+# Verify the ManagedCluster is imported and joined in RHACM
+oc get managedcluster {student-id}-twonode -o jsonpath='{.status.conditions}'
+# Check the auto-import-secret was processed
+oc get secret auto-import-secret -n {student-id}-twonode
 ----
 
-*Problem:* Network connectivity issues
+*Problem:* Node `NotReady` after cordon/drain test
 
 *Solution:*
-[source,role="execute",subs="attributes+"]
+[source,role="execute"]
 ----
-# Verify UDN exists
-oc get userdefinednetwork twonode-net -n {student-udn-namespace}
+NODE=$(oc get nodes --field-selector=spec.unschedulable=true -o name | cut -d/ -f2)
+oc adm uncordon "$NODE"
+oc wait --for=condition=Ready node/"$NODE" --timeout=120s
+----
 
-# Check VM network interfaces
-oc describe vmi {twonode-master1} -n {student-namespace} | grep -A10 "Interfaces"
+*Problem:* etcd pod not running on a node
+
+*Solution:*
+[source,role="execute"]
+----
+oc get pods -n openshift-etcd -o wide
+oc describe pod -n openshift-etcd -l app=etcd | tail -20
 ----
 ====
 
 == Key Takeaways
 
-* Two-node OpenShift uses a remote arbiter for etcd quorum
-* Quorum = ⌊N/2⌋ + 1, where N=3, so quorum=2
-* Can tolerate loss of any 1 node without disruption
-* Arbiter runs etcd only (no workloads), minimizing resources
-* Bootstrap-in-Place simplifies installation for edge environments
-* etcd is sensitive to network latency (monitor arbiter connectivity)
-* Two-node clusters require special update procedures
+* Two-node OpenShift (with fencing) uses two schedulable control-plane nodes — no dedicated workers
+* Both nodes run etcd AND user workloads (`control-plane,master,worker` roles)
+* Quorum: losing one node still leaves the cluster operational
+* etcd disk latency < 10ms is required — AWS EBS gp3 meets this for workshop use
+* Production deployments use local NVMe for etcd; ODF/Ceph is not supported on two nodes
+* Two-node with arbiter (the traditional model) requires bare metal or Agent-based installer; this lab uses the AWS-supported two-node with fencing topology
 
 == Production Considerations
 
@@ -816,13 +760,13 @@ For real two-node OpenShift deployments:
 
 == Cleanup
 
-Stop all two-node cluster VMs:
+Remove the local kubeconfig and unset the environment variable:
 
-[source,bash,role=execute,subs="attributes+"]
+[source,bash,role=execute]
 ----
-virtctl stop {twonode-master1} -n {student-namespace}
-virtctl stop {twonode-master2} -n {student-namespace}
-virtctl stop {twonode-arbiter} -n {student-namespace}
+unset KUBECONFIG
+rm -f /tmp/student-twonode-kubeconfig
+echo "Cleanup complete. Switch back to hub cluster context."
 ----
 
 == Next Steps
