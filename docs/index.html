@@ -407,16 +407,15 @@ ArgoCD Parent Application (retail-edge-ha-workshop)
 ├── Wave 1: Networking & RBAC
 │   ├── User Defined Networks (UDNs)
 │   │   ├── Module 1: pacemaker-net (10.101.0.0/24)
-│   │   ├── Module 2: microshift-net (10.102.0.0/24)
-│   │   └── Module 3: twonode-net (10.103.0.0/24)
+│   │   └── Module 2: microshift-net (10.102.0.0/24)
 │   ├── NetworkAttachmentDefinitions
 │   ├── ClusterRoles
 │   └── RoleBindings
 │
 ├── Wave 2: VirtualMachines
 │   ├── Module 1: RHEL HA VMs (2 per student)
-│   ├── Module 2: MicroShift VMs (2 per student)
-│   └── Module 3: Two-Node OpenShift VMs (3 per student)
+│   └── Module 2: MicroShift VMs (2 per student)
+│   (Module 3: Two-Node OCP provisioned on AWS via AgnosticD + RHACM)
 │
 └── Wave 3: Bookbag
     ├── Workshop Content Deployment
@@ -559,8 +558,7 @@ virtualMachines:
     enabled: true  # RHEL HA
   module2:
     enabled: true  # MicroShift
-  module3:
-    enabled: true  # Two-Node OpenShift
+# Module 3 (Two-Node OCP) is provisioned on AWS via AgnosticD — not managed here
 
 # Resource allocations per student
 resourceQuotas:

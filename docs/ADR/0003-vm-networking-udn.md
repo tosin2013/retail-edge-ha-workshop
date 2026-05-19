@@ -6,11 +6,12 @@
 
 ## Context and Problem Statement
 
-The Retail Edge HA Workshop teaches three High-Availability architectures that require **true Layer 2 networking** for cluster heartbeat and failover mechanisms:
+The Retail Edge HA Workshop teaches High-Availability architectures that require **true Layer 2 networking** for cluster heartbeat and failover mechanisms:
 
 1. **Module 1 (RHEL HA)**: Corosync heartbeat uses multicast on Layer 2
 2. **Module 2 (MicroShift)**: VRRP (Virtual Router Redundancy Protocol) requires Layer 2 for VIP advertisement
-3. **Module 3 (Two-Node OpenShift)**: etcd cluster communication benefits from low-latency Layer 2
+
+Module 3 (Two-Node OpenShift) clusters are provisioned directly on AWS via AgnosticD and imported into RHACM — they run on EC2 instances with AWS networking, so no hub-side Layer 2 is required for Module 3.
 
 **Technical Requirements**:
 - Layer 2 broadcast domain (VMs must be on same subnet, no routing)
@@ -139,14 +140,12 @@ spec:
 Student 01:
 ├── retail-edge-student-01-udn (namespace)
 │   ├── pacemaker-net (UDN, 10.101.0.0/24)     # Module 1
-│   ├── microshift-net (UDN, 10.102.0.0/24)    # Module 2
-│   └── twonode-net (UDN, 10.103.0.0/24)       # Module 3
+│   └── microshift-net (UDN, 10.102.0.0/24)    # Module 2
 
 Student 02:
 ├── retail-edge-student-02-udn (namespace)
 │   ├── pacemaker-net (UDN, 10.101.0.0/24)     # Same CIDR, different namespace = isolated
-│   ├── microshift-net (UDN, 10.102.0.0/24)
-│   └── twonode-net (UDN, 10.103.0.0/24)
+│   └── microshift-net (UDN, 10.102.0.0/24)
 ```
 
 **UDN Definition (Module 1 - Pacemaker)**:
@@ -203,7 +202,7 @@ spec:
 - **Per-Student Allocation**:
   - Module 1 (Pacemaker): 10.101.0.20-21 (2 VMs)
   - Module 2 (MicroShift): 10.102.0.20-21 (2 VMs) + 10.102.0.100 (VIP)
-  - Module 3 (Two-Node): 10.103.0.20-22 (3 VMs)
+  - Module 3: AWS-provisioned clusters — no hub UDN
 
 ## Consequences
 
@@ -320,10 +319,6 @@ OVN logical port → VM B (10.101.0.21)
 - Uses Virtual Router MAC address (00:00:5e:00:01:{VRID})
 - ARP replies for VIP must come from master node
 - Requires Layer 2 for ARP and multicast
-
-**etcd (Module 3)**:
-- While etcd works over Layer 3, low-latency Layer 2 reduces heartbeat failures
-- Simulates realistic retail edge network topology
 
 ## Troubleshooting Guide
 

@@ -109,8 +109,8 @@ virtualMachines:
     enabled: true
   module2:
     enabled: true
-  module3:
-    enabled: false  # Disable via feature flag
+# Module 3 (Two-Node OCP) is not managed via Helm — clusters are
+# provisioned on AWS by AgnosticD and imported into RHACM.
 ```
 
 **Deployment**:
