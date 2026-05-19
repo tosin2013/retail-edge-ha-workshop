@@ -31,7 +31,7 @@ spec:
         resources:
           requests:
             storage: 120Gi
-        storageClassName: gp3-csi
+        storageClassName: gp3-csi-immediate
         accessModes:
           - ReadWriteOnce
   template:
@@ -115,7 +115,7 @@ spec:
         resources:
           requests:
             storage: 120Gi
-        storageClassName: gp3-csi
+        storageClassName: gp3-csi-immediate
         accessModes:
           - ReadWriteOnce
   template:

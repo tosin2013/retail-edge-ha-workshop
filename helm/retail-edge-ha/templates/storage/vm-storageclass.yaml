@@ -1,0 +1,25 @@
+{{- /*
+gp3-csi-immediate StorageClass for VM DataVolumes.
+
+CDI (Containerized Data Importer) requires Immediate volume binding mode so
+that importer/populator pods are scheduled and PVCs bind before the VM starts.
+The default gp3-csi uses WaitForFirstConsumer which deadlocks CDI's clone
+workflow. This class is functionally identical to gp3-csi but with Immediate
+binding.
+*/}}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3-csi-immediate
+  labels:
+    app.kubernetes.io/part-of: retail-edge-ha-workshop
+    app.kubernetes.io/component: storage
+  annotations:
+    argocd.argoproj.io/sync-wave: "-20"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
