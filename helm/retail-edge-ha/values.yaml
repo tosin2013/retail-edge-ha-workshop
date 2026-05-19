@@ -221,6 +221,13 @@ networking:
       vrrpVIP: "10.102.0.100"
       description: "Layer 2 network for VRRP virtual IP failover"
 
+    # Module 3: Two-Node OCP management network
+    module3Network:
+      name: "twonode-mgmt"
+      cidr: "10.103.0.0/24"
+      gateway: "10.103.0.1"
+      description: "Management network for two-node OCP cluster"
+
   # Network IP assignments for Showroom variables
   module1:
     networkName: "pacemaker-net"
