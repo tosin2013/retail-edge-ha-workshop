@@ -221,13 +221,6 @@ networking:
       vrrpVIP: "10.102.0.100"
       description: "Layer 2 network for VRRP virtual IP failover"
 
-    # Module 3: Two-Node OpenShift network
-    module3Network:
-      name: "twonode-net"
-      cidr: "10.103.0.0/24"
-      gateway: "10.103.0.1"
-      description: "Layer 2 network for two-node cluster communication"
-
   # Network IP assignments for Showroom variables
   module1:
     networkName: "pacemaker-net"
@@ -240,12 +233,6 @@ networking:
     gwAIp: "10.102.0.20"
     gwBIp: "10.102.0.21"
     virtualIp: "10.102.0.100"
-
-  module3:
-    networkName: "twonode-net"
-    master1Ip: "10.103.0.20"
-    master2Ip: "10.103.0.21"
-    arbiterIp: "10.103.0.22"
 
 # VirtualMachine Configuration
 # -----------------------------------------------------------------------------
@@ -335,47 +322,6 @@ virtualMachines:
         - microshift-selinux
         - microshift-networking
         - keepalived
-
-  # Module 3: OpenShift Two-Node with Arbiter
-  # KubeVirt-based approach disabled; per-student clusters provisioned on AWS by AgnosticD
-  module3:
-    enabled: false
-    name: "twonode-ocp"
-    vmCount: 3
-    controlPlaneNodes: 2
-    arbiterNodes: 1
-
-    # VM names
-    vmNames:
-      master1: "twonode-master1"
-      master2: "twonode-master2"
-      arbiter: "twonode-arbiter"
-
-    # VM image configuration
-    image:
-      url: "https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/latest/rhcos-live.x86_64.iso"
-      name: "rhcos-latest"
-
-    # Resource specifications for control plane nodes
-    resources:
-      controlPlane:
-        cpu:
-          cores: 4
-          sockets: 1
-          threads: 1
-        memory: "16Gi"
-        disk: "120Gi"
-
-      # Resource specifications for arbiter node
-      # TNA minimum (Assisted Installer 2026 docs): 2 CPU, 8 GiB RAM, 50 GiB disk.
-      # Disk validation by Assisted Service rejects anything below 50 GiB.
-      arbiter:
-        cpu:
-          cores: 2
-          sockets: 1
-          threads: 1
-        memory: "8Gi"
-        disk: "50Gi"
 
 # Showroom Workshop Configuration (Modern Platform)
 # -----------------------------------------------------------------------------

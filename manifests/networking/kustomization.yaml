@@ -4,7 +4,6 @@ kind: Kustomization
 resources:
   - udn-module1/
   - udn-module2/
-  - udn-module3/
 
 commonLabels:
   app.kubernetes.io/part-of: retail-edge-ha-workshop
