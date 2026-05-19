@@ -80,19 +80,19 @@
         + range(1, (num_users | int) + 1)
           | map('int') | list
           | map('string')
-          | map('zfill', 2)
+          | map('regex_replace', '^(\d)$', '0\1')
           | map('regex_replace', '^(.+)$', 'showroom-student-\1')
           | list
         + range(1, (num_users | int) + 1)
           | map('int') | list
           | map('string')
-          | map('zfill', 2)
+          | map('regex_replace', '^(\d)$', '0\1')
           | map('regex_replace', '^(.+)$', 'retail-edge-student-\1')
           | list
         + range(1, (num_users | int) + 1)
           | map('int') | list
           | map('string')
-          | map('zfill', 2)
+          | map('regex_replace', '^(\d)$', '0\1')
           | map('regex_replace', '^(.+)$', 'retail-edge-student-\1-udn')
           | list
       }}
